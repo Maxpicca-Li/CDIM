@@ -1,6 +1,6 @@
 `timescale 1ns / 1ps
 
-module instruction_fifo(
+module inst_fifo(
     // 只负责写入写出数据，不负责发送具体的请求 // XXX 那发送请求在哪儿发送？
         input                       clk,
         input                       debug_rst,

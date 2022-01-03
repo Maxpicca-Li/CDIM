@@ -1,108 +1,97 @@
 `timescale 1ns / 1ps
 `include "defines.vh"
 module datapath (
-    input wire clk,rst,i_stall,d_stall,
-    input wire [31:0]inst_sram_rdataF,data_sram_rdataM,
-
-    output wire inst_sram_enF,data_sram_enM,longest_stall,
-    output wire [3:0] data_sram_wenM,
-    output wire [31:0]pc_nowF,data_sram_waddrM,
-    output wire [31:0]data_sram_wdataM,
+    input wire clk,
+    input wire rst,
+    
     // except 
     input wire [5:0]ext_int,
-    output wire except_logicM
+    output wire except_logicM,
+
+    // stall 访存控制
+    input wire i_stall,
+    input wire d_stall,
+    output wire longest_stall,
+    
+    // 指令读取
+    input wire inst_data_ok1,
+    input wire inst_data_ok2,
+    input wire [31:0]inst_data1,
+    input wire [31:0]inst_data2,
+    output wire inst_sram_en, 
+    output wire [31:0]F_pc, // 取回pc, pc+4的指令
+
+    // 数据读取
+    input wire [31:0]data_sram_rdataM,
+    output wire data_sram_enM,
+    output wire [3:0] data_sram_wenM,
+    output wire [31:0]data_sram_waddrM,
+    output wire [31:0]data_sram_wdataM
 );
 
 // ====================================== 变量定义区 ======================================
-wire clear,ena;
-wire [63:0]hilo;
-// F
-wire is_in_delayslotF;
-wire [31:0]instrF,pc_plus4F,pc_next_jump,pc_next_jr;
-wire pc_exceptF;
-// D
-wire syscallD,breakD,eretD;
-wire forwardAD,forwardBD;
-wire branch_taken,equalD,branchD,jumpD,jrD,balD,jalD;
-wire [31:0]pc_nowD,pc_plus4D,pc_branchD,rd1D,rd2D,rd1D_branch,rd2D_branch;
-wire [31:0]sign_immD;
-wire pc_exceptD;
-wire invalidD, is_in_delayslotD;
-// E
-wire regdstE,alusrcAE,alusrcBE,regwriteE,memtoRegE,jrE,balE,jalE,stall_divE;
-wire [1:0]forwardAE,forwardBE;
-wire [4:0]rtE,rdE,rsE,saE,reg_waddrE;
-wire [7:0]alucontrolE;
-wire [31:0]rd1E,rd2E,srcB,sign_immE,pc_plus4E,pc_plus8E,rd1_saE;
-wire [31:0]pc_nowE,alu_resE,sel_rd1E,sel_rd2E,alu_resE_real,cp0_data_oE;
-wire [63:0]div_result,aluout_64E;
-wire [7:0] exceptE;
-wire overflow, is_in_delayslotE;
-// M
-wire memenM,memtoRegM,regwriteM,memWriteM;
-wire [4:0]reg_waddrM;
-wire [31:0]pc_nowM,alu_resM,read_dataM,sel_rd2M,rd2M;
-wire [63:0]div_resultM,aluout_64M;
-wire [31:0]if_addr;
-wire [7:0] exceptM;
-wire adelM,adesM;
-wire [31:0] pc_except;
-wire [31:0] bad_addr;
-wire is_in_delayslotM;
-wire [4:0]rdM;
-// W
-wire memtoRegW,regwriteW,balW,jalW,hilowriteM,cp0writeM;
-wire [4:0]reg_waddrW;
-wire [31:0]wd3M ,wd3W;
-//cp0
-wire[`RegBus] count_o,compare_o,status_o,cause_o,epc_o,config_o,prid_o;
-wire[`RegBus] data_o,badvaddr;
-wire [31:0]excepttypeM;
-wire timer_int_o;
-// stall
-wire stallF,stallD,stallE,stallM,stallW;
-// flush
-wire flushD,flushE,flushM,flushW;
-// instrD 分解
-wire [31:0]instrD,instrE,instrM;
-wire [5:0]opD,functD;
-wire [4:0]rsD,rtD,rdD,saD;
-
+wire clear;
+wire en;
 assign clear = 1'b0;
 assign ena = 1'b1;
-assign data_sram_enM = memenM;
-assign except_logicM = (|excepttypeM);
+
+wire [31:0] 	D_inst_master;
+wire [31:0] 	D_inst_slave;
+wire [11:0] 	D_inst_exp1;
+wire [11:0] 	D_inst_exp2;
+wire [31:0] 	D_pc_master;
+wire [31:0] 	D_pc_slave;
+wire D_read_en1;
+wire D_read_en2;
+wire        	fifo_empty;
+wire        	fifo_almost_empty;
+wire        	fifo_full;
+
+// 异常 ? 取指异常？F_pc和F_pc+4吗
+assign pc_exceptF = (F_pc[1:0] == 2'b00) ? 1'b0 : 1'b1;
+assign inst_sram_en =  1'b1; // !except_logicM & !pc_exceptF;
+
 // ====================================== Fetch ======================================
-// 异常
-// XXX 尴尬，注意，这里的pc_except和pc_exceptF没有任何关系
-assign pc_exceptF = (pc_nowF[1:0] == 2'b00) ? 1'b0 : 1'b1;
-assign is_in_delayslotF = (jumpD|jrD|jalD|branchD); // 延迟槽的取指时，判断上一条是否是分支指令
-assign inst_sram_enF = !except_logicM & !pc_exceptF;
-assign instrF = inst_sram_enF ? inst_sram_rdataF : 32'b0;
 
-wire except_taken;
-assign except_taken = (|excepttypeM);
-
-// FIXME inst_data_ok1, inst_data_ok2, fifo_full
 pc_reg u_pc_reg(
 	//ports
 	.clk           		( clk           		),
 	.rst           		( rst           		),
-	.pc_en         		( ~stallF | except_taken),  // XXX 这里为什么要|except_taken？
+	.pc_en         		( pc_en         		),
 	.inst_data_ok1 		( inst_data_ok1 		),
 	.inst_data_ok2 		( inst_data_ok2 		),
 	.fifo_full     		( fifo_full     		),
-	.jumpD         		( jumpD         		),
-	.jalD          		( jalD          		),
-	.jrD           		( jrD           		),
-	.branch_taken  		( branch_taken  		),
-	.except_taken  		( except_taken  		),
-	.pc_except     		( pc_except     		),
-	.pc_next_jr    		( pc_next_jr    		),
-	.pc_next_jump  		( pc_next_jump  		),
-	.pc_branchD    		( pc_branchD    		),
-	.pc_curr       		( pc_nowF       		)
+	.pc_curr       		( F_pc       		)
 );
+
+
+inst_fifo u_inst_fifo(
+	//ports
+	.clk              		( clk              		),
+	.rst              		( rst              		),
+	.fifo_rst         		( 1'b0         		),
+	.master_is_branch 		( 1'b0 		),
+	.read_en1         		( D_read_en1         		),
+	.read_en2         		( D_read_en2         		),
+	.read_data1       		( D_inst_master       		),
+	.read_data2       		( D_inst_slave      		),
+	.read_addres1     		( D_pc_master     		),
+	.read_addres2     		( D_pc_slave     		),
+	.inst_exp1        		( D_inst_exp1        		),
+	.inst_exp2        		( D_inst_exp2        		),
+	.write_en1        		( inst_ok && inst_data_ok1        		),
+	.write_en2        		( inst_ok && inst_data_ok2        		),
+	.write_inst_exp1  		( 12'b0  		),
+	.write_address1   		( F_pc   		),
+	.write_address2   		( F_pc + 32'd4   		),
+	.write_data1      		( inst_data1 ),
+	.write_data2      		( inst_data2 ),
+	.empty            		( fifo_empty            		),
+	.almost_empty     		( fifo_almost_empty     		),
+	.full             		( fifo_full             		)
+);
+
+
 
 adder adder(
     .a(pc_nowF),
@@ -111,6 +100,14 @@ adder adder(
 );
 
 // ====================================== Decoder ======================================
+// always @(posedge clk) begin
+//     if (rst | flushD) begin
+
+//     end 
+//     else if(~stallD)begin
+
+//     end
+// end
 flopenrc #(32) DFF_pc_nowD         (clk,rst,flushD,~stallD & ~(|excepttypeM),pc_nowF,pc_nowD);
 flopenrc #(1 ) DFF_is_in_delayslotD(clk,rst,flushD,~stallD,is_in_delayslotF,is_in_delayslotD);
 flopenrc #(1 ) DFF_pc_exceptD      (clk,rst,flushD,~stallD,pc_exceptF,pc_exceptD);
@@ -118,8 +115,8 @@ flopenrc #(32) DFF_instrD          (clk,rst,flushD,~stallD,instrF,instrD);
 flopenrc #(32) DFF_pc_plus4D       (clk,rst,flushD,~stallD,pc_plus4F,pc_plus4D);
 
 // 异常
-assign syscallD = (instrD[31:26] == 6'b000000 && instrD[5:0] == 6'b001100);
-assign breakD = (instrD[31:26] == 6'b000000 && instrD[5:0] == 6'b001101);
+// assign syscallD = (instrD[31:26] == 6'b000000 && instrD[5:0] == 6'b001100);
+// assign breakD = (instrD[31:26] == 6'b000000 && instrD[5:0] == 6'b001101);
 assign eretD = (instrD == 32'b01000010000000000000000000011000);
 
 // instrD 分解
@@ -414,7 +411,7 @@ hazard hazard(
     .except_logicM(except_logicM),
     .excepttypeM(excepttypeM),
     .cp0_epcM(epc_o),
-    .pc_except(pc_except)
+    .pc_except(pc_except_addr)
 );
 
 // ascii
