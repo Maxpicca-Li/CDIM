@@ -221,6 +221,9 @@
 
 `define ALUOP_SYSCALL 8'b00001100
 `define ALUOP_BREAK 8'b00001011
+// FAKE ALU OP
+`define ALUOP_OUTA    8'd22   // from sirius
+`define ALUOP_OUTB    8'd23
 
 `define ALUOP_TEQ 8'b00110100
 `define ALUOP_TEQI 8'b01001000
