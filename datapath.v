@@ -14,10 +14,11 @@ module datapath (
     output wire longest_stall,
     
     // 指令读取
+    input wire inst_data_ok,
     input wire inst_data_ok1,
     input wire inst_data_ok2,
-    input wire [31:0]inst_data1,
-    input wire [31:0]inst_data2,
+    input wire [31:0]inst_rdata1,
+    input wire [31:0]inst_rdata2,
     output wire inst_sram_en, 
     output wire [31:0]F_pc, // 取回pc, pc+4的指令
 
@@ -84,8 +85,8 @@ inst_fifo u_inst_fifo(
 	.write_inst_exp1  		( 12'b0  		),
 	.write_address1   		( F_pc   		),
 	.write_address2   		( F_pc + 32'd4   		),
-	.write_data1      		( inst_data1 ),
-	.write_data2      		( inst_data2 ),
+	.write_data1      		( inst_rdata1 ),
+	.write_data2      		( inst_rdata2 ),
 	.empty            		( fifo_empty            		),
 	.almost_empty     		( fifo_almost_empty     		),
 	.full             		( fifo_full             		)

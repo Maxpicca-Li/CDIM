@@ -1,5 +1,5 @@
 `timescale 1ns/1ps
-`include "common.vh"
+`include "defines.vh"
 
 module  dec_alpha(
     input [31:0] instr,
@@ -17,8 +17,7 @@ module  dec_alpha(
     // output logic [2:0]          branch_type,    //only used in branch unit,maybe is not that necessary
     output logic                is_branch,
     output logic                is_branch_link,   //mem wb 
-    //why care about hilo?
-    output logic                is_hilo_accessed   
+    output logic                is_hilo_accessed   //why care about hilo? it is for the issue judge
 
 );
     
@@ -30,9 +29,9 @@ module  dec_alpha(
     assign funct = instr[5:0];
     assign imm = instr[15:0];
     assign j_target = instr[25:0];
-
     //judge if the instr is branch/jump
 
+    
     always_comb begin
     //BEQ,BGTZ,BLEZ,BNE
         if (op[5:2] == 4'b0001) begin

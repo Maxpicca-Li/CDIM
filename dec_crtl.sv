@@ -121,14 +121,16 @@ module dec_crtl(
                     {aluop, alusrc_op, alu_imm_sign, mem_type, mem_size, wb_reg_dest, wb_reg_en, unsigned_flag} =
                     {`ALUOP_MTLO, `SRC_REG, `SIGN_EXTENDED, `MEM_NOOP, `SZ_FULL, rd, 1'b0, `ZERO_EXTENDED};
                 // 内陷指令
-                `FUN_SYSCALL:
+                `FUN_SYSCALL: begin
                     {aluop, alusrc_op, alu_imm_sign, mem_type, mem_size, wb_reg_dest, wb_reg_en, unsigned_flag} =
-                    {`ALUOP_SYSC, `SRC_REG, `SIGN_EXTENDED, `MEM_NOOP, `SZ_FULL, rt, 1'b0, `ZERO_EXTENDED};
-                priv_inst = 1'b1;
-                `FUN_BREAK  :
+                    {`ALUOP_SYSCALL, `SRC_REG, `SIGN_EXTENDED, `MEM_NOOP, `SZ_FULL, rt, 1'b0, `ZERO_EXTENDED};
+                    priv_inst = 1'b1;
+                end
+                `FUN_BREAK  : begin
                     {aluop, alusrc_op, alu_imm_sign, mem_type, mem_size, wb_reg_dest, wb_reg_en, unsigned_flag} =
-                    {`ALUOP_BREK, `SRC_REG, `SIGN_EXTENDED, `MEM_NOOP, `SZ_FULL, rt, 1'b0, `ZERO_EXTENDED};
-                priv_inst = 1'b1;
+                    {`ALUOP_BREAK, `SRC_REG, `SIGN_EXTENDED, `MEM_NOOP, `SZ_FULL, rt, 1'b0, `ZERO_EXTENDED};
+                    priv_inst = 1'b1;
+                end
                 default: begin
                     undefined_inst = 1'd1;
                     {aluop, alusrc_op, alu_imm_sign, mem_type, mem_size, wb_reg_dest, wb_reg_en, unsigned_flag} =
@@ -182,55 +184,54 @@ module dec_crtl(
                 {`ALUOP_OR, `SRC_IMM, `ZERO_EXTENDED, `MEM_NOOP, `SZ_FULL, rt, 1'b1, `ZERO_EXTENDED};
             `OP_XORI  :
                 {aluop, alusrc_op, alu_imm_sign, mem_type, mem_size, wb_reg_dest, wb_reg_en, unsigned_flag} =
-                {`ALUOP_XOR, `SRC_IMM, `ZERO_EXTENDED, `MEM_NOOP, `SZ_FULL, rt, 1'b1, `ZERO_EXTEND
-                 `OP_LUI   :
-                 {aluop, alusrc_op, alu_imm_sign, mem_type, mem_size, wb_reg_dest, wb_reg_en, unsigned_flag} =
-                 {`ALUOP_LUI, `SRC_IMM, `ZERO_EXTENDED, `MEM_NOOP, `SZ_FULL, rt, 1'b1, `ZERO_EXTENDED};
-                 //     // branch
-                 //     `OP_BEQ   : signsD <= 14'b00000000001000; // BEQ
-                 //     `OP_BNE   : signsD <= 14'b00000000001000; // BNE
-                 //     `OP_BGTZ  : signsD <= 14'b00000000001000; // BGTZ
-                 //     `OP_BLEZ  : signsD <= 14'b00000000001000; // BLEZ
-                 //     `OP_SPEC_B:     // BGEZ,BLTZ,BGEZAL,BLTZAL
-                 //         case(rt)
-                 //             `RT_BGEZ : signsD  <= 14'b00000000001000;
-                 //             `RT_BLTZ : signsD  <= 14'b00000000001000;
-                 //             `RT_BGEZAL: signsD <= 14'b00010001001000;
-                 //             `RT_BLTZAL: signsD <= 14'b00010001001000;
-                 //             default: invalid <= 1'b1;
-                 //         endcase
-                 //     // jump
-                 //     `OP_J     : signsD <= 14'b00000000000001; // J
-                 //     `OP_JAL   : signsD <= 14'b00000101000000;
-                 // special
-                 `OP_SPECIAL_INST:
-                 priv_inst = 1'b1;
-             case (rs)
-                 `RS_MFC0:
-                     {aluop, alusrc_op, alu_imm_sign, mem_type, mem_size, wb_reg_dest, wb_reg_en, unsigned_flag} =
-                     {`ALUOP_MFC0, `SRC_REG, `SIGN_EXTENDED, `MEM_NOOP, `SZ_FULL, rt, 1'b1, `ZERO_EXTENDED};
-                 `RS_MTC0:
-                     {aluop, alusrc_op, alu_imm_sign, mem_type, mem_size, wb_reg_dest, wb_reg_en, unsigned_flag} =
-                     {`ALUOP_MTC0, `SRC_REG, `SIGN_EXTENDED, `MEM_NOOP, `SZ_FULL, rt, 1'b0, `ZERO_EXTENDED};
-                 default :
-                     undefined_inst = 1'd1;
-                 {aluop, alusrc_op, alu_imm_sign, mem_type, mem_size, wb_reg_dest, wb_reg_en, unsigned_flag} =
-                 {`ALUOP_ADDU, `SRC_REG, `SIGN_EXTENDED, `MEM_NOOP, `SZ_FULL, rt, 1'b0, `ZERO_EXTENDED};
-             endcase
-             default: begin
-                 if(is_branch && is_branch_link)
-                     {aluop, alusrc_op, alu_imm_sign, mem_type, mem_size, wb_reg_dest, wb_reg_en, unsigned_flag} =
-                     {`ALUOP_OUTA, `SRC_PCA, `SIGN_EXTENDED, `MEM_NOOP, `SZ_FULL, 5'd31, 1'b1, `ZERO_EXTENDED};
-                 else begin
-                     undefined_inst = ~is_branch;
-                     {aluop, alusrc_op, alu_imm_sign, mem_type, mem_size, wb_reg_dest, wb_reg_en, unsigned_flag} =
-                     {`ALUOP_ADDU, `SRC_REG, `SIGN_EXTENDED, `MEM_NOOP, `SZ_FULL, rt, 1'b0, `ZERO_EXTENDED};
-                 end
-             end
-         endcase
-     end
-
-
-
-
- endmodule
+                {`ALUOP_XOR, `SRC_IMM, `ZERO_EXTENDED, `MEM_NOOP, `SZ_FULL, rt, 1'b1, `ZERO_EXTENDED};
+            `OP_LUI   :
+                {aluop, alusrc_op, alu_imm_sign, mem_type, mem_size, wb_reg_dest, wb_reg_en, unsigned_flag} =
+                {`ALUOP_LUI, `SRC_IMM, `ZERO_EXTENDED, `MEM_NOOP, `SZ_FULL, rt, 1'b1, `ZERO_EXTENDED};
+            //     // branch
+            //     `OP_BEQ   : signsD <= 14'b00000000001000; // BEQ
+            //     `OP_BNE   : signsD <= 14'b00000000001000; // BNE
+            //     `OP_BGTZ  : signsD <= 14'b00000000001000; // BGTZ
+            //     `OP_BLEZ  : signsD <= 14'b00000000001000; // BLEZ
+            //     `OP_SPEC_B:     // BGEZ,BLTZ,BGEZAL,BLTZAL
+            //         case(rt)
+            //             `RT_BGEZ : signsD  <= 14'b00000000001000;
+            //             `RT_BLTZ : signsD  <= 14'b00000000001000;
+            //             `RT_BGEZAL: signsD <= 14'b00010001001000;
+            //             `RT_BLTZAL: signsD <= 14'b00010001001000;
+            //             default: invalid <= 1'b1;
+            //         endcase
+            //     // jump
+            //     `OP_J     : signsD <= 14'b00000000000001; // J
+            //     `OP_JAL   : signsD <= 14'b00000101000000;
+            // special
+            `OP_SPECIAL_INST: begin
+                priv_inst = 1'b1;
+                case (rs)
+                    `RS_MFC0:
+                        {aluop, alusrc_op, alu_imm_sign, mem_type, mem_size, wb_reg_dest, wb_reg_en, unsigned_flag} =
+                        {`ALUOP_MFC0, `SRC_REG, `SIGN_EXTENDED, `MEM_NOOP, `SZ_FULL, rt, 1'b1, `ZERO_EXTENDED};
+                    `RS_MTC0:
+                        {aluop, alusrc_op, alu_imm_sign, mem_type, mem_size, wb_reg_dest, wb_reg_en, unsigned_flag} =
+                        {`ALUOP_MTC0, `SRC_REG, `SIGN_EXTENDED, `MEM_NOOP, `SZ_FULL, rt, 1'b0, `ZERO_EXTENDED};
+                    default : begin
+                        undefined_inst = 1'd1;
+                        {aluop, alusrc_op, alu_imm_sign, mem_type, mem_size, wb_reg_dest, wb_reg_en, unsigned_flag} =
+                        {`ALUOP_ADDU, `SRC_REG, `SIGN_EXTENDED, `MEM_NOOP, `SZ_FULL, rt, 1'b0, `ZERO_EXTENDED};
+                    end
+                endcase
+            end
+            default: begin
+                if(is_branch && is_branch_link)
+                    {aluop, alusrc_op, alu_imm_sign, mem_type, mem_size, wb_reg_dest, wb_reg_en, unsigned_flag} =
+                    {`ALUOP_OUTA, `SRC_PCA, `SIGN_EXTENDED, `MEM_NOOP, `SZ_FULL, 5'd31, 1'b1, `ZERO_EXTENDED};
+                else begin
+                    undefined_inst = ~is_branch;
+                    {aluop, alusrc_op, alu_imm_sign, mem_type, mem_size, wb_reg_dest, wb_reg_en, unsigned_flag} =
+                    {`ALUOP_ADDU, `SRC_REG, `SIGN_EXTENDED, `MEM_NOOP, `SZ_FULL, rt, 1'b0, `ZERO_EXTENDED};
+                end
+            end
+        endcase
+    end
+    
+endmodule
