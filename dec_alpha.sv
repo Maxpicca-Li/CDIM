@@ -1,5 +1,5 @@
 `timescale 1ns/1ps
-`include "common.vh"
+`include "defines.vh"
 
 module  dec_alpha(
     input [31:0] instr,
@@ -14,10 +14,10 @@ module  dec_alpha(
     output logic [15:0]         imm,
     output logic [25:0]         j_target,
 
-    output logic [2:0]          branch_type,
+    // output logic [2:0]          branch_type,    //only used in branch unit,maybe is not that necessary
     output logic                is_branch,
-    output logic                is_branch_link,
-    //why care about hilo?乘除法需要多个周期？
+    output logic                is_branch_link,   //mem wb ��Ҫ��
+    //why care about hilo?
     output logic                is_hilo_accessed   
 
 );
@@ -32,36 +32,32 @@ module  dec_alpha(
     assign j_target = instr[25:0];
 
     //judge if the instr is branch/jump
-    //类似于最长前缀码的思想？？
+
     always_comb begin
     //BEQ,BGTZ,BLEZ,BNE
         if (op[5:2] == 4'b0001) begin
             is_branch = 1'b1;
-            branch_type = `B_EQNE;
-            is_branch_link = 1'b0;
+            // branch_type = `B_EQNE;
+
         end
         // BLTZ, BGEZ, BLTZL, BGEZL
         else if(op == 6'b000001 && rt[3:1] == 3'b000) begin
             is_branch = 1'b1;
-            branch_type = `B_LTGE;
-            is_branch_link = rt[4];
+            // branch_type = `B_LTGE;
         // J, JAL
         end
         else if(op[5:1] == 5'b00001) begin
             is_branch = 1'b1;
-            branch_type = `B_JUMP;
-            is_branch_link = op[0];
+            // branch_type = `B_JUMP;
         //  JR, JALR
         end
         else if(op == 6'b000000 && funct[5:1] == 5'b00100) begin
             is_branch = 1'b1;
-            branch_type = `B_JREG;
-            is_branch_link = funct[0];
+            // branch_type = `B_JREG;
         end
         else begin
             is_branch = 1'b0;
-            branch_type = `B_INVA;
-            is_branch_link = 1'b0;
+            // branch_type = `B_INVA;
         end
     end
 

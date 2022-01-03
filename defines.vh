@@ -1,4 +1,4 @@
-// µ¥¶À·â×°instr¶¨Òå
+// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½×°instrï¿½ï¿½ï¿½ï¿½
 // global macro definition
 `define RstEnable 		1'b1
 `define RstDisable		1'b0
@@ -50,7 +50,7 @@
 `define FUN_SRA 		6'b000011
 `define FUN_SRAV 		6'b000111
 
-//move inst Êý¾ÝÒÆ¶¯Ö¸Áî
+//move inst ï¿½ï¿½ï¿½ï¿½ï¿½Æ¶ï¿½Ö¸ï¿½ï¿½
 `define FUN_MFHI  		6'b010000
 `define FUN_MTHI  		6'b010001
 `define FUN_MFLO  		6'b010010
@@ -73,11 +73,11 @@
 `define OP_SLTI         6'b001010
 `define OP_SLTIU        6'b001011   
 
-// ·ÖÖ§Ìø×ªÖ¸Áî
+// ï¿½ï¿½Ö§ï¿½ï¿½×ªÖ¸ï¿½ï¿½
 `define OP_BEQ          6'b000100
 `define OP_BNE          6'b000101
 
-`define OP_BGTZ         6'b000111   //´óÓÚ
+`define OP_BGTZ         6'b000111   //ï¿½ï¿½ï¿½ï¿½
 `define OP_BLEZ         6'b000110
 `define OP_SPEC_B    6'b000001
 `define OP_J            6'b000010
@@ -110,11 +110,11 @@
 // `define EXE_LL  6'b110000
 // `define EXE_LWL  6'b100010
 
-// ÄÚÏÝÖ¸Áî
+// ï¿½ï¿½ï¿½ï¿½Ö¸ï¿½ï¿½
 `define FUN_SYSCALL 6'b001100
 `define FUN_BREAK   6'b001101
 
-// ÌØÈ¨Ö¸Áî
+// ï¿½ï¿½È¨Ö¸ï¿½ï¿½
 `define EXE_ERET 32'b01000010000000000000000000011000
 `define OP_SPECIAL_INST 6'b010000
 `define RS_MTC0 5'b00100
@@ -238,7 +238,9 @@
 `define ALUOP_ERET 8'b01101011
 
 `define ALUOP_NOP    8'b00000000
-
+// FAKE ALU OP
+`define ALUOP_OUTA    8'd22   // from sirius
+`define ALUOP_OUTB    8'd23
 //ALU Sel
 `define EXE_RES_LOGIC 3'b001
 `define EXE_RES_SHIFT 3'b010
@@ -276,14 +278,14 @@
 
 
 //CP0
-`define CP0_REG_BADVADDR    5'b01000       //Ö»¶Á
-`define CP0_REG_COUNT    5'b01001        //¿É¶ÁÐ´
-`define CP0_REG_COMPARE    5'b01011      //¿É¶ÁÐ´
-`define CP0_REG_STATUS    5'b01100       //¿É¶ÁÐ´
-`define CP0_REG_CAUSE    5'b01101        //Ö»¶Á
-`define CP0_REG_EPC    5'b01110          //¿É¶ÁÐ´
-`define CP0_REG_PRID    5'b01111         //Ö»¶Á
-`define CP0_REG_CONFIG    5'b10000       //Ö»¶Á
+`define CP0_REG_BADVADDR    5'b01000       //Ö»ï¿½ï¿½
+`define CP0_REG_COUNT    5'b01001        //ï¿½É¶ï¿½Ð´
+`define CP0_REG_COMPARE    5'b01011      //ï¿½É¶ï¿½Ð´
+`define CP0_REG_STATUS    5'b01100       //ï¿½É¶ï¿½Ð´
+`define CP0_REG_CAUSE    5'b01101        //Ö»ï¿½ï¿½
+`define CP0_REG_EPC    5'b01110          //ï¿½É¶ï¿½Ð´
+`define CP0_REG_PRID    5'b01111         //Ö»ï¿½ï¿½
+`define CP0_REG_CONFIG    5'b10000       //Ö»ï¿½ï¿½
 
 //div
 `define DivFree 2'b00
