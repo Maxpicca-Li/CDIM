@@ -12,6 +12,7 @@ module  decoder(
     output logic [4:0]          shamt,
     output logic [5:0]          funct,
     output logic [15:0]         imm,
+    output logic [31:0]         sign_extend_imm_value,
     output logic [25:0]         j_target,
     // output logic [2:0]          branch_type,    //only used in branch unit,maybe is not that necessary
     output logic                is_branch_link,    // link ==> $31
@@ -24,8 +25,8 @@ module  decoder(
     output logic       			alu_imm_sign, // ALU immediate src - 1 as unsigned, 0 as signed.
     output logic [1:0] 			mem_type, // Memory operation type -- load or store
     output logic [2:0] 			mem_size, // Memory operation size -- B,H,W,WL,WR
-    output logic [4:0] 			wb_reg_dest, // Writeback register address
-    output logic       			wb_reg_en, // Writeback is enabled
+    output logic [4:0] 			reg_waddr, // Writeback register address
+    output logic       			reg_wen, // Writeback is enabled
     output logic       			unsigned_flag,   // mem 要用上
     output logic                priv_inst   // Is this instruction a priv inst?   
 );
@@ -37,6 +38,7 @@ module  decoder(
     assign shamt = instr[10:6];
     assign funct = instr[5:0];
     assign imm = instr[15:0];
+    assign sign_extend_imm_value = (instr[29:28]==2'b11) ? {{16{1'b0}},instr[15:0]}:{{16{instr[15]}},instr[15:0]}; //op[3:2] for logic_imm type
     assign j_target = instr[25:0];
 
     //judge if the instr is branch/jump
@@ -84,8 +86,8 @@ module  decoder(
         alu_imm_sign    = 1'd1;
         mem_type        = `MEM_NOOP;
         mem_size        = `SZ_FULL;
-        wb_reg_dest     = 5'd0;
-        wb_reg_en       = 1'd0;
+        reg_waddr     = 5'd0;
+        reg_wen       = 1'd0;
         unsigned_flag   = 1'd0;
         priv_inst       = 1'b0;
 
@@ -94,150 +96,150 @@ module  decoder(
             case (funct)
                 // logic
                 `FUN_AND   : //and
-                    {aluop, alusrc_op, alu_imm_sign, mem_type, mem_size, wb_reg_dest, wb_reg_en, unsigned_flag} =
+                    {aluop, alusrc_op, alu_imm_sign, mem_type, mem_size, reg_waddr, reg_wen, unsigned_flag} =
                     {`ALUOP_AND, `SRC_REG, `SIGN_EXTENDED, `MEM_NOOP, `SZ_FULL, rd, 1'b1, `ZERO_EXTENDED};
                 `FUN_OR    : //or
-                    {aluop, alusrc_op, alu_imm_sign, mem_type, mem_size, wb_reg_dest, wb_reg_en, unsigned_flag} =
+                    {aluop, alusrc_op, alu_imm_sign, mem_type, mem_size, reg_waddr, reg_wen, unsigned_flag} =
                     {`ALUOP_OR, `SRC_REG, `SIGN_EXTENDED, `MEM_NOOP, `SZ_FULL, rd, 1'b1, `ZERO_EXTENDED};
                 `FUN_XOR   : //xor
-                    {aluop, alusrc_op, alu_imm_sign, mem_type, mem_size, wb_reg_dest, wb_reg_en, unsigned_flag} =
+                    {aluop, alusrc_op, alu_imm_sign, mem_type, mem_size, reg_waddr, reg_wen, unsigned_flag} =
                     {`ALUOP_XOR, `SRC_REG, `SIGN_EXTENDED, `MEM_NOOP, `SZ_FULL, rd, 1'b1, `ZERO_EXTENDED};
                 `FUN_NOR   : //nor
-                    {aluop, alusrc_op, alu_imm_sign, mem_type, mem_size, wb_reg_dest, wb_reg_en, unsigned_flag} =
+                    {aluop, alusrc_op, alu_imm_sign, mem_type, mem_size, reg_waddr, reg_wen, unsigned_flag} =
                     {`ALUOP_NOR, `SRC_REG, `SIGN_EXTENDED, `MEM_NOOP, `SZ_FULL, rd, 1'b1, `ZERO_EXTENDED};
                 // arith
                 `FUN_SLT   : //slt
-                    {aluop, alusrc_op, alu_imm_sign, mem_type, mem_size, wb_reg_dest, wb_reg_en, unsigned_flag} =
+                    {aluop, alusrc_op, alu_imm_sign, mem_type, mem_size, reg_waddr, reg_wen, unsigned_flag} =
                     {`ALUOP_SLT, `SRC_REG, `SIGN_EXTENDED, `MEM_NOOP, `SZ_FULL, rd, 1'b1, `ZERO_EXTENDED};
                 `FUN_SLTU  : //sltu
-                    {aluop, alusrc_op, alu_imm_sign, mem_type, mem_size, wb_reg_dest, wb_reg_en, unsigned_flag} =
+                    {aluop, alusrc_op, alu_imm_sign, mem_type, mem_size, reg_waddr, reg_wen, unsigned_flag} =
                     {`ALUOP_SLTU, `SRC_REG, `SIGN_EXTENDED, `MEM_NOOP, `SZ_FULL, rd, 1'b1, `ZERO_EXTENDED};
                 `FUN_ADD   : //add
-                    {aluop, alusrc_op, alu_imm_sign, mem_type, mem_size, wb_reg_dest, wb_reg_en, unsigned_flag} =
+                    {aluop, alusrc_op, alu_imm_sign, mem_type, mem_size, reg_waddr, reg_wen, unsigned_flag} =
                     {`ALUOP_ADD, `SRC_REG, `SIGN_EXTENDED, `MEM_NOOP, `SZ_FULL, rd, 1'b1, `ZERO_EXTENDED};
                 `FUN_ADDU  : //addu
-                    {aluop, alusrc_op, alu_imm_sign, mem_type, mem_size, wb_reg_dest, wb_reg_en, unsigned_flag} =
+                    {aluop, alusrc_op, alu_imm_sign, mem_type, mem_size, reg_waddr, reg_wen, unsigned_flag} =
                     {`ALUOP_ADDU, `SRC_REG, `SIGN_EXTENDED, `MEM_NOOP, `SZ_FULL, rd, 1'b1, `ZERO_EXTENDED};
                 `FUN_SUB   : //sub
-                    {aluop, alusrc_op, alu_imm_sign, mem_type, mem_size, wb_reg_dest, wb_reg_en, unsigned_flag} =
+                    {aluop, alusrc_op, alu_imm_sign, mem_type, mem_size, reg_waddr, reg_wen, unsigned_flag} =
                     {`ALUOP_SUB, `SRC_REG, `SIGN_EXTENDED, `MEM_NOOP, `SZ_FULL, rd, 1'b1, `ZERO_EXTENDED};
                 `FUN_SUBU  : //subu
-                    {aluop, alusrc_op, alu_imm_sign, mem_type, mem_size, wb_reg_dest, wb_reg_en, unsigned_flag} =
+                    {aluop, alusrc_op, alu_imm_sign, mem_type, mem_size, reg_waddr, reg_wen, unsigned_flag} =
                     {`ALUOP_SUBU, `SRC_REG, `SIGN_EXTENDED, `MEM_NOOP, `SZ_FULL, rd, 1'b1, `ZERO_EXTENDED};
                 `FUN_MULT  : //mult
-                    {aluop, alusrc_op, alu_imm_sign, mem_type, mem_size, wb_reg_dest, wb_reg_en, unsigned_flag} =
+                    {aluop, alusrc_op, alu_imm_sign, mem_type, mem_size, reg_waddr, reg_wen, unsigned_flag} =
                     {`ALUOP_MULT, `SRC_REG, `SIGN_EXTENDED, `MEM_NOOP, `SZ_FULL, rd, 1'b0, `ZERO_EXTENDED};
                 `FUN_MULTU : //multu
-                    {aluop, alusrc_op, alu_imm_sign, mem_type, mem_size, wb_reg_dest, wb_reg_en, unsigned_flag} =
+                    {aluop, alusrc_op, alu_imm_sign, mem_type, mem_size, reg_waddr, reg_wen, unsigned_flag} =
                     {`ALUOP_MULTU, `SRC_REG, `SIGN_EXTENDED, `MEM_NOOP, `SZ_FULL, rd, 1'b0, `ZERO_EXTENDED};
                 `FUN_DIV   : //div
-                    {aluop, alusrc_op, alu_imm_sign, mem_type, mem_size, wb_reg_dest, wb_reg_en, unsigned_flag} =
+                    {aluop, alusrc_op, alu_imm_sign, mem_type, mem_size, reg_waddr, reg_wen, unsigned_flag} =
                     {`ALUOP_DIV, `SRC_REG, `SIGN_EXTENDED, `MEM_NOOP, `SZ_FULL, rd, 1'b0, `ZERO_EXTENDED};
                 `FUN_DIVU  : //divu
-                    {aluop, alusrc_op, alu_imm_sign, mem_type, mem_size, wb_reg_dest, wb_reg_en, unsigned_flag} =
+                    {aluop, alusrc_op, alu_imm_sign, mem_type, mem_size, reg_waddr, reg_wen, unsigned_flag} =
                     {`ALUOP_DIVU, `SRC_REG, `SIGN_EXTENDED, `MEM_NOOP, `SZ_FULL, rd, 1'b0, `ZERO_EXTENDED};
                 // shift
                 `FUN_SLL   :
-                    {aluop, alusrc_op, alu_imm_sign, mem_type, mem_size, wb_reg_dest, wb_reg_en, unsigned_flag} =
+                    {aluop, alusrc_op, alu_imm_sign, mem_type, mem_size, reg_waddr, reg_wen, unsigned_flag} =
                     {`ALUOP_SLL, `SRC_SFT, `SIGN_EXTENDED, `MEM_NOOP, `SZ_FULL, rd, 1'b1, `ZERO_EXTENDED};
                 `FUN_SLLV  :
-                    {aluop, alusrc_op, alu_imm_sign, mem_type, mem_size, wb_reg_dest, wb_reg_en, unsigned_flag} =
+                    {aluop, alusrc_op, alu_imm_sign, mem_type, mem_size, reg_waddr, reg_wen, unsigned_flag} =
                     {`ALUOP_SLL, `SRC_REG, `SIGN_EXTENDED, `MEM_NOOP, `SZ_FULL, rd, 1'b1, `ZERO_EXTENDED};
                 `FUN_SRL   :
-                    {aluop, alusrc_op, alu_imm_sign, mem_type, mem_size, wb_reg_dest, wb_reg_en, unsigned_flag} =
+                    {aluop, alusrc_op, alu_imm_sign, mem_type, mem_size, reg_waddr, reg_wen, unsigned_flag} =
                     {`ALUOP_SRL, `SRC_SFT, `SIGN_EXTENDED, `MEM_NOOP, `SZ_FULL, rd, 1'b1, `ZERO_EXTENDED};
                 `FUN_SRLV  :
-                    {aluop, alusrc_op, alu_imm_sign, mem_type, mem_size, wb_reg_dest, wb_reg_en, unsigned_flag} =
+                    {aluop, alusrc_op, alu_imm_sign, mem_type, mem_size, reg_waddr, reg_wen, unsigned_flag} =
                     {`ALUOP_SRL, `SRC_REG, `SIGN_EXTENDED, `MEM_NOOP, `SZ_FULL, rd, 1'b1, `ZERO_EXTENDED};
                 `FUN_SRA   :
-                    {aluop, alusrc_op, alu_imm_sign, mem_type, mem_size, wb_reg_dest, wb_reg_en, unsigned_flag} =
+                    {aluop, alusrc_op, alu_imm_sign, mem_type, mem_size, reg_waddr, reg_wen, unsigned_flag} =
                     {`ALUOP_SRA, `SRC_SFT, `SIGN_EXTENDED, `MEM_NOOP, `SZ_FULL, rd, 1'b1, `ZERO_EXTENDED};
                 `FUN_SRAV  :
-                    {aluop, alusrc_op, alu_imm_sign, mem_type, mem_size, wb_reg_dest, wb_reg_en, unsigned_flag} =
+                    {aluop, alusrc_op, alu_imm_sign, mem_type, mem_size, reg_waddr, reg_wen, unsigned_flag} =
                     {`ALUOP_SRA, `SRC_REG, `SIGN_EXTENDED, `MEM_NOOP, `SZ_FULL, rd, 1'b1, `ZERO_EXTENDED};
                 //     // jump R
                 //     `FUN_JR    : signsD <= 14'b00001000000001;
                 //     `FUN_JALR  : signsD <= 14'b00001001100000;
                 // move
                 `FUN_MFHI  :
-                    {aluop, alusrc_op, alu_imm_sign, mem_type, mem_size, wb_reg_dest, wb_reg_en, unsigned_flag} =
+                    {aluop, alusrc_op, alu_imm_sign, mem_type, mem_size, reg_waddr, reg_wen, unsigned_flag} =
                     {`ALUOP_MFHI, `SRC_REG, `SIGN_EXTENDED, `MEM_NOOP, `SZ_FULL, rd, 1'b1, `ZERO_EXTENDED};
                 `FUN_MFLO  :
-                    {aluop, alusrc_op, alu_imm_sign, mem_type, mem_size, wb_reg_dest, wb_reg_en, unsigned_flag} =
+                    {aluop, alusrc_op, alu_imm_sign, mem_type, mem_size, reg_waddr, reg_wen, unsigned_flag} =
                     {`ALUOP_MFLO, `SRC_REG, `SIGN_EXTENDED, `MEM_NOOP, `SZ_FULL, rd, 1'b1, `ZERO_EXTENDED};
                 `FUN_MTHI  :
-                    {aluop, alusrc_op, alu_imm_sign, mem_type, mem_size, wb_reg_dest, wb_reg_en, unsigned_flag} =
+                    {aluop, alusrc_op, alu_imm_sign, mem_type, mem_size, reg_waddr, reg_wen, unsigned_flag} =
                     {`ALUOP_MTHI, `SRC_REG, `SIGN_EXTENDED, `MEM_NOOP, `SZ_FULL, rd, 1'b0, `ZERO_EXTENDED};
                 `FUN_MTLO  :
-                    {aluop, alusrc_op, alu_imm_sign, mem_type, mem_size, wb_reg_dest, wb_reg_en, unsigned_flag} =
+                    {aluop, alusrc_op, alu_imm_sign, mem_type, mem_size, reg_waddr, reg_wen, unsigned_flag} =
                     {`ALUOP_MTLO, `SRC_REG, `SIGN_EXTENDED, `MEM_NOOP, `SZ_FULL, rd, 1'b0, `ZERO_EXTENDED};
                 // 内陷指令
                 `FUN_SYSCALL: begin
-                    {aluop, alusrc_op, alu_imm_sign, mem_type, mem_size, wb_reg_dest, wb_reg_en, unsigned_flag} =
+                    {aluop, alusrc_op, alu_imm_sign, mem_type, mem_size, reg_waddr, reg_wen, unsigned_flag} =
                     {`ALUOP_SYSCALL, `SRC_REG, `SIGN_EXTENDED, `MEM_NOOP, `SZ_FULL, rt, 1'b0, `ZERO_EXTENDED};
                     priv_inst = 1'b1;
                 end
                 `FUN_BREAK  : begin
-                    {aluop, alusrc_op, alu_imm_sign, mem_type, mem_size, wb_reg_dest, wb_reg_en, unsigned_flag} =
+                    {aluop, alusrc_op, alu_imm_sign, mem_type, mem_size, reg_waddr, reg_wen, unsigned_flag} =
                     {`ALUOP_BREAK, `SRC_REG, `SIGN_EXTENDED, `MEM_NOOP, `SZ_FULL, rt, 1'b0, `ZERO_EXTENDED};
                     priv_inst = 1'b1;
                 end
                 default: begin
                     undefined_inst = 1'd1;
-                    {aluop, alusrc_op, alu_imm_sign, mem_type, mem_size, wb_reg_dest, wb_reg_en, unsigned_flag} =
+                    {aluop, alusrc_op, alu_imm_sign, mem_type, mem_size, reg_waddr, reg_wen, unsigned_flag} =
                     {`ALUOP_ADDU, `SRC_REG, `SIGN_EXTENDED, `MEM_NOOP, `SZ_FULL, rt, 1'b0, `ZERO_EXTENDED};
                 end
             endcase
             // lsmen
             `OP_LB    :
-                {aluop, alusrc_op, alu_imm_sign, mem_type, mem_size, wb_reg_dest, wb_reg_en, unsigned_flag} =
+                {aluop, alusrc_op, alu_imm_sign, mem_type, mem_size, reg_waddr, reg_wen, unsigned_flag} =
                 {`ALUOP_ADDU, `SRC_IMM, `SIGN_EXTENDED, `MEM_LOAD, `SZ_BYTE, rt, 1'b1, `SIGN_EXTENDED};
             `OP_LBU   :
-                {aluop, alusrc_op, alu_imm_sign, mem_type, mem_size, wb_reg_dest, wb_reg_en, unsigned_flag} =
+                {aluop, alusrc_op, alu_imm_sign, mem_type, mem_size, reg_waddr, reg_wen, unsigned_flag} =
                 {`ALUOP_ADDU, `SRC_IMM, `SIGN_EXTENDED, `MEM_LOAD, `SZ_BYTE, rt, 1'b1, `ZERO_EXTENDED};
             `OP_LH    :
-                {aluop, alusrc_op, alu_imm_sign, mem_type, mem_size, wb_reg_dest, wb_reg_en, unsigned_flag} =
+                {aluop, alusrc_op, alu_imm_sign, mem_type, mem_size, reg_waddr, reg_wen, unsigned_flag} =
                 {`ALUOP_ADDU, `SRC_IMM, `SIGN_EXTENDED, `MEM_LOAD, `SZ_BYTE, rt, 1'b1, `ZERO_EXTENDED};
             `OP_LHU   :
-                {aluop, alusrc_op, alu_imm_sign, mem_type, mem_size, wb_reg_dest, wb_reg_en, unsigned_flag} =
+                {aluop, alusrc_op, alu_imm_sign, mem_type, mem_size, reg_waddr, reg_wen, unsigned_flag} =
                 {`ALUOP_ADDU, `SRC_IMM, `SIGN_EXTENDED, `MEM_LOAD, `SZ_HALF, rt, 1'b1, `ZERO_EXTENDED};
             `OP_LW    :
-                {aluop, alusrc_op, alu_imm_sign, mem_type, mem_size, wb_reg_dest, wb_reg_en, unsigned_flag} =
+                {aluop, alusrc_op, alu_imm_sign, mem_type, mem_size, reg_waddr, reg_wen, unsigned_flag} =
                 {`ALUOP_ADDU, `SRC_IMM, `SIGN_EXTENDED, `MEM_LOAD, `SZ_FULL, rt, 1'b1, `ZERO_EXTENDED};
             `OP_SB    :
-                {aluop, alusrc_op, alu_imm_sign, mem_type, mem_size, wb_reg_dest, wb_reg_en, unsigned_flag} =
+                {aluop, alusrc_op, alu_imm_sign, mem_type, mem_size, reg_waddr, reg_wen, unsigned_flag} =
                 {`ALUOP_ADDU, `SRC_IMM, `SIGN_EXTENDED, `MEM_STOR, `SZ_BYTE, rt, 1'b0, `SIGN_EXTENDED};
             `OP_SH    :
-                {aluop, alusrc_op, alu_imm_sign, mem_type, mem_size, wb_reg_dest, wb_reg_en, unsigned_flag} =
+                {aluop, alusrc_op, alu_imm_sign, mem_type, mem_size, reg_waddr, reg_wen, unsigned_flag} =
                 {`ALUOP_ADDU, `SRC_IMM, `SIGN_EXTENDED, `MEM_STOR, `SZ_HALF, rt, 1'b0, `SIGN_EXTENDED};
             `OP_SW    :
-                {aluop, alusrc_op, alu_imm_sign, mem_type, mem_size, wb_reg_dest, wb_reg_en, unsigned_flag} =
+                {aluop, alusrc_op, alu_imm_sign, mem_type, mem_size, reg_waddr, reg_wen, unsigned_flag} =
                 {`ALUOP_ADDU, `SRC_IMM, `SIGN_EXTENDED, `MEM_STOR, `SZ_FULL, rt, 1'b0, `ZERO_EXTENDED};
             // arith imme
             `OP_ADDI  : // addi
-                {aluop, alusrc_op, alu_imm_sign, mem_type, mem_size, wb_reg_dest, wb_reg_en, unsigned_flag} =
+                {aluop, alusrc_op, alu_imm_sign, mem_type, mem_size, reg_waddr, reg_wen, unsigned_flag} =
                 {`ALUOP_ADD, `SRC_IMM, `SIGN_EXTENDED, `MEM_NOOP, `SZ_FULL, rt, 1'b1, `ZERO_EXTENDED};
             `OP_ADDIU : // addiu
-                {aluop, alusrc_op, alu_imm_sign, mem_type, mem_size, wb_reg_dest, wb_reg_en, unsigned_flag} =
+                {aluop, alusrc_op, alu_imm_sign, mem_type, mem_size, reg_waddr, reg_wen, unsigned_flag} =
                 {`ALUOP_ADDU, `SRC_IMM, `SIGN_EXTENDED, `MEM_NOOP, `SZ_FULL, rt, 1'b1, `ZERO_EXTENDED};
             `OP_SLTI  :
-                {aluop, alusrc_op, alu_imm_sign, mem_type, mem_size, wb_reg_dest, wb_reg_en, unsigned_flag} =
+                {aluop, alusrc_op, alu_imm_sign, mem_type, mem_size, reg_waddr, reg_wen, unsigned_flag} =
                 {`ALUOP_SLT, `SRC_IMM, `SIGN_EXTENDED, `MEM_NOOP, `SZ_FULL, rt, 1'b1, `ZERO_EXTENDED};
             `OP_SLTIU :
-                {aluop, alusrc_op, alu_imm_sign, mem_type, mem_size, wb_reg_dest, wb_reg_en, unsigned_flag} =
+                {aluop, alusrc_op, alu_imm_sign, mem_type, mem_size, reg_waddr, reg_wen, unsigned_flag} =
                 {`ALUOP_SLTU, `SRC_IMM, `SIGN_EXTENDED, `MEM_NOOP, `SZ_FULL, rt, 1'b1, `ZERO_EXTENDED};
             // logic imme
             `OP_ANDI  :
-                {aluop, alusrc_op, alu_imm_sign, mem_type, mem_size, wb_reg_dest, wb_reg_en, unsigned_flag} =
+                {aluop, alusrc_op, alu_imm_sign, mem_type, mem_size, reg_waddr, reg_wen, unsigned_flag} =
                 {`ALUOP_AND, `SRC_IMM, `ZERO_EXTENDED, `MEM_NOOP, `SZ_FULL, rt, 1'b1, `ZERO_EXTENDED};
             `OP_ORI   :
-                {aluop, alusrc_op, alu_imm_sign, mem_type, mem_size, wb_reg_dest, wb_reg_en, unsigned_flag} =
+                {aluop, alusrc_op, alu_imm_sign, mem_type, mem_size, reg_waddr, reg_wen, unsigned_flag} =
                 {`ALUOP_OR, `SRC_IMM, `ZERO_EXTENDED, `MEM_NOOP, `SZ_FULL, rt, 1'b1, `ZERO_EXTENDED};
             `OP_XORI  :
-                {aluop, alusrc_op, alu_imm_sign, mem_type, mem_size, wb_reg_dest, wb_reg_en, unsigned_flag} =
+                {aluop, alusrc_op, alu_imm_sign, mem_type, mem_size, reg_waddr, reg_wen, unsigned_flag} =
                 {`ALUOP_XOR, `SRC_IMM, `ZERO_EXTENDED, `MEM_NOOP, `SZ_FULL, rt, 1'b1, `ZERO_EXTENDED};
             `OP_LUI   :
-                {aluop, alusrc_op, alu_imm_sign, mem_type, mem_size, wb_reg_dest, wb_reg_en, unsigned_flag} =
+                {aluop, alusrc_op, alu_imm_sign, mem_type, mem_size, reg_waddr, reg_wen, unsigned_flag} =
                 {`ALUOP_LUI, `SRC_IMM, `ZERO_EXTENDED, `MEM_NOOP, `SZ_FULL, rt, 1'b1, `ZERO_EXTENDED};
             //     // branch
             //     `OP_BEQ   : signsD <= 14'b00000000001000; // BEQ
@@ -260,25 +262,25 @@ module  decoder(
                 priv_inst = 1'b1;
                 case (rs)
                     `RS_MFC0:
-                        {aluop, alusrc_op, alu_imm_sign, mem_type, mem_size, wb_reg_dest, wb_reg_en, unsigned_flag} =
+                        {aluop, alusrc_op, alu_imm_sign, mem_type, mem_size, reg_waddr, reg_wen, unsigned_flag} =
                         {`ALUOP_MFC0, `SRC_REG, `SIGN_EXTENDED, `MEM_NOOP, `SZ_FULL, rt, 1'b1, `ZERO_EXTENDED};
                     `RS_MTC0:
-                        {aluop, alusrc_op, alu_imm_sign, mem_type, mem_size, wb_reg_dest, wb_reg_en, unsigned_flag} =
+                        {aluop, alusrc_op, alu_imm_sign, mem_type, mem_size, reg_waddr, reg_wen, unsigned_flag} =
                         {`ALUOP_MTC0, `SRC_REG, `SIGN_EXTENDED, `MEM_NOOP, `SZ_FULL, rt, 1'b0, `ZERO_EXTENDED};
                     default : begin
                         undefined_inst = 1'd1;
-                        {aluop, alusrc_op, alu_imm_sign, mem_type, mem_size, wb_reg_dest, wb_reg_en, unsigned_flag} =
+                        {aluop, alusrc_op, alu_imm_sign, mem_type, mem_size, reg_waddr, reg_wen, unsigned_flag} =
                         {`ALUOP_ADDU, `SRC_REG, `SIGN_EXTENDED, `MEM_NOOP, `SZ_FULL, rt, 1'b0, `ZERO_EXTENDED};
                     end
                 endcase
             end
             default: begin
                 if(is_branch && is_branch_link)
-                    {aluop, alusrc_op, alu_imm_sign, mem_type, mem_size, wb_reg_dest, wb_reg_en, unsigned_flag} =
+                    {aluop, alusrc_op, alu_imm_sign, mem_type, mem_size, reg_waddr, reg_wen, unsigned_flag} =
                     {`ALUOP_OUTA, `SRC_PCA, `SIGN_EXTENDED, `MEM_NOOP, `SZ_FULL, 5'd31, 1'b1, `ZERO_EXTENDED};
                 else begin
                     undefined_inst = ~is_branch;
-                    {aluop, alusrc_op, alu_imm_sign, mem_type, mem_size, wb_reg_dest, wb_reg_en, unsigned_flag} =
+                    {aluop, alusrc_op, alu_imm_sign, mem_type, mem_size, reg_waddr, reg_wen, unsigned_flag} =
                     {`ALUOP_ADDU, `SRC_REG, `SIGN_EXTENDED, `MEM_NOOP, `SZ_FULL, rt, 1'b0, `ZERO_EXTENDED};
                 end
             end

@@ -8,7 +8,7 @@ module branch_judge(
         input wire jr,
         input wire [5:0] op,
         input wire [4:0] rt,
-        input wire [15:0] imm,
+        input wire [31:0] imm_value,
         input wire [25:0] j_target,
         input wire [31:0] rs_data,rt_data,
         input wire [31:0] pc_curr,
@@ -23,7 +23,7 @@ module branch_judge(
     wire[31:0] pc_plus4;
     wire[31:0] b_target;
     assign pc_plus4 = pc_curr + 32'd4;
-    assign b_target = pc_curr + 32'd4 + {{14{imm[15]}}, imm, 2'b00};
+    assign b_target = pc_curr + 32'd4 + imm_value;
 
     // TODO: optimize ==> branch type优化
     assign b_taken =( op==`OP_BEQ)                                       ?( rs_data==rt_data)                    ://beq
