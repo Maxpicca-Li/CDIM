@@ -15,11 +15,11 @@ module  dec_alpha(
     output logic [25:0]         j_target,
 
     // output logic [2:0]          branch_type,    //only used in branch unit,maybe is not that necessary
+    output logic                is_branch_link,    // link ==> $31
     output logic                is_branch,
-    output logic                is_branch_link,   //mem wb ��Ҫ��
+    
     //why care about hilo?
     output logic                is_hilo_accessed   
-
 );
     
     assign op = instr[31:26];

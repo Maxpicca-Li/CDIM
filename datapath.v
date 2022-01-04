@@ -48,6 +48,7 @@ wire        	fifo_empty;
 wire        	fifo_almost_empty;
 wire        	fifo_full;
 
+wire            D_mem_type_slave;
 // 异常 ? 取指异常？F_pc和F_pc+4吗
 assign pc_exceptF = (F_pc[1:0] == 2'b00) ? 1'b0 : 1'b1;
 assign inst_sram_en =  1'b1; // !except_logicM & !pc_exceptF;
@@ -101,6 +102,7 @@ adder adder(
 );
 
 // ====================================== Decoder ======================================
+// TODO to optimize code
 // always @(posedge clk) begin
 //     if (rst | flushD) begin
 
@@ -109,6 +111,8 @@ adder adder(
 
 //     end
 // end
+
+// TODO to delete
 flopenrc #(32) DFF_pc_nowD         (clk,rst,flushD,~stallD & ~(|excepttypeM),pc_nowF,pc_nowD);
 flopenrc #(1 ) DFF_is_in_delayslotD(clk,rst,flushD,~stallD,is_in_delayslotF,is_in_delayslotD);
 flopenrc #(1 ) DFF_pc_exceptD      (clk,rst,flushD,~stallD,pc_exceptF,pc_exceptD);
@@ -116,17 +120,52 @@ flopenrc #(32) DFF_instrD          (clk,rst,flushD,~stallD,instrF,instrD);
 flopenrc #(32) DFF_pc_plus4D       (clk,rst,flushD,~stallD,pc_plus4F,pc_plus4D);
 
 // 异常
+// TODO to judge
 // assign syscallD = (instrD[31:26] == 6'b000000 && instrD[5:0] == 6'b001100);
 // assign breakD = (instrD[31:26] == 6'b000000 && instrD[5:0] == 6'b001101);
-assign eretD = (instrD == 32'b01000010000000000000000000011000);
+// assign eretD = (instrD == 32'b01000010000000000000000000011000);
 
 // instrD 分解
-assign opD = instrD[31:26];
-assign rsD = instrD[25:21];
-assign rtD = instrD[20:16];
-assign rdD = instrD[15:11];
-assign saD = instrD[10:6];
-assign functD = instrD[5:0];
+wire [5:0]  	D_op_master,D_op_slave;
+wire [4:0]  	D_rs_master,D_rs_slave;
+wire [4:0]  	D_rt_master,D_rt_slave;
+wire [4:0]  	D_rd_master,D_rd_slave;
+wire [4:0]  	D_shamt_master,D_shamt_slave;
+wire [5:0]  	D_funct_master,D_funct_slave;
+wire [15:0] 	D_imm_master,D_imm_slave;
+wire [25:0] 	D_j_target_master,D_j_target_slave;
+wire        	D_is_branch_master,D_is_branch_slave;
+wire        	D_is_hilo_accessed_master,D_is_hilo_accessed_slave;
+
+dec_alpha dec_alpha_master(
+	//ports
+	.instr            		( D_inst_master            		),
+	.op               		( D_op_master               		),
+	.rs               		( D_rs_master               		),
+	.rt               		( D_rt_master               		),
+	.rd               		( D_rd_master               		),
+	.shamt            		( D_shamt_master            		),
+	.funct            		( D_funct_master            		),
+	.imm              		( D_imm_master              		),
+	.j_target         		( D_j_target_master         		),
+	.is_branch        		( D_is_branch_master        		),
+	.is_hilo_accessed 		( D_is_hilo_accessed_master 		)
+);
+
+dec_alpha dec_alpha_slave(
+	//ports
+	.instr            		( D_inst_slave            		),
+	.op               		( D_op_slave               		),
+	.rs               		( D_rs_slave               		),
+	.rt               		( D_rt_slave               		),
+	.rd               		( D_rd_slave               		),
+	.shamt            		( D_shamt_slave            		),
+	.funct            		( D_funct_slave            		),
+	.imm              		( D_imm_slave              		),
+	.j_target         		( D_j_target_slave         		),
+	.is_branch        		( D_is_branch_slave        		),
+	.is_hilo_accessed 		( D_is_hilo_accessed_slave 		)
+);
 
 main_dec main_dec(
     .clk(clk),
@@ -178,6 +217,39 @@ alu_dec alu_decoder(
     .rs(rsD),
     .aluopE(alucontrolE)
 );
+
+dual_issue dual_engine(
+    //master's status
+    .D_inst_priv_master         (),
+    .D_reg_en_master            (),
+    .D_reg_dst_master           (),
+    .D_hilo_accessed_master     (D_is_hilo_accessed_master),
+    .D_en_master                (),
+
+    .D_op_slave                 (D_op_slave ),
+    .D_rs_slave                 (D_rs_slave),
+    .D_rt_slave                 (D_rt_slave),
+    .D_mem_type_slave           (),
+    .D_branch_slave             (D_is_branch_slave),
+    .D_inst_priv_slave          (),
+    .D_hilo_accessed_slave      (D_is_hilo_accessed_slave),
+    .D_tlb_error                (),
+
+    .fifo_empty                 (fifo_empty ),
+    .fifo_almost_empty          (fifo_almost_empty),
+
+    //raw detection
+    .E_mem_type                 (),
+    .E_mem_wb_reg_dst           (),
+
+    .D_en_slave                 ()
+);
+
+
+
+
+
+
 
 regfile regfile(
 	.clk(clk),

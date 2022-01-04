@@ -79,7 +79,9 @@
 
 `define OP_BGTZ         6'b000111   //����
 `define OP_BLEZ         6'b000110
-`define OP_SPEC_B    6'b000001
+`define OP_BGEZ_         6'b000001
+`define OP_BLTZ_         6'b000001
+`define OP_SPEC_B       6'b000001
 `define OP_J            6'b000010
 `define OP_JAL          6'b000011
 `define OP_JR           6'b000000
