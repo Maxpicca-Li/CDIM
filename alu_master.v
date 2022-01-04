@@ -1,7 +1,7 @@
 `timescale 1ns / 1ps
 `include "defines.vh"
 
-module alu(
+module alu_master(
     input  wire clk,rst,
     input  wire [7:0]aluop,
     input  wire [31:0]a,
@@ -12,8 +12,7 @@ module alu(
     output reg stall_div,
     output reg [31:0] y,
     output wire [63:0]aluout_64,
-    output reg overflow,
-    output wire zero
+    output reg overflow
     );
     
     wire div_ready;
@@ -24,7 +23,6 @@ module alu(
     //multiply module
     assign multa = (aluop == `ALUOP_MULT) && (a[31] == 1'b1) ? (~a + 1) : a;
     assign multb = (aluop == `ALUOP_MULT) && (b[31] == 1'b1) ? (~b + 1) : b;
-    assign zero = (y == 32'b0);
     
     assign aluout_64= (div_ready) ?  div_result : temp_aluout_64;
 
@@ -72,7 +70,7 @@ module alu(
                 endcase
             end
             `ALUOP_SLTIU : y <= a < b;
-            `ALUOP_MULT  : temp_aluout_64 <= (a[31]^b[31]==1'b1)? ~(multa * multb) + 1 :  multa * multb; 
+            `ALUOP_MULT  : temp_aluout_64 <= (a[31]^b[31]==1'b1)? ~(multa * multb) + 1 :  multa * multb; // TODO 乘法的优化
             `ALUOP_MULTU : temp_aluout_64 <= a * b;
             `ALUOP_DIV   :begin
                 if(div_ready ==1'b0) begin

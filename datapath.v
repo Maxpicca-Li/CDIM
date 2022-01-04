@@ -1,6 +1,15 @@
 `timescale 1ns / 1ps
 `include "defines.vh"
+// TODO 结合之前的decoder和当前的decoder，结合二者的信号吧
+/*
+当前的decoder
 
+之前的decoder:
+hilowrite
+wire        E_master_alu_sela,E_slave_alu_sela;
+wire        E_master_alu_selb,E_slave_alu_selb;
+cp0writeM
+*/
 module datapath (
     input wire clk,
     input wire rst,
@@ -37,9 +46,16 @@ wire en;
 assign clear = 1'b0;
 assign ena = 1'b1;
 
+// 流水线控制信号
 wire        	fifo_empty;
 wire        	fifo_almost_empty;
 wire        	fifo_full;
+wire            E_div_stall;
+wire [63:0] 	hilo;
+wire            M_except;
+wire            M_stall;
+wire [31:0]     M_excepttype;
+
 
 wire [31:0] 	D_master_inst     ,D_slave_inst    ;
 wire [11:0] 	D_master_inst_exp ,D_slave_inst_exp;
@@ -63,17 +79,36 @@ wire [1:0]  	D_master_alusrc_op       ,D_slave_alusrc_op       ;
 wire        	D_master_alu_imm_sign    ,D_slave_alu_imm_sign    ;
 wire [1:0]  	D_master_mem_type        ,D_slave_mem_type        ;
 wire [2:0]  	D_master_mem_size        ,D_slave_mem_size        ;
-wire [4:0]  	D_master_wb_reg_dest     ,D_slave_wb_reg_dest     ;
-wire        	D_master_wb_reg_en       ,D_slave_wb_reg_en       ;
+wire [4:0]  	D_master_reg_waddr       ,D_slave_reg_waddr       ;
+wire        	D_master_reg_wen         ,D_slave_reg_wen         ;
 wire        	D_master_unsigned_flag   ,D_slave_unsigned_flag   ;
 wire        	D_master_priv_inst       ,D_slave_priv_inst       ;
 wire [31:0]     D_master_rs_data         ,D_slave_rs_data         ;
+wire [31:0]     D_master_rt_data         ,D_slave_rt_data         ;
 wire [31:0]     D_master_rs_value        ,D_slave_rs_value        ;
+wire [31:0]     D_master_rt_value        ,D_slave_rt_value        ;
+wire [31:0]     D_master_imm_value       ,D_slave_imm_value       ;
+
+wire  	        E_branch_taken;
+wire [31:0]     E_pc_branch_target;
+wire [ 4:0]     E_master_shamt   ,E_slave_shamt;
+wire [31:0]     E_master_rs_value,E_slave_rs_value;
+wire [31:0]     E_master_rt_value,E_slave_rt_value;
+wire            E_master_alu_sela,E_slave_alu_sela;
+wire            E_master_alu_selb,E_slave_alu_selb;
+wire [31:0]     E_master_alu_srca,E_slave_alu_srca;
+wire [31:0]     E_master_alu_srcb,E_slave_alu_srcb;
+wire [31:0]     E_master_alu_res ,E_slave_alu_res;
+wire [63:0]     E_master_alu_out64;
+wire [ 7:0]     E_master_aluop   ,E_slave_aluop;
+wire            E_master_overflow,E_slave_overflow;
+wire [31:0]     E_master_imm_value,E_slave_imm_value;
+
+wire            M_master_hilowrite;
+wire            M_master_cp0write ,M_slave_cp0write ;
 
 
-wire  	    E_branch_taken;
-wire [31:0] E_pc_branch_target;
-
+assign M_except = (|M_excepttype);
 // TODO 整个pipeline由冒险模块控制 / pipeline_ctrl 
 // D_en_master由pipeline_ctrl生成
 
@@ -146,6 +181,7 @@ decoder decoder_master(
 	.shamt            		( D_master_shamt            		),
 	.funct            		( D_master_funct            		),
 	.imm              		( D_master_imm              		),
+    .sign_extend_imm_value  ( D_master_imm_value                ),
 	.j_target         		( D_master_j_target         		),
 	.is_branch_link   		( D_master_is_branch_link   		),
 	.is_branch        		( D_master_is_branch        		),
@@ -156,8 +192,8 @@ decoder decoder_master(
 	.alu_imm_sign     		( D_master_alu_imm_sign     		),
 	.mem_type         		( D_master_mem_type         		),
 	.mem_size         		( D_master_mem_size         		),
-	.wb_reg_dest      		( D_master_wb_reg_dest      		),
-	.wb_reg_en        		( D_master_wb_reg_en        		),
+	.reg_waddr      		( D_master_reg_waddr                ),
+	.reg_wen        		( D_master_reg_wen           		),
 	.unsigned_flag    		( D_master_unsigned_flag    		),
 	.priv_inst        		( D_master_priv_inst        		)
 );
@@ -172,6 +208,7 @@ decoder decoder_slave(
 	.shamt            		( D_slave_shamt            		),
 	.funct            		( D_slave_funct            		),
 	.imm              		( D_slave_imm              		),
+    .sign_extend_imm_value  ( D_slave_imm_value             ),
 	.j_target         		( D_slave_j_target         		),
 	.is_branch_link   		( D_slave_is_branch_link   		),
 	.is_branch        		( D_slave_is_branch        		),
@@ -182,8 +219,8 @@ decoder decoder_slave(
 	.alu_imm_sign     		( D_slave_alu_imm_sign     		),
 	.mem_type         		( D_slave_mem_type         		),
 	.mem_size         		( D_slave_mem_size         		),
-	.wb_reg_dest      		( D_slave_wb_reg_dest      		),
-	.wb_reg_en        		( D_slave_wb_reg_en        		),
+	.reg_waddr        		( D_slave_reg_waddr      		),
+	.reg_wen        		( D_slave_reg_wen        		),
 	.unsigned_flag    		( D_slave_unsigned_flag    		),
 	.priv_inst        		( D_slave_priv_inst        		)
 );
@@ -220,7 +257,7 @@ issue_ctrl u_issue_ctrl(
     .D_en_slave                 (D_slave_en)
 );
 
-// TODO regfile signals define and connect
+// DONE regfile signals define and connect
 regfile u_regfile(
 	//ports
 	.clk   		( clk   		),
@@ -241,8 +278,8 @@ regfile u_regfile(
 	.wd2   		( W_slave_reg_wdata   		)
 );
 
-// DONE forward_mux
-forwarding_mux forwarding_mux_rs_master(
+// FIXME D阶段做前推，会不会让D过于臃肿
+forward_top u_forward_top(
 	//ports
 	.E_slave_reg_wen    		( E_slave_reg_wen    		),
 	.E_slave_reg_waddr  		( E_slave_reg_waddr  		),
@@ -256,73 +293,31 @@ forwarding_mux forwarding_mux_rs_master(
 	.M_master_reg_wen   		( M_master_reg_wen   		),
 	.M_master_reg_waddr 		( M_master_reg_waddr 		),
 	.M_master_reg_wdata 		( M_master_reg_wdata 		),
-	.reg_addr           		( D_master_rs           		),
-	.reg_data           		( D_master_rs_dara ),
-	.result_data        		( D_master_rs_value)
+	.D_master_rs        		( D_master_rs        		),
+	.D_master_rs_dara   		( D_master_rs_dara   		),
+	.D_master_rs_value  		( D_master_rs_value  		),
+	.D_master_rd        		( D_master_rd        		),
+	.D_master_rd_dara   		( D_master_rd_dara   		),
+	.D_master_rd_value  		( D_master_rd_value  		),
+	.D_slave_rs         		( D_slave_rs         		),
+	.D_slave_rs_dara    		( D_slave_rs_dara    		),
+	.D_slave_rs_value   		( D_slave_rs_value   		),
+	.D_slave_rd         		( D_slave_rd         		),
+	.D_slave_rd_dara    		( D_slave_rd_dara    		),
+	.D_slave_rd_value   		( D_slave_rd_value   		)
 );
 
-forwarding_mux forwarding_mux_rd_master(
-	//ports
-	.E_slave_reg_wen    		( E_slave_reg_wen    		),
-	.E_slave_reg_waddr  		( E_slave_reg_waddr  		),
-	.E_slave_reg_wdata  		( E_slave_reg_wdata  		),
-	.E_master_reg_wen   		( E_master_reg_wen   		),
-	.E_master_reg_waddr 		( E_master_reg_waddr 		),
-	.E_master_reg_wdata 		( E_master_reg_wdata 		),
-	.M_slave_reg_wen    		( M_slave_reg_wen    		),
-	.M_slave_reg_waddr  		( M_slave_reg_waddr  		),
-	.M_slave_reg_wdata  		( M_slave_reg_wdata  		),
-	.M_master_reg_wen   		( M_master_reg_wen   		),
-	.M_master_reg_waddr 		( M_master_reg_waddr 		),
-	.M_master_reg_wdata 		( M_master_reg_wdata 		),
-	.reg_addr           		( D_master_rd           	),
-	.reg_data           		( D_master_rd_data          ),
-	.result_data        		( D_master_rd_value         )
-);
+// ====================================== Execute ======================================
+// TODO 流水线寄存器，不知道需要流哪些？
+/*
+E_master_shamt,E_slave_shamt
+E_master_rs_value,E_slave_rs_value
+E_master_rt_value,E_slave_rt_value
+E_master_alu_srca, E_slave_alu_srcb
+aluop
+*/
 
-forwarding_mux forwarding_mux_rs_slave(
-	//ports
-	.E_slave_reg_wen    		( E_slave_reg_wen    		),
-	.E_slave_reg_waddr  		( E_slave_reg_waddr  		),
-	.E_slave_reg_wdata  		( E_slave_reg_wdata  		),
-	.E_master_reg_wen   		( E_master_reg_wen   		),
-	.E_master_reg_waddr 		( E_master_reg_waddr 		),
-	.E_master_reg_wdata 		( E_master_reg_wdata 		),
-	.M_slave_reg_wen    		( M_slave_reg_wen    		),
-	.M_slave_reg_waddr  		( M_slave_reg_waddr  		),
-	.M_slave_reg_wdata  		( M_slave_reg_wdata  		),
-	.M_master_reg_wen   		( M_master_reg_wen   		),
-	.M_master_reg_waddr 		( M_master_reg_waddr 		),
-	.M_master_reg_wdata 		( M_master_reg_wdata 		),
-	.reg_addr           		( D_slave_rs            	),
-	.reg_data           		( D_slave_rs_data           ),
-	.result_data        		( D_slave_rs_value          )
-);
-
-forwarding_mux forwarding_mux_rd_slave(
-	//ports
-	.E_slave_reg_wen    		( E_slave_reg_wen    		),
-	.E_slave_reg_waddr  		( E_slave_reg_waddr  		),
-	.E_slave_reg_wdata  		( E_slave_reg_wdata  		),
-	.E_master_reg_wen   		( E_master_reg_wen   		),
-	.E_master_reg_waddr 		( E_master_reg_waddr 		),
-	.E_master_reg_wdata 		( E_master_reg_wdata 		),
-	.M_slave_reg_wen    		( M_slave_reg_wen    		),
-	.M_slave_reg_waddr  		( M_slave_reg_waddr  		),
-	.M_slave_reg_wdata  		( M_slave_reg_wdata  		),
-	.M_master_reg_wen   		( M_master_reg_wen   		),
-	.M_master_reg_waddr 		( M_master_reg_waddr 		),
-	.M_master_reg_wdata 		( M_master_reg_wdata 		),
-	.reg_addr           		( D_slave_rd            	),
-	.reg_data           		( D_slave_rd_data           ),
-	.result_data        		( D_slave_rd_value          )
-);
-
-
-// TODO branch_judge signals define and connect
-
-
-
+// TODO branch_judge signals redecode
 branch_judge u_branch_judge(
     //ports
 	// FIXME E_master_jump\E_master_jal\E_master_jr\E_master_is_branch
@@ -331,7 +326,7 @@ branch_judge u_branch_judge(
 	.jr               		( E_master_jr                 ),
 	.op               		( E_master_op                 ), // 其实可以用branch_type代替
 	.rt               		( E_master_rt                 ),
-	.imm              		( E_master_imm                ),
+	.imm_value        		( E_master_imm_value          ),
 	.j_target         		( E_master_D_j_target         ),
 	.rs_data          		( E_rs_data          		  ),
 	.rt_data          		( E_rt_data          		  ),
@@ -340,103 +335,46 @@ branch_judge u_branch_judge(
 	.pc_branch_target 		( E_pc_branch_target 		  )
 );
 
-/* old logical
-mux2 #(32) mux2_forwardAD(rd1D,alu_resM,forwardAD,rd1D_branch);
-mux2 #(32) mux2_forwardBD(rd2D,alu_resM,forwardBD,rd2D_branch);
-eqcmp pc_predict(
-    .a(rd1D_branch),
-    .b(rd2D_branch),
-    .op(instrD[31:26]),
-    .rt(rtD),
-    .y(equalD)
-);
-assign branch_taken = equalD & (branchD|balD);
-assign pc_next_jump={pc_plus4D[31:28],instrD[25:0],2'b00};
-assign pc_next_jr=rd1D_branch;
-*/
+
+// 所有的pc要加8的，都在alu执行，进行电路复用
+// select_alusrc
+// TODO decoder
+assign E_master_alu_srca = (balE | jalE | jrE) ? E_master_pc : 
+                           (E_master_alu_sela) ? {{27{1'b0}},E_master_shamt} : 
+                            E_master_rs_value;
+assign E_slave_alu_srca  = (balE | jalE | jrE) ? E_slave_pc :
+                           (E_slave_alu_sela ) ? {{27{1'b0}},E_slave_shamt} : 
+                            E_slave_rs_value ;                            
+assign E_master_alu_srcb = (balE | jalE | jrE) ? 32'd8 :
+                           (E_master_alu_selb) ? E_master_imm_value :
+                            E_master_rt_value;
+assign E_salve_alu_srcb  = (balE | jalE | jrE) ? 32'd8 :
+                           (E_slave_alu_selb) ? E_salve_imm_value :
+                            E_slave_rt_value ;
 
 
-
-
-// pc_b 
-signext sign_extend(
-    .a(instrD[15:0]), 
-    .type(instrD[29:28]),
-    .y(sign_immD) 
-);
-adder adder_branch(
-    .a({sign_immD[29:0],2'b00}),
-    .b(pc_plus4D),
-    .y(pc_branchD)
-);
-
-// ====================================== Execute ======================================
-flopenrc #(32) DFF_pc_nowE         (clk,rst,flushE,~stallE & ~(|excepttypeM),pc_nowD,pc_nowE);
-flopenrc #(1 ) DFF_is_in_delayslotE(clk,rst,flushE,~stallE,is_in_delayslotD,is_in_delayslotE);
-flopenrc #(5 ) DFF_rtE             (clk,rst,flushE,~stallE,rtD,rtE);
-flopenrc #(5 ) DFF_rdE             (clk,rst,flushE,~stallE,rdD,rdE);
-flopenrc #(5 ) DFF_rsE             (clk,rst,flushE,~stallE,rsD,rsE);
-flopenrc #(5 ) DFF_saE             (clk,rst,flushE,~stallE,saD,saE);
-flopenrc #(8 ) DFF_exceptE         (clk,rst,flushE,~stallE,{pc_exceptD,syscallD,breakD,eretD,invalidD,3'b0},exceptE);
-flopenrc #(32) DFF_instrE          (clk,rst,flushE,~stallE,instrD,instrE);
-flopenrc #(32) DFF_pc_plus4E       (clk,rst,flushE,~stallE,pc_plus4D,pc_plus4E);
-flopenrc #(32) DFF_rd1E            (clk,rst,flushE,~stallE,rd1D,rd1E);
-flopenrc #(32) DFF_rd2E            (clk,rst,flushE,~stallE,rd2D,rd2E);
-flopenrc #(32) DFF_sign_immE       (clk,rst,flushE,~stallE,sign_immD,sign_immE);
-
-// link指令对寄存器的选择
-mux3 #(5) mux3_regDst(
-    .d0(rtE),
-    .d1(rdE),
-    .d2(5'b11111),
-    .sel({balE|jalE,regdstE}),
-    .y(reg_waddrE)
-);
-mux2 #(32) mux2_alusrcAE(
-    .a(rd1E),
-    .b({{27{1'b0}},saE}),
-    .sel(alusrcAE),
-    .y(rd1_saE)
-);
-// ******************* 数据冒险 *****************
-// 00原结果，01写回结果_W， 10计算结果_M
-mux3 #(32) mux3_forwardAE(rd1_saE,wd3W,alu_resM,forwardAE,sel_rd1E);
-mux3 #(32) mux3_forwardBE(rd2E,wd3W,alu_resM,forwardBE,sel_rd2E);
-
-mux2 mux2_aluSrcBE(
-    .a(sel_rd2E),
-    .b(sign_immE),
-    .sel(alusrcBE),
-    .y(srcB)
+alu_master u_alu_master(
+	//ports
+	.clk       		( clk       		),
+	.rst       		( rst       		),
+	.aluop     		( E_master_aluop    ),
+	.a         		( E_master_alu_srca ),
+	.b         		( E_master_alu_srcb ),
+	.cp0_data  		( cp0_data  		),
+	.hilo      		( hilo      		),
+	.stall_div 		( E_div_stall 		),
+	.y         		( E_master_alu_res  ),
+	.aluout_64 		( E_master_alu_out64),
+	.overflow  		( E_master_overflow )
 );
 
-alu alu(
-    .clk(clk),
-    .rst(rst),
-    .a(sel_rd1E),
-    .b(srcB),
-    .aluop(alucontrolE),
-    .hilo(hilo),
-    .cp0_data_o(cp0_data_oE),
-    .stall_div(stall_divE),
-    .y(alu_resE),
-    .aluout_64(aluout_64E),
-    .overflow(overflow),
-    .zero()
-);
-
-adder pc_8(
-    .a(pc_plus4E),
-    .b(32'h4),
-    .y(pc_plus8E)
-);
-
-// 若有延迟槽，则link到pc+8
-mux2 alu_pc8(
-    .a(alu_resE),
-    .b(pc_plus8E),
-    .sel((balE | jalE) | jrE),
-    .y(alu_resE_real)
+alu_slave u_alu_slave(
+	//ports
+	.aluop     		( E_slave_aluop    ),
+	.a         		( E_slave_alu_srca ),
+	.b         		( E_slave_alu_srcb ),
+	.y         		( E_slave_alu_res  ),
+	.overflow  		( E_slave_overflow )
 );
 
 // ====================================== Memory ======================================
@@ -480,41 +418,47 @@ exception exp(
     excepttypeM
 );
 
-hilo_reg hilo_reg(
-	.clk(clk),.rst(rst),.we(hilowriteM & ~(|excepttypeM)  & (~stallM)), // 写的时候没有异常，无阻塞
-	.hilo_i(aluout_64M),
-	// .hilo_res(hilo_res)
-	.hilo(hilo)  // hilo current data
+// hilo到M阶段处理，W阶段写完
+
+
+hilo_reg u_hilo_reg(
+	//ports
+	.clk    		( clk    		   ),
+	.rst    		( rst    		   ),
+	.we     		( M_master_hilowrite & ~M_except & ~M_stall),
+	.hilo_i 		( E_master_alu_out1),
+	.hilo   		( hilo   	       )
 );
 
-cp0_reg CP0(
-    .clk(clk),
-	.rst(rst),
-    .we_i(cp0writeM & ~stallM),
-	.waddr_i(rdM),  // M阶段写入CP0
-	.raddr_i(rdE),  // E阶段读取CP0，这两步可以避免数据冒险处理
-	.data_i(sel_rd2M),
+// TODO cp0_reg
+// cp0_reg CP0(
+//     .clk(clk),
+// 	.rst(rst),
+//     .we_i(cp0writeM & ~M_stall),
+// 	.waddr_i(rdM),  // M阶段写入CP0
+// 	.raddr_i(rdE),  // E阶段读取CP0，这两步可以避免数据冒险处理
+// 	.data_i(sel_rd2M),
 
-	.int_i(ext_int),
+// 	.int_i(ext_int),
 
-	.excepttype_i(excepttypeM),
-	.current_inst_addr_i(pc_nowM),
-	.is_in_delayslot_i(is_in_delayslotM),
-	.bad_addr_i(bad_addr),
+// 	.excepttype_i(excepttypeM),
+// 	.current_inst_addr_i(pc_nowM),
+// 	.is_in_delayslot_i(is_in_delayslotM),
+// 	.bad_addr_i(bad_addr),
 
-	.data_o(cp0_data_oE),
-	.count_o(count_o),
-	.compare_o(compare_o),
-	.status_o(status_o),
-	.cause_o(cause_o),
-	.epc_o(epc_o),
-	.config_o(config_o),
-	.prid_o(prid_o),
-	.badvaddr_o(badvaddr),
-	.timer_int_o(timer_int_o)
-);
+// 	.data_o(cp0_data_oE),
+// 	.count_o(count_o),
+// 	.compare_o(compare_o),
+// 	.status_o(status_o),
+// 	.cause_o(cause_o),
+// 	.epc_o(epc_o),
+// 	.config_o(config_o),
+// 	.prid_o(prid_o),
+// 	.badvaddr_o(badvaddr),
+// 	.timer_int_o(timer_int_o)
+// );
 
-mux2 mux2_memtoReg(.a(alu_resM),.b(read_dataM),.sel(memtoRegM),.y(wd3M));
+mux2 mux2_memtoReg(.a(alu_resM),.b(read_dataM),.sel(memtoRegM),.y(W_master_reg_wdata));
 
 // ====================================== WriteBack ======================================
 // W阶段异常刷新
