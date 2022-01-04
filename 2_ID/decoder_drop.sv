@@ -19,8 +19,8 @@ module  decoder(
     // output logic                is_branch,
     output logic                regdst,
     output logic [7:0]	 		aluop, // ALU operation
-    output logic       			alusrcA,
-    output logic       			alusrcB,
+    output logic       			alu_sela,
+    output logic       			alu_selb,
     output logic                branch,
     output logic                bal,
     output logic                jr,
@@ -44,7 +44,7 @@ module  decoder(
     assign imm = instr[15:0];
     assign j_target = instr[25:0];
     
-    // signsD = {[21:14]]ALUOP,13mem_en,12cp0write,11hilowrite,10bal,9jr,8jal,7alusrcA,6regwrite,5regdst,4alusrcB,3branch,2memWrite,1memtoReg,0jump}
+    // signsD = {[21:14]]ALUOP,13mem_en,12cp0write,11hilowrite,10bal,9jr,8jal,7alu_sela,6regwrite,5regdst,4alu_selb,3branch,2memWrite,1memtoReg,0jump}
     reg [21:0]signsD;
     assign aluop     = signsD[21:14];
     assign mem_en    = signsD[13];
@@ -53,10 +53,10 @@ module  decoder(
     assign bal       = signsD[10];
     assign jr        = signsD[ 9];
     assign jal       = signsD[ 8];
-    assign alusrcA   = signsD[ 7];
+    assign alu_sela   = signsD[ 7];
     assign regwrite  = signsD[ 6];
     assign regdst    = signsD[ 5];
-    assign alusrcB   = signsD[ 4];
+    assign alu_selb   = signsD[ 4];
     assign branch    = signsD[ 3];
     assign memWrite  = signsD[ 2];
     assign memtoReg  = signsD[ 1];
@@ -129,7 +129,7 @@ module  decoder(
                     `FUN_MTLO  : signsD = {`ALUOP_MTLO ,14'b00100000000000};
                     // jump R
                     `FUN_JR    : signsD = {`ALUOP_NOP  ,14'b00001000000001};
-                    `FUN_JALR  : signsD = {`ALUOP_NOP  ,14'b00001001100000};
+                    `FUN_JALR  : signsD = {`ALUOP_ADD  ,14'b00001001100000}; // JALR:GPR[rd]=pc+8;
                     // 内陷指令
                     `FUN_SYSCALL:signsD = {`ALUOP_NOP  ,14'b00000000000000};
                     `FUN_BREAK  :signsD = {`ALUOP_NOP  ,14'b00000000000000};
@@ -166,8 +166,8 @@ module  decoder(
                 case(rt)
                     `RT_BGEZ : signsD  = {`ALUOP_NOP  ,14'b00000000001000};
                     `RT_BLTZ : signsD  = {`ALUOP_NOP  ,14'b00000000001000};
-                    `RT_BGEZAL: signsD = {`ALUOP_NOP  ,14'b00010001001000};
-                    `RT_BLTZAL: signsD = {`ALUOP_NOP  ,14'b00010001001000};
+                    `RT_BGEZAL: signsD = {`ALUOP_ADD  ,14'b00010001001000}; // GPR[31] = PC + 8
+                    `RT_BLTZAL: signsD = {`ALUOP_ADD  ,14'b00010001001000}; // GPR[31] = PC + 8
                     default: begin
                         undefined_inst = 1'b1;
                         signsD = {`ALUOP_NOP  ,14'b00000000000000};
@@ -175,7 +175,7 @@ module  decoder(
                 endcase
             // jump
             `OP_J     : signsD = {`ALUOP_NOP  ,14'b00000000000001}; // J     
-            `OP_JAL   : signsD = {`ALUOP_NOP  ,14'b00000101000000}; 
+            `OP_JAL   : signsD = {`ALUOP_ADD  ,14'b00000101000000}; // JAL:GPR[31]=pc+8;
             // special
             `OP_SPECIAL_INST:
                 case (rs)
