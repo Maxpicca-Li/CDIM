@@ -378,8 +378,7 @@
 `define MFC0 5'b00000
 
 
-//branch 
-// JUMP instruction type
+//branch instruction type
 `define B_EQNE          3'b000
 `define B_LTGE          3'b001
 `define B_JUMP          3'b010
