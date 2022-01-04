@@ -3,6 +3,7 @@
 
 // EX: judge, compute pc_branch_target
 module branch_judge(
+        input wire is_branch,
         input wire j_instIndex, // juml | jal
         input wire jr,
         input wire [5:0] op,
@@ -32,7 +33,7 @@ module branch_judge(
            ((op==`OP_BGEZ_)&&((rt==`RT_BGEZ)||(rt==`RT_BGEZAL)))?( rs_data[31]==1'b0)                   ://bgez,bgezal
            ((op==`OP_BLTZ_)&&((rt==`RT_BLTZ)||(rt==`RT_BLTZAL)))?( rs_data[31]==1'b1)                   ://bltz,bltzal
            1'b0;
-    assign branch_taken = (b_taken || j_instIndex || jr);
+    assign branch_taken = ((b_taken & is_branch) || j_instIndex || jr);
     assign pc_branch_target = (j_instIndex) ? {pc_plus4[31:28], j_target, 2'b00} :
            jr ? rs_data:
            b_taken ?b_target:

@@ -325,18 +325,19 @@ forwarding_mux forwarding_mux_rd_slave(
 
 branch_judge u_branch_judge(
     //ports
-	// FIXME E_master_jump\E_master_jal\E_master_jr
-    .j_instIndex       		( E_master_jump | E_master_jal       ),
-	.jr               		( E_master_jr               		),
-	.op               		( E_master_op               		), // 其实可以用branch_type代替
-	.rt               		( E_master_rt               		),
-	.imm              		( E_master_imm              		),
-	.j_target         		( E_master_D_j_target     ),
-	.rs_data          		( E_rs_data          		),
-	.rt_data          		( E_rt_data          		),
-	.pc_curr          		( E_pc_curr          		),
-	.branch_taken     		( E_branch_taken     		),
-	.pc_branch_target 		( E_pc_branch_target 		)
+	// FIXME E_master_jump\E_master_jal\E_master_jr\E_master_is_branch
+    .is_branch              ( E_master_is_branch          ), // 是否是branch指令
+    .j_instIndex       		( E_master_jump | E_master_jal),
+	.jr               		( E_master_jr                 ),
+	.op               		( E_master_op                 ), // 其实可以用branch_type代替
+	.rt               		( E_master_rt                 ),
+	.imm              		( E_master_imm                ),
+	.j_target         		( E_master_D_j_target         ),
+	.rs_data          		( E_rs_data          		  ),
+	.rt_data          		( E_rt_data          		  ),
+	.pc_curr          		( E_pc_curr          		  ),
+	.branch_taken     		( E_branch_taken     		  ),
+	.pc_branch_target 		( E_pc_branch_target 		  )
 );
 
 /* old logical
