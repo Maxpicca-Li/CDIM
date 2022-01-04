@@ -1,15 +1,6 @@
 `timescale 1ns / 1ps
 `include "defines.vh"
-// TODO 结合之前的decoder和当前的decoder，结合二者的信号吧
-/*
-当前的decoder
 
-之前的decoder:
-hilowrite
-wire        E_master_alu_sela,E_slave_alu_sela;
-wire        E_master_alu_selb,E_slave_alu_selb;
-cp0writeM
-*/
 module datapath (
     input wire clk,
     input wire rst,
@@ -33,11 +24,11 @@ module datapath (
     output wire [31:0]F_pc, // 取回pc, pc+4的指令
 
     // 数据读取
-    input wire [31:0]data_sram_rdataM,
-    output wire data_sram_enM,
-    output wire [3:0] data_sram_wenM,
-    output wire [31:0]data_sram_waddrM,
-    output wire [31:0]data_sram_wdataM
+    input wire [31:0]data_sram_rdata,
+    output wire data_sram_en,
+    output wire [3:0] data_sram_wen,
+    output wire [31:0]data_sram_waddr,
+    output wire [31:0]data_sram_wdata
 );
 
 // ====================================== 变量定义区 ======================================
@@ -55,6 +46,9 @@ wire [63:0] 	hilo;
 wire            M_except;
 wire            M_stall;
 wire [31:0]     M_excepttype;
+wire        	M_ades;
+wire        	M_adel;
+wire [31:0] 	M_bad_addr;
 
 
 wire [31:0] 	D_master_inst     ,D_slave_inst    ;
@@ -89,6 +83,7 @@ wire [31:0]     D_master_rs_value        ,D_slave_rs_value        ;
 wire [31:0]     D_master_rt_value        ,D_slave_rt_value        ;
 wire [31:0]     D_master_imm_value       ,D_slave_imm_value       ;
 
+wire [ 1:0]     E_mem_type;
 wire  	        E_branch_taken;
 wire [31:0]     E_pc_branch_target;
 wire [ 4:0]     E_master_shamt   ,E_slave_shamt;
@@ -105,23 +100,29 @@ wire            E_master_overflow,E_slave_overflow;
 wire [31:0]     E_master_imm_value,E_slave_imm_value;
 
 wire            M_master_hilowrite;
+wire            M_master_mem_en   ;
 wire            M_master_cp0write ,M_slave_cp0write ;
+wire [ 6:0]     M_master_op       ;
+wire [31:0]     M_master_pc       ;
+wire [31:0]     M_master_rt_value ;
+wire [31:0]     M_master_alu_res  ;
+wire [31:0]     M_master_alu_out64;
+wire [31:0]     M_master_mem_rdata;
 
+wire            W_master_memtoReg;
+wire [31:0]     W_master_mem_rdata;
+wire [31:0]     W_master_alu_res  ,W_slave_alu_res  ;
+wire [31:0]     W_master_reg_wdata,W_slave_reg_wdata;
 
 assign M_except = (|M_excepttype);
 // TODO 整个pipeline由冒险模块控制 / pipeline_ctrl 
 // D_en_master由pipeline_ctrl生成
 
-//========E's variables==========
-wire [1:0]      E_mem_type;      
-wire [4:0]      E_mem_wb_reg_dst;
-// 异常
-// TODO except to judge
+
+// TODO 异常数据从上至下传递
 // assign syscallD = (instrD[31:26] == 6'b000000 && instrD[5:0] == 6'b001100);
 // assign breakD = (instrD[31:26] == 6'b000000 && instrD[5:0] == 6'b001101);
 // assign eretD = (instrD == 32'b01000010000000000000000000011000);
-
-// 异常 ? 取指异常？F_pc和F_pc+4吗
 // assign pc_exceptF = (F_pc[1:0] == 2'b00) ? 1'b0 : 1'b1;
 // assign inst_sram_en =  1'b1; // !except_logicM & !pc_exceptF;
 
@@ -137,7 +138,6 @@ pc_reg u_pc_reg(
 	.fifo_full     		( fifo_full     		),
 	.pc_curr       		( F_pc       		)
 );
-
 
 inst_fifo u_inst_fifo(
 	//ports
@@ -170,7 +170,16 @@ inst_fifo u_inst_fifo(
 
 
 // XXX ====================================== Decode ======================================
+// TODO 结合之前的decoder和当前的decoder，结合二者的信号吧
+/*
+当前的decoder
 
+之前的decoder:
+hilowrite
+wire        E_master_alu_sela,E_slave_alu_sela;
+wire        E_master_alu_selb,E_slave_alu_selb;
+cp0writeM
+*/
 decoder decoder_master(
 	//ports
 	.instr            		( D_master_inst            		    ),
@@ -225,8 +234,6 @@ decoder decoder_slave(
 	.priv_inst        		( D_slave_priv_inst        		)
 );
 
-
-
 // DONE dual_engine signals define and connect
 issue_ctrl u_issue_ctrl(
     //master's status
@@ -243,16 +250,15 @@ issue_ctrl u_issue_ctrl(
     .D_branch_slave             (D_slave_is_branch),
     .D_inst_priv_slave          (D_slave_inst_priv), // 是否是特权指令
     .D_hilo_accessed_slave      (D_slave_is_hilo_accessed),
-
-   // .D_tlb_error                (),   暂不处理
+    // .D_tlb_error                (),   暂不处理
 
     .fifo_empty                 (fifo_empty ),
     .fifo_almost_empty          (fifo_almost_empty),
 
     //raw detection
     // FIXME 应该是E阶段流水中的信号
-    .E_mem_type                 (E_master_mem_size ),
-    .E_mem_wb_reg_dst           (E_master_mem_wb_reg_dst),
+    .E_mem_type                 (E_master_mem_size ), // BUG 这信号是指啥？
+    .E_mem_wb_reg_dst           (E_master_reg_waddr),
 
     .D_en_slave                 (D_slave_en)
 );
@@ -308,37 +314,41 @@ forward_top u_forward_top(
 );
 
 // ====================================== Execute ======================================
-// TODO 流水线寄存器，不知道需要流哪些？
+// TODO E阶段流水寄存器
 /*
+E_master_is_branch
+E_master_op,E_master_rt // 这两个可以用branch_type代替
+E_master_jump,E_master_jal, jr, bal
 E_master_shamt,E_slave_shamt
 E_master_rs_value,E_slave_rs_value
 E_master_rt_value,E_slave_rt_value
-E_master_alu_srca, E_slave_alu_srcb
-aluop
+E_master_imm_value,E_slave_imm_value
+E_master_aluop,E_slave_aluop,
+E_master_j_target
+E_master_pc
 */
 
-// TODO branch_judge signals redecode
+// TODO branch_judge redecode
+// E_master_jump\E_master_jal\E_master_jr\E_master_is_branch
 branch_judge u_branch_judge(
     //ports
-	// FIXME E_master_jump\E_master_jal\E_master_jr\E_master_is_branch
     .is_branch              ( E_master_is_branch          ), // 是否是branch指令
     .j_instIndex       		( E_master_jump | E_master_jal),
 	.jr               		( E_master_jr                 ),
 	.op               		( E_master_op                 ), // 其实可以用branch_type代替
 	.rt               		( E_master_rt                 ),
 	.imm_value        		( E_master_imm_value          ),
-	.j_target         		( E_master_D_j_target         ),
-	.rs_data          		( E_rs_data          		  ),
-	.rt_data          		( E_rt_data          		  ),
-	.pc_curr          		( E_pc_curr          		  ),
+	.j_target         		( E_master_j_target         ),
+	.rs_data          		( E_master_rs_value          		  ),
+	.rt_data          		( E_master_rt_value          		  ),
+	.pc_curr          		( E_master_pc          		  ),
 	.branch_taken     		( E_branch_taken     		  ),
 	.pc_branch_target 		( E_pc_branch_target 		  )
 );
 
-
-// 所有的pc要加8的，都在alu执行，进行电路复用
-// select_alusrc
-// TODO decoder
+// select_alusrc: 所有的pc要加8的，都在alu执行，进行电路复用
+// TODO select_alusrc redecode
+// FIXME 要不要封装呢
 assign E_master_alu_srca = (balE | jalE | jrE) ? E_master_pc : 
                            (E_master_alu_sela) ? {{27{1'b0}},E_master_shamt} : 
                             E_master_rs_value;
@@ -349,9 +359,8 @@ assign E_master_alu_srcb = (balE | jalE | jrE) ? 32'd8 :
                            (E_master_alu_selb) ? E_master_imm_value :
                             E_master_rt_value;
 assign E_salve_alu_srcb  = (balE | jalE | jrE) ? 32'd8 :
-                           (E_slave_alu_selb) ? E_salve_imm_value :
+                           (E_slave_alu_selb) ? E_slave_imm_value :
                             E_slave_rt_value ;
-
 
 alu_master u_alu_master(
 	//ports
@@ -377,58 +386,59 @@ alu_slave u_alu_slave(
 	.overflow  		( E_slave_overflow )
 );
 
-// ====================================== Memory ======================================
-flopenrc #(32) DFF_pc_nowM         (clk,rst,flushM,~stallM,pc_nowE,pc_nowM);
-flopenrc #(1 ) DFF_is_in_delayslotM(clk,rst,flushM,~stallM,is_in_delayslotE,is_in_delayslotM);
-flopenrc #(5 ) DFF_reg_waddrM      (clk,rst,flushM,~stallM,reg_waddrE,reg_waddrM);
-flopenrc #(5 ) DFF_reg_rdM         (clk,rst,flushM,~stallM,rdE,rdM);
-flopenrc #(8 ) DFF_exceptM         (clk,rst,flushM,~stallM,{exceptE[7:3],overflow,exceptE[1:0]},exceptM);
-flopenrc #(32) DFF_alu_resM        (clk,rst,flushM,~stallM,alu_resE_real,alu_resM);
-flopenrc #(32) DFF_sel_rd2M        (clk,rst,flushM,~stallM,sel_rd2E,sel_rd2M);
-flopenrc #(32) DFF_instrM          (clk,rst,flushM,~stallM,instrE,instrM);
-flopenrc #(64) DFF_aluout_64M      (clk,rst,flushM,~stallM,aluout_64E,aluout_64M);
+// XXX ====================================== Memory ======================================
+// TODO M阶段流水寄存器
+/*
+M_master_mem_en
+M_master_hilowrite
+M_master_op       
+M_master_pc       
+M_master_rt_value 
+M_master_alu_res  
+M_master_mem_rdata
+M_master_alu_out64
+*/
 
-// 地址映射
-// assign data_sram_waddrM = alu_resM;
-assign data_sram_waddrM = (alu_resM[31:28] == 4'hB) ? {4'h1, alu_resM[27:0]} :
-                (alu_resM[31:28] == 4'h8) ? {4'h0, alu_resM[27:0]}: alu_resM;
-
-lsmem lsmen(
-    .opM(instrM[31:26]),
-    .sel_rd2M(sel_rd2M), // writedata_4B
-    .alu_resM(alu_resM),
-    .data_sram_rdataM(data_sram_rdataM),
-    .pcM(pc_nowM),
-
-    .data_sram_wenM(data_sram_wenM),
-    .data_sram_wdataM(data_sram_wdataM),
-    .read_dataM(read_dataM),
-    .adesM(adesM),
-    .adelM(adelM),
-    .bad_addr(bad_addr)
-);
-
-exception exp(
-    rst,
-    exceptM,
-    adelM,
-    adesM,
-    status_o,
-    cause_o,
-    excepttypeM
+mem_access u_mem_access(
+	//ports
+	.opM             		( M_master_op             		),
+	.pcM             		( M_master_pc             		),
+	.mem_en                 ( M_master_mem_en       ),
+    .mem_wdata       		( M_master_rt_value       		),
+	.mem_addr        		( M_master_alu_res        		),
+	.mem_rdata       		( M_master_mem_rdata       		),
+	.data_sram_en           ( data_sram_en           ),
+    .data_sram_rdata 		( data_sram_rdata 		),
+	.data_sram_wen   		( data_sram_wen   		),
+	.data_sram_waddr 		( data_sram_waddr 		),
+	.data_sram_wdata 		( data_sram_wdata 		),
+	.ades           		( M_ades           		),
+	.adel           		( M_adel           		),
+	.bad_addr        		( M_bad_addr        		)
 );
 
 // hilo到M阶段处理，W阶段写完
-
-
 hilo_reg u_hilo_reg(
 	//ports
 	.clk    		( clk    		   ),
 	.rst    		( rst    		   ),
 	.we     		( M_master_hilowrite & ~M_except & ~M_stall),
-	.hilo_i 		( E_master_alu_out1),
+	.hilo_i 		( M_master_alu_out64),
 	.hilo   		( hilo   	       )
 );
+
+
+// TODO exception
+// exception exp(
+//     rst,
+//     exceptM,
+//     M_adel,
+//     M_ades,
+//     status_o,
+//     cause_o,
+//     excepttypeM
+// );
+
 
 // TODO cp0_reg
 // cp0_reg CP0(
@@ -458,14 +468,18 @@ hilo_reg u_hilo_reg(
 // 	.timer_int_o(timer_int_o)
 // );
 
-mux2 mux2_memtoReg(.a(alu_resM),.b(read_dataM),.sel(memtoRegM),.y(W_master_reg_wdata));
 
-// ====================================== WriteBack ======================================
-// W阶段异常刷新
-flopenrc #(5 ) DFF_reg_waddrW      (clk,rst,flushW,~stallW,reg_waddrM,reg_waddrW);
-flopenrc #(32) DFF_wd3W            (clk,rst,flushW,~stallW,wd3M,wd3W);
+
+// XXX ====================================== WriteBack ======================================
+// TODO W阶段流水寄存器
+// W_master_memtoReg W_master_mem_rdata W_master_alu_res W_slave_alu_res
+
+assign W_master_reg_wdata = W_master_memtoReg ? W_master_mem_rdata:
+                            W_master_alu_res;
+assign W_slave_reg_wdata = W_slave_alu_res;
 
 // ******************* 冒险处理 *****************
+// TODO 冒险处理
 hazard hazard(
     .regwriteE(regwriteE),
     .regwriteM(regwriteM),
