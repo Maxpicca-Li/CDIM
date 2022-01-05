@@ -101,7 +101,7 @@ module  decoder(
                         `FUN_MTLO  : signsD = {`ALUOP_MTLO ,14'b00100000000000};
                         // jump R
                         `FUN_JR    : signsD = {`ALUOP_NOP  ,14'b00001000000001};
-                        `FUN_JALR  : signsD = {`ALUOP_ADD  ,14'b00001001100000}; // JALR:GPR[rd]=pc+8;
+                        `FUN_JALR  : signsD = {`ALUOP_NOP  ,14'b00001001100000}; // JALR:GPR[rd]=pc+8;
                         // 内陷指令
                         `FUN_SYSCALL:begin
                             spec_inst = 1'b1;
@@ -147,8 +147,8 @@ module  decoder(
                     case(rt)
                         `RT_BGEZ : signsD  = {`ALUOP_NOP  ,14'b00000000001000};
                         `RT_BLTZ : signsD  = {`ALUOP_NOP  ,14'b00000000001000};
-                        `RT_BGEZAL: signsD = {`ALUOP_ADD  ,14'b00010001001000}; // GPR[31] = PC + 8
-                        `RT_BLTZAL: signsD = {`ALUOP_ADD  ,14'b00010001001000}; // GPR[31] = PC + 8
+                        `RT_BGEZAL: signsD = {`ALUOP_NOP  ,14'b00010001001000}; // GPR[31] = PC + 8
+                        `RT_BLTZAL: signsD = {`ALUOP_NOP  ,14'b00010001001000}; // GPR[31] = PC + 8
                         default: begin
                             undefined_inst = 1'b1;
                             signsD = {`ALUOP_NOP  ,14'b00000000000000};

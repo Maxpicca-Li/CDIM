@@ -132,9 +132,11 @@ wire [31:0]     E_master_alu_srcb,E_slave_alu_srcb;
 wire [31:0]     E_master_alu_res ,E_slave_alu_res;
 wire [63:0]     E_master_alu_out64;
 wire            E_master_overflow,E_slave_overflow;
+
 // M
 wire [31:0] 	M_master_inst     ,M_slave_inst    ;
 wire            M_master_hilowrite;
+wire            M_master_is_link_pc8;
 wire            M_master_mem_en   ;
 wire            M_master_memtoReg ,M_slave_memtoReg ;
 wire            M_master_cp0write ,M_slave_cp0write ;
@@ -146,11 +148,11 @@ wire [31:0]     M_master_alu_res  ,M_slave_alu_res  ;
 wire [63:0]     M_master_alu_out64;
 wire [31:0]     M_master_mem_rdata;
 wire [ 4:0]     M_master_reg_waddr,M_slave_reg_waddr ;
-wire [31:0]     M_master_reg_wdata,M_slave_reg_wdata ;
 
 // W
 wire [31:0] 	W_master_inst     ,W_slave_inst    ;
 wire            W_master_memtoReg;
+wire [31:0]     W_master_pc       ;
 wire [31:0]     W_master_mem_rdata;
 wire [31:0]     W_master_alu_res  ,W_slave_alu_res  ;
 wire            W_master_reg_wen  ,W_slave_reg_wen  ;
@@ -317,7 +319,7 @@ regfile u_regfile(
     .wd2   		( W_slave_reg_wdata   		)
 );
 
-// 之前前推计算结果
+// 只前推计算结果，lw stall解决
 forward_top u_forward_top(
     //ports
     .E_slave_reg_wen    		( E_slave_reg_wen & (!E_slave_memtoReg)    		),
@@ -329,10 +331,10 @@ forward_top u_forward_top(
     
     .M_slave_reg_wen    		( M_slave_reg_wen & (!M_slave_memtoReg)), // TODO wb优化
     .M_slave_reg_waddr  		( M_slave_reg_waddr  		),
-    .M_slave_reg_wdata  		( M_slave_reg_wdata  		),
+    .M_slave_reg_wdata  		( M_slave_alu_res  		),
     .M_master_reg_wen   		( M_master_reg_wen & (!M_master_memtoReg)), // TODO wb优化
     .M_master_reg_waddr 		( M_master_reg_waddr 		),
-    .M_master_reg_wdata 		( M_master_reg_wdata 		),
+    .M_master_reg_wdata 		( M_master_alu_res 		),
     
     .D_master_rs        		( D_master_rs        		),
     .D_master_rs_data   		( D_master_rs_data   		),
@@ -462,10 +464,12 @@ flopenrc #(1 ) DFF_M_master_hilowrite  (clk,rst,M_flush,M_ena,E_master_hilowrite
 flopenrc #(6 ) DFF_M_master_op         (clk,rst,M_flush,M_ena,E_master_op         ,M_master_op         );
 flopenrc #(32) DFF_M_master_rt_value   (clk,rst,M_flush,M_ena,E_master_rt_value   ,M_master_rt_value   );
 flopenrc #(32) DFF_M_master_alu_res    (clk,rst,M_flush,M_ena,E_master_alu_res    ,M_master_alu_res    );
+flopenrc #(32) DFF_M_master_pc         (clk,rst,M_flush,M_ena,E_master_pc         ,M_master_pc         );
 flopenrc #(64) DFF_M_master_alu_out64  (clk,rst,M_flush,M_ena,E_master_alu_out64  ,M_master_alu_out64  );
 flopenrc #(1 ) DFF_M_master_memtoReg   (clk,rst,M_flush,M_ena,E_master_memtoReg   ,M_master_memtoReg   );
 flopenrc #(1 ) DFF_M_master_reg_wen    (clk,rst,M_flush,M_ena,E_master_reg_wen    ,M_master_reg_wen    );
 flopenrc #(5 ) DFF_M_master_reg_waddr  (clk,rst,M_flush,M_ena,E_master_reg_waddr  ,M_master_reg_waddr  );
+flopenrc #(1 ) DFF_M_master_is_link_pc8(clk,rst,M_flush,M_ena,E_master_is_link_pc8,M_master_is_link_pc8);
 
 flopenrc #(32) DFF_M_slave_inst         (clk,rst,M_flush,M_ena,E_slave_inst        ,M_slave_inst        );
 flopenrc #(1 ) DFF_M_slave_reg_wen      (clk,rst,M_flush,M_ena,E_slave_reg_wen     ,M_slave_reg_wen     );
@@ -540,21 +544,26 @@ hilo_reg u_hilo_reg(
 // 	.badvaddr_o(badvaddr),
 // 	.timer_int_o(timer_int_o)
 // );
-assign M_master_reg_wdata = M_master_memtoReg ? M_master_mem_rdata : M_master_alu_res;
-assign M_slave_reg_wdata = M_slave_alu_res;
 
 // XXX ====================================== WriteBack ======================================
-flopenrc #(32) DFF_W_master_inst     (clk,rst,W_flush,W_ena,M_master_inst        ,W_master_inst        );
-flopenrc #(1 ) DFF_W_master_reg_wen  (clk,rst,W_flush,W_ena,M_master_reg_wen     ,W_master_reg_wen     );
-flopenrc #(5 ) DFF_W_master_reg_waddr(clk,rst,W_flush,W_ena,M_master_reg_waddr   ,W_master_reg_waddr   );
-flopenrc #(32) DFF_W_master_reg_wdata(clk,rst,W_flush,W_ena,M_master_reg_wdata   ,W_master_reg_wdata   );
+flopenrc #(32) DFF_W_master_inst       (clk,rst,W_flush,W_ena,M_master_inst        ,W_master_inst        );
+flopenrc #(32) DFF_W_master_pc         (clk,rst,W_flush,W_ena,M_master_pc          ,W_master_pc          );
+flopenrc #(32) DFF_W_master_alu_res    (clk,rst,W_flush,W_ena,M_master_alu_res     ,W_master_alu_res     );
+flopenrc #(32) DFF_W_master_mem_rdata  (clk,rst,W_flush,W_ena,M_master_mem_rdata   ,W_master_mem_rdata   );
+flopenrc #(1 ) DFF_W_master_reg_wen    (clk,rst,W_flush,W_ena,M_master_reg_wen     ,W_master_reg_wen     );
+flopenrc #(1 ) DFF_W_master_memtoReg   (clk,rst,W_flush,W_ena,M_master_memtoReg    ,W_master_memtoReg    );
+flopenrc #(1 ) DFF_W_master_is_link_pc8(clk,rst,W_flush,W_ena,M_master_is_link_pc8 ,W_master_is_link_pc8 );
+flopenrc #(5 ) DFF_W_master_reg_waddr  (clk,rst,W_flush,W_ena,M_master_reg_waddr   ,W_master_reg_waddr   );
 
 flopenrc #(32) DFF_W_slave_inst      (clk,rst,W_flush,W_ena,M_slave_inst      ,W_slave_inst      );
+flopenrc #(32) DFF_W_slave_alu_res   (clk,rst,W_flush,W_ena,M_slave_alu_res   ,W_slave_alu_res   );
 flopenrc #(1 ) DFF_W_slave_reg_wen   (clk,rst,W_flush,W_ena,M_slave_reg_wen   ,W_slave_reg_wen   );
 flopenrc #(5 ) DFF_W_slave_reg_waddr (clk,rst,W_flush,W_ena,M_slave_reg_waddr ,W_slave_reg_waddr );
-flopenrc #(32) DFF_W_slave_reg_wdata (clk,rst,W_flush,W_ena,M_slave_reg_wdata   ,W_slave_reg_wdata   );
 
-
+assign W_master_reg_wdata = W_master_memtoReg ? W_master_mem_rdata : 
+                            W_master_is_link_pc8 ? (W_master_pc+32'd8):
+                            W_master_alu_res;
+assign W_slave_reg_wdata = W_slave_alu_res;
 
 // ascii
 wire [39:0] master_asciiD;

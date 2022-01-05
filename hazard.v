@@ -31,7 +31,9 @@ module hazard (
     assign D_ena = ~(lwstall | E_div_stall);
     assign E_ena = ~E_div_stall;
     assign M_ena = ~E_div_stall;
-    assign W_ena = ~E_div_stall;
+    // FIXME 除法感觉不用阻塞写回阶段
+    // assign W_ena = ~E_div_stall;
+    assign W_ena = 1'b1;
 
     assign F_flush = 1'b0;
     assign D_flush = E_branch_taken;
