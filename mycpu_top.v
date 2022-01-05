@@ -1,7 +1,7 @@
 module mycpu_top(
     input clk,
     input resetn,  //low active
-    input [5:0]ext_int,  //interrupt,high active
+    // input [5:0]ext_int,  //interrupt,high active
     //cpu inst sram
     output        inst_sram_en   ,
     output [7 :0] inst_sram_wen  ,
@@ -13,12 +13,12 @@ module mycpu_top(
     output [3 :0] data_sram_wen  ,
     output [31:0] data_sram_addr ,
     output [31:0] data_sram_wdata,
-    input  [31:0] data_sram_rdata,
+    input  [31:0] data_sram_rdata
     //debug
-    output [31:0] debug_wb_pc     ,
-    output [3:0] debug_wb_rf_wen  ,
-    output [4:0] debug_wb_rf_wnum ,
-    output [31:0] debug_wb_rf_wdata
+    // output [31:0] debug_wb_pc     ,
+    // output [3:0] debug_wb_rf_wen  ,
+    // output [4:0] debug_wb_rf_wnum ,
+    // output [31:0] debug_wb_rf_wdata
 );
 
     wire [31:0]pc_fetch;
@@ -38,7 +38,7 @@ datapath u_datapath(
 	//ports
 	.clk              		( ~clk              	),
 	.rst              		( ~resetn        		),
-	.ext_int          		( ext_int          		),
+	// .ext_int          		( ext_int          		),
 	.inst_data_ok    		( inst_data_ok    		),
     .inst_data_ok1    		( inst_data_ok1    		),
 	.inst_data_ok2    		( inst_data_ok2    		),
@@ -76,10 +76,5 @@ inst_diff u_inst_diff(
     assign debug_wb_rf_wen      = {4{u_datapath.u_regfile.wen1}};
     assign debug_wb_rf_wnum     = datapath.u_regfile.wa1;
     assign debug_wb_rf_wdata    = datapath.u_regfile.wd1;
-
-    //ascii
-    instdec instdec(
-        .instr(inst_sram_rdata)
-    );
 
 endmodule

@@ -5,7 +5,7 @@ module datapath (
     input wire clk,
     input wire rst,
     // except 
-    input wire [5:0]ext_int,
+    // input wire [5:0]ext_int,
     
     // 指令读取
     input wire inst_data_ok,
@@ -147,7 +147,7 @@ wire [31:0]     M_master_alu_res  ,M_slave_alu_res  ;
 wire [63:0]     M_master_alu_out64;
 wire [31:0]     M_master_mem_rdata;
 wire [ 4:0]     M_master_reg_waddr,M_slave_reg_waddr ;
-wire [ 4:0]     M_master_reg_wdata,M_slave_reg_wdata ;
+wire [31:0]     M_master_reg_wdata,M_slave_reg_wdata ;
 
 // W
 wire [31:0] 	W_master_inst     ,W_slave_inst    ;
@@ -377,9 +377,9 @@ flopenrc #(1 ) DFF_E_master_mem_en      (clk,rst,E_flush,E_ena,D_master_mem_en  
 flopenrc #(1 ) DFF_E_master_hilowrite   (clk,rst,E_flush,E_ena,D_master_hilowrite   ,E_master_hilowrite   );
 flopenrc #(6 ) DFF_E_master_op          (clk,rst,E_flush,E_ena,D_master_op          ,E_master_op          );
 flopenrc #(1 ) DFF_E_master_memtoReg    (clk,rst,E_flush,E_ena,D_master_memtoReg    ,E_master_memtoReg    );
-flopenrc #(5 ) DFF_E_master_reg_wen     (clk,rst,E_flush,E_ena,D_master_reg_wen     ,E_master_reg_wen     );
+flopenrc #(1 ) DFF_E_master_reg_wen     (clk,rst,E_flush,E_ena,D_master_reg_wen     ,E_master_reg_wen     );
 flopenrc #(5 ) DFF_E_master_reg_waddr   (clk,rst,E_flush,E_ena,D_master_reg_waddr   ,E_master_reg_waddr   );
-flopenrc #(5 ) DFF_E_master_branch_type (clk,rst,E_flush,E_ena,D_master_branch_type ,E_master_branch_type );
+flopenrc #(4 ) DFF_E_master_branch_type (clk,rst,E_flush,E_ena,D_master_branch_type ,E_master_branch_type );
 
 flopenrc #(32) DFF_E_slave_inst        (clk,rst,E_flush,(E_ena & slave_ena),D_slave_inst        ,E_slave_inst        );
 flopenrc #(5 ) DFF_E_slave_shamt       (clk,rst,E_flush,(E_ena & slave_ena),D_slave_shamt       ,E_slave_shamt       );
@@ -454,10 +454,10 @@ flopenrc #(1 ) DFF_M_master_hilowrite  (clk,rst,M_flush,M_ena,E_master_hilowrite
 flopenrc #(6 ) DFF_M_master_op         (clk,rst,M_flush,M_ena,E_master_op         ,M_master_op         );
 flopenrc #(32) DFF_M_master_pc         (clk,rst,M_flush,M_ena,E_master_pc         ,M_master_pc         );
 flopenrc #(32) DFF_M_master_rt_value   (clk,rst,M_flush,M_ena,E_master_rt_value   ,M_master_rt_value   );
-flopenrc #(8 ) DFF_M_master_alu_res    (clk,rst,M_flush,M_ena,E_master_alu_res    ,M_master_alu_res    );
-flopenrc #(1 ) DFF_M_master_alu_out64  (clk,rst,M_flush,M_ena,E_master_alu_out64  ,M_master_alu_out64  );
+flopenrc #(32) DFF_M_master_alu_res    (clk,rst,M_flush,M_ena,E_master_alu_res    ,M_master_alu_res    );
+flopenrc #(64) DFF_M_master_alu_out64  (clk,rst,M_flush,M_ena,E_master_alu_out64  ,M_master_alu_out64  );
 flopenrc #(1 ) DFF_M_master_memtoReg   (clk,rst,M_flush,M_ena,E_master_memtoReg   ,M_master_memtoReg   );
-flopenrc #(5 ) DFF_M_master_reg_wen    (clk,rst,M_flush,M_ena,E_master_reg_wen    ,M_master_reg_wen    );
+flopenrc #(1 ) DFF_M_master_reg_wen    (clk,rst,M_flush,M_ena,E_master_reg_wen    ,M_master_reg_wen    );
 flopenrc #(5 ) DFF_M_master_reg_waddr  (clk,rst,M_flush,M_ena,E_master_reg_waddr  ,M_master_reg_waddr  );
 
 flopenrc #(32) DFF_M_slave_inst         (clk,rst,M_flush,M_ena,E_slave_inst        ,M_slave_inst        );
@@ -541,7 +541,7 @@ mem_access u_mem_access(
 flopenrc #(32) DFF_W_master_inst     (clk,rst,W_flush,W_ena,M_master_inst        ,W_master_inst        );
 flopenrc #(1 ) DFF_W_master_memtoReg (clk,rst,W_flush,W_ena,M_master_memtoReg    ,W_master_memtoReg    );
 flopenrc #(32) DFF_W_master_mem_rdata(clk,rst,W_flush,W_ena,M_master_mem_rdata   ,W_master_mem_rdata   );
-flopenrc #(5 ) DFF_W_master_reg_wen  (clk,rst,W_flush,W_ena,M_master_reg_wen     ,W_master_reg_wen     );
+flopenrc #(1 ) DFF_W_master_reg_wen  (clk,rst,W_flush,W_ena,M_master_reg_wen     ,W_master_reg_wen     );
 flopenrc #(5 ) DFF_W_master_reg_waddr(clk,rst,W_flush,W_ena,M_master_reg_waddr   ,W_master_reg_waddr   );
 flopenrc #(32) DFF_W_master_alu_res  (clk,rst,W_flush,W_ena,M_master_alu_res     ,W_master_alu_res     );
 
@@ -554,11 +554,6 @@ assign W_master_reg_wdata = W_master_memtoReg ? W_master_mem_rdata : W_master_al
 assign W_slave_reg_wdata = W_slave_alu_res;
 
 // ascii
-instdec instdecF(instrF);
-instdec instdecD(instrD);
-instdec instdecE(instrE);
-instdec instdecM(instrM);
-
 wire [39:0] master_asciiD;
 wire [39:0] master_asciiE;
 wire [39:0] master_asciiM;

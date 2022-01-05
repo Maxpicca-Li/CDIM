@@ -64,7 +64,6 @@ module  decoder(
     always_comb begin : generate_control_signals
         undefined_inst = 1'b0;
         signsD = {`ALUOP_NOP,14'b00000000000000};
-        branch_type = `BT_NOP;
         case(op)
             `OP_R_TYPE:
                 case (funct)
