@@ -10,7 +10,7 @@ module inst_fifo(
         // Read inputs
         input                       read_en1,
         input                       read_en2,
-        // output logic                delay_slot_out1,  // 延迟操指令识别？
+        // output logic                delay_slot_out1,  // 延迟槽指令识别？
         output logic [31:0]         read_data1,  // fifo读出数据 if_id_instruction
         output logic [31:0]         read_data2,  // if_id_instruction_slave
         output logic [31:0]         read_addres1, // if_id_pc_address
@@ -50,7 +50,7 @@ module inst_fifo(
     reg [3:0] data_count;
 
     // Status monitor
-    assign full     = &data_count[3:1]; // 1110(装不下两条指令了)
+    assign full     = &data_count[3:1]; // 1110(装不下两条指令了) 
     assign empty    = (data_count == 4'd0); //0000
     assign almost_empty = (data_count == 4'd1); //0001
 

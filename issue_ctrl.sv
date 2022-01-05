@@ -18,7 +18,7 @@ module issue_ctrl (
     input           fifo_empty,
     input           fifo_almost_empty,
 
-    output logic    D_en_slave
+    output logic    D_slave_en
 
 );
     

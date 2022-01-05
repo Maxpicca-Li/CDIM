@@ -47,7 +47,9 @@ module regfile(
                     rf[ra2_b];
 
     // FIXME 想法：可以从这里引出debugme的线
-    always_ff @(posedge clk) begin : write_data
+    // FIXME inst_ram是clk，这里是negedge clk
+    // always_ff @(posedge clk) begin : write_data
+    always_ff @(negedge clk) begin : write_data
         if(rst) begin
             for(int i = 0; i < 31; i++)
                 rf[i] <= 32'h0000_0000;

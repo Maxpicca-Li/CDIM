@@ -5,6 +5,8 @@ module hazard (
     input wire       E_master_memtoReg,
     input wire [4:0] E_master_reg_waddr,
     input wire       E_branch_taken,
+    input wire       M_master_memtoReg,
+    input wire [4:0] M_master_reg_waddr,
     
     output wire F_ena, 
     output wire D_ena, 
@@ -21,10 +23,8 @@ module hazard (
     
     // 阻塞
     wire lwstall;
-    assign lwstall = E_master_memtoReg & 
-                    ((D_master_rs == E_master_reg_waddr) | 
-                     (D_master_rt == E_master_reg_waddr));
-
+    assign lwstall = (E_master_memtoReg & (D_master_rs == E_master_reg_waddr | D_master_rt == E_master_reg_waddr)) || 
+                     (M_master_memtoReg & (D_master_rs == M_master_reg_waddr | D_master_rt == M_master_reg_waddr));
     assign F_ena = ~lwstall;
     assign D_ena = ~lwstall;
     assign E_ena = 1'b1;

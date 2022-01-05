@@ -1,7 +1,6 @@
 `include "defines.vh"
 module mem_access (
         input [ 5:0] opM,
-        input [31:0] pcM,
 
         input               mem_en,
         input        [31:0] mem_wdata, // writedata_4B
@@ -24,7 +23,7 @@ module mem_access (
                               mem_addr;
                 
     always_comb begin:mem_access_transform
-        bad_addr = pcM; // 出错的内存地址
+        bad_addr = 32'b0; // 出错的内存地址
         ades = 1'b0; // 写指令地址错例外
         adel = 1'b0; // 读指令地址错例外
         case(opM)
