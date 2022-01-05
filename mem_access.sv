@@ -11,7 +11,7 @@ module mem_access (
         input        [31:0] data_sram_rdata,
         output logic        data_sram_en,
         output logic [ 3:0] data_sram_wen,
-        output logic [31:0] data_sram_waddr,
+        output logic [31:0] data_sram_addr,
         output logic [31:0] data_sram_wdata,
 
         output logic ades, adel,
@@ -19,7 +19,7 @@ module mem_access (
     );
 
     assign data_sram_en    = mem_en;
-    assign data_sram_waddr = (mem_addr[31:28] == 4'hB) ? {4'h1, mem_addr[27:0]} :
+    assign data_sram_addr = (mem_addr[31:28] == 4'hB) ? {4'h1, mem_addr[27:0]} :
                              (mem_addr[31:28] == 4'h8) ? {4'h0, mem_addr[27:0]} :
                               mem_addr;
                 

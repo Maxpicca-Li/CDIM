@@ -59,74 +59,8 @@ module  decoder(
     assign memWrite  = signsD[ 2];
     assign memtoReg  = signsD[ 1];
     assign jump      = signsD[ 0];        
-    
-    always_comb begin: generate_branch_type
-        case(op)
-            `OP_R_TYPE : 
-                case(funct) 
-                    `FUN_JR    : {branch_type,is_link_pc8} = {`BT_JREG, 1'b0};
-                    `FUN_JALR  : {branch_type,is_link_pc8} = {`BT_JREG, 1'b1}; // JALR:GPR[rd]=pc+8;
-                    default    : {branch_type,is_link_pc8} = {`BT_NOP, 1'b0};
-                endcase
-            // jump
-            `OP_J     : {branch_type, is_link_pc8} = {`BT_J,1'b0}   ; // J     
-            `OP_JAL   : {branch_type, is_link_pc8} = {`BT_J,1'b1} ; // JAL:GPR[31]=pc+8;
-            // branch
-            `OP_BEQ   : {branch_type, is_link_pc8} = {`BT_BEQ,1'b0} ; // BEQ
-            `OP_BNE   : {branch_type, is_link_pc8} = {`BT_BNE,1'b0} ; // BNE
-            `OP_BGTZ  : {branch_type, is_link_pc8} = {`BT_BGTZ,1'b0}; // BGTZ
-            `OP_BLEZ  : {branch_type, is_link_pc8} = {`BT_BLEZ,1'b0}; // BLEZ  
-            `OP_SPEC_B:     // BGEZ,BLTZ,BGEZAL,BLTZAL
-                case(rt[3:0])
-                    `RT_BGEZ  : {branch_type, is_link_pc8} = {`BT_BGEZ_, 1'b0};
-                    `RT_BLTZ  : {branch_type, is_link_pc8} = {`BT_BLTZ_, 1'b0};
-                    `RT_BGEZAL: {branch_type, is_link_pc8} = {`BT_BGEZ_, 1'b1}; // GPR[31] = PC + 8
-                    `RT_BLTZAL: {branch_type, is_link_pc8} = {`BT_BLTZ_, 1'b1}; // GPR[31] = PC + 8
-                    default   : {branch_type, is_link_pc8} = {`BT_NOP, 1'b0};
-                endcase
-            default:{branch_type, is_link_pc8} = {`BT_NOP, 1'b0};
-        endcase
-    end
 
-
-    always_comb begin : generate_reg_waddr
-        reg_waddr = rd;
-        case (op) 
-            // load
-            `OP_LB    : reg_waddr = rt;
-            `OP_LBU   : reg_waddr = rt;
-            `OP_LH    : reg_waddr = rt;
-            `OP_LHU   : reg_waddr = rt;
-            `OP_LW    : reg_waddr = rt;
-            // arith imme
-            `OP_ADDI  : reg_waddr = rt;
-            `OP_ADDIU : reg_waddr = rt;
-            `OP_SLTI  : reg_waddr = rt;
-            `OP_SLTIU : reg_waddr = rt;
-            // logic imme
-            `OP_ANDI  : reg_waddr = rt;
-            `OP_ORI   : reg_waddr = rt;
-            `OP_XORI  : reg_waddr = rt;
-            `OP_LUI   : reg_waddr = rt;
-            // jump
-            `OP_JAL   : reg_waddr = 32'd31;
-            `OP_SPEC_B:     // BGEZ,BLTZ,BGEZAL,BLTZAL
-                case(rt)
-                    `RT_BGEZAL: reg_waddr = 32'd31;
-                    `RT_BLTZAL: reg_waddr = 32'd31;
-                    default:reg_waddr = rd;
-                endcase
-            default:reg_waddr = rd; 
-        endcase
-    end
-    
-    always_comb begin
-        if(op == `OP_R_TYPE && (instr[5:2] == 4'b0100 || instr[5:2] == 4'b0110)) // 0110 div/mul  0100 MF/MT HI/LO
-            is_hilo_accessed = 1'b1;
-        else
-            is_hilo_accessed = 1'b0;
-    end
-
+    // signsD = {[21:14]]ALUOP,13mem_en,12cp0write,11hilowrite,10bal,9jr,8jal,7alu_sela,6reg_wen,5regdst,4alu_selb,3branch,2memWrite,1memtoReg,0jump}
     always_comb begin : generate_control_signals
         undefined_inst = 1'b0;
         signsD = {`ALUOP_NOP,14'b00000000000000};
@@ -185,9 +119,9 @@ module  decoder(
             `OP_LH    : signsD = {`ALUOP_ADDU ,14'b10000001010010};
             `OP_LHU   : signsD = {`ALUOP_ADDU ,14'b10000001010010};
             `OP_LW    : signsD = {`ALUOP_ADDU ,14'b10000001010010}; // lw
-            `OP_SB    : signsD = {`ALUOP_ADDU ,14'b10000000010110};
-            `OP_SH    : signsD = {`ALUOP_ADDU ,14'b10000000010110};
-            `OP_SW    : signsD = {`ALUOP_ADDU ,14'b10000000010110}; // sw
+            `OP_SB    : signsD = {`ALUOP_ADDU ,14'b10000000010100};
+            `OP_SH    : signsD = {`ALUOP_ADDU ,14'b10000000010100};
+            `OP_SW    : signsD = {`ALUOP_ADDU ,14'b10000000010100}; // sw
             // arith imme
             `OP_ADDI  : signsD = {`ALUOP_ADD  ,14'b00000001010000}; // addi
             `OP_ADDIU : signsD = {`ALUOP_ADDU ,14'b00000001010000}; // addiu
@@ -230,6 +164,73 @@ module  decoder(
                 undefined_inst = 1'b1;
                 signsD = {`ALUOP_NOP  ,14'b00000000000000};
             end
+        endcase
+    end
+
+    always_comb begin
+        if(op == `OP_R_TYPE && (instr[5:2] == 4'b0100 || instr[5:2] == 4'b0110)) // 0110 div/mul  0100 MF/MT HI/LO
+            is_hilo_accessed = 1'b1;
+        else
+            is_hilo_accessed = 1'b0;
+    end
+
+    always_comb begin: generate_branch_type
+        case(op)
+            `OP_R_TYPE : 
+                case(funct) 
+                    `FUN_JR    : {branch_type,is_link_pc8} = {`BT_JREG, 1'b0};
+                    `FUN_JALR  : {branch_type,is_link_pc8} = {`BT_JREG, 1'b1}; // JALR:GPR[rd]=pc+8;
+                    default    : {branch_type,is_link_pc8} = {`BT_NOP, 1'b0};
+                endcase
+            // jump
+            `OP_J     : {branch_type, is_link_pc8} = {`BT_J,1'b0}   ; // J     
+            `OP_JAL   : {branch_type, is_link_pc8} = {`BT_J,1'b1} ; // JAL:GPR[31]=pc+8;
+            // branch
+            `OP_BEQ   : {branch_type, is_link_pc8} = {`BT_BEQ,1'b0} ; // BEQ
+            `OP_BNE   : {branch_type, is_link_pc8} = {`BT_BNE,1'b0} ; // BNE
+            `OP_BGTZ  : {branch_type, is_link_pc8} = {`BT_BGTZ,1'b0}; // BGTZ
+            `OP_BLEZ  : {branch_type, is_link_pc8} = {`BT_BLEZ,1'b0}; // BLEZ  
+            `OP_SPEC_B:     // BGEZ,BLTZ,BGEZAL,BLTZAL
+                case(rt[3:0])
+                    `RT_BGEZ  : {branch_type, is_link_pc8} = {`BT_BGEZ_, 1'b0};
+                    `RT_BLTZ  : {branch_type, is_link_pc8} = {`BT_BLTZ_, 1'b0};
+                    `RT_BGEZAL: {branch_type, is_link_pc8} = {`BT_BGEZ_, 1'b1}; // GPR[31] = PC + 8
+                    `RT_BLTZAL: {branch_type, is_link_pc8} = {`BT_BLTZ_, 1'b1}; // GPR[31] = PC + 8
+                    default   : {branch_type, is_link_pc8} = {`BT_NOP, 1'b0};
+                endcase
+            default:{branch_type, is_link_pc8} = {`BT_NOP, 1'b0};
+        endcase
+    end
+
+
+    always_comb begin : generate_reg_waddr
+        reg_waddr = rd;
+        case (op) 
+            // load
+            `OP_LB    : reg_waddr = rt;
+            `OP_LBU   : reg_waddr = rt;
+            `OP_LH    : reg_waddr = rt;
+            `OP_LHU   : reg_waddr = rt;
+            `OP_LW    : reg_waddr = rt;
+            // arith imme
+            `OP_ADDI  : reg_waddr = rt;
+            `OP_ADDIU : reg_waddr = rt;
+            `OP_SLTI  : reg_waddr = rt;
+            `OP_SLTIU : reg_waddr = rt;
+            // logic imme
+            `OP_ANDI  : reg_waddr = rt;
+            `OP_ORI   : reg_waddr = rt;
+            `OP_XORI  : reg_waddr = rt;
+            `OP_LUI   : reg_waddr = rt;
+            // jump
+            `OP_JAL   : reg_waddr = 32'd31;
+            `OP_SPEC_B:     // BGEZ,BLTZ,BGEZAL,BLTZAL
+                case(rt)
+                    `RT_BGEZAL: reg_waddr = 32'd31;
+                    `RT_BLTZAL: reg_waddr = 32'd31;
+                    default:reg_waddr = rd;
+                endcase
+            default:reg_waddr = rd; 
         endcase
     end
 
