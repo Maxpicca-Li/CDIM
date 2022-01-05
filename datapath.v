@@ -56,48 +56,77 @@ wire [11:0] 	D_master_inst_exp ,D_slave_inst_exp;
 wire [31:0] 	D_master_pc       ,D_slave_pc      ;
 
 wire            D_master_en              ,D_slave_en              ;
+// inst
 wire [5:0]  	D_master_op              ,D_slave_op              ;
-wire [4:0]  	D_master_rs              ,D_slave_rs              ;
-wire [4:0]  	D_master_rt              ,D_slave_rt              ;
-wire [4:0]  	D_master_rd              ,D_slave_rd              ;
 wire [4:0]  	D_master_shamt           ,D_slave_shamt           ;
 wire [5:0]  	D_master_funct           ,D_slave_funct           ;
 wire [15:0] 	D_master_imm             ,D_slave_imm             ;
-wire [25:0] 	D_master_j_target        ,D_slave_j_target        ;
-wire        	D_master_is_branch_link  ,D_slave_is_branch_link  ;
-wire        	D_master_is_branch       ,D_slave_is_branch       ;
+wire [31:0]     D_master_imm_value       ,D_slave_imm_value       ;
 wire        	D_master_is_hilo_accessed,D_slave_is_hilo_accessed;
+wire        	D_master_spec_inst       ,D_slave_spec_inst       ;
 wire        	D_master_undefined_inst  ,D_slave_undefined_inst  ;
+// branch
+wire [3:0]  	D_master_branch_type     ,D_slave_branch_type     ;
+wire        	D_master_is_link_pc8     ,D_slave_is_link_pc8     ;
+wire [25:0] 	D_master_j_target        ,D_slave_j_target        ;
+// alu
 wire [7:0]  	D_master_aluop           ,D_slave_aluop           ;
-wire [1:0]  	D_master_alusrc_op       ,D_slave_alusrc_op       ;
-wire        	D_master_alu_imm_sign    ,D_slave_alu_imm_sign    ;
-wire [1:0]  	D_master_mem_type        ,D_slave_mem_type        ;
-wire [2:0]  	D_master_mem_size        ,D_slave_mem_size        ;
-wire [4:0]  	D_master_reg_waddr       ,D_slave_reg_waddr       ;
-wire        	D_master_reg_wen         ,D_slave_reg_wen         ;
-wire        	D_master_unsigned_flag   ,D_slave_unsigned_flag   ;
-wire        	D_master_priv_inst       ,D_slave_priv_inst       ;
+wire        	D_master_alu_sela        ,D_slave_alu_sela        ;
+wire        	D_master_alu_selb        ,D_slave_alu_selb        ;
+// reg
+wire [4:0]  	D_master_rs              ,D_slave_rs              ;
+wire [4:0]  	D_master_rt              ,D_slave_rt              ;
+wire [4:0]  	D_master_rd              ,D_slave_rd              ;
 wire [31:0]     D_master_rs_data         ,D_slave_rs_data         ;
 wire [31:0]     D_master_rt_data         ,D_slave_rt_data         ;
 wire [31:0]     D_master_rs_value        ,D_slave_rs_value        ;
 wire [31:0]     D_master_rt_value        ,D_slave_rt_value        ;
-wire [31:0]     D_master_imm_value       ,D_slave_imm_value       ;
+wire        	D_master_reg_wen         ,D_slave_reg_wen         ;
+wire [4:0]  	D_master_reg_waddr       ,D_slave_reg_waddr       ;
+// mem
+wire        	D_master_mem_en          ,D_slave_mem_en          ;
+wire        	D_master_memWrite        ,D_slave_memWrite        ;
+wire        	D_master_memtoReg        ,D_slave_memtoReg        ;
+// other
+wire        	D_master_cp0write        ,D_slave_cp0write        ;
+wire        	D_master_hilowrite       ,D_slave_hilowrite       ;
 
-wire [ 1:0]     E_mem_type;
 wire  	        E_branch_taken;
 wire [31:0]     E_pc_branch_target;
-wire [ 4:0]     E_master_shamt   ,E_slave_shamt;
-wire [31:0]     E_master_rs_value,E_slave_rs_value;
-wire [31:0]     E_master_rt_value,E_slave_rt_value;
+wire [ 3:0]     E_master_branch_type;
+wire [5 :0]     E_master_shamt       ;
+wire [32:0]     E_master_rs_value    ;
+wire [32:0]     E_master_rt_value    ;
+wire [32:0]     E_master_imm_value   ;
+wire [8 :0]     E_master_aluop       ;
+wire [26:0]     E_master_j_target    ;
+wire [32:0]     E_master_pc          ;
+wire            E_master_is_link_pc8 ;
+wire            E_master_mem_en      ;
+wire            E_master_hilowrite   ;
+wire [6 :0]     E_master_op          ;
+wire            E_master_memtoReg    ;
+wire [5 :0]     E_master_reg_wen     ;
+wire [5 :0]     E_master_reg_waddr   ;
+wire [5 :0]     E_slave_shamt        ;
+wire [32:0]     E_slave_rs_value     ;
+wire [32:0]     E_slave_rt_value     ;
+wire [32:0]     E_slave_imm_value    ;
+wire [8 :0]     E_slave_aluop        ;
+wire [32:0]     E_slave_pc           ;
+wire            E_slave_reg_wen      ;
+wire [5 :0]     E_slave_reg_waddr    ;
+wire            E_slave_is_link_pc8  ;
+
+// alu
 wire            E_master_alu_sela,E_slave_alu_sela;
 wire            E_master_alu_selb,E_slave_alu_selb;
 wire [31:0]     E_master_alu_srca,E_slave_alu_srca;
 wire [31:0]     E_master_alu_srcb,E_slave_alu_srcb;
 wire [31:0]     E_master_alu_res ,E_slave_alu_res;
 wire [63:0]     E_master_alu_out64;
-wire [ 7:0]     E_master_aluop   ,E_slave_aluop;
 wire            E_master_overflow,E_slave_overflow;
-wire [31:0]     E_master_imm_value,E_slave_imm_value;
+
 
 wire            M_master_hilowrite;
 wire            M_master_mem_en   ;
@@ -105,16 +134,18 @@ wire            M_master_cp0write ,M_slave_cp0write ;
 wire [ 6:0]     M_master_op       ;
 wire [31:0]     M_master_pc       ;
 wire [31:0]     M_master_rt_value ;
-wire [31:0]     M_master_alu_res  ;
+wire            M_master_reg_wen  ,M_slave_reg_wen  ;
+wire [31:0]     M_master_alu_res  ,M_slave_alu_res  ;
 wire [31:0]     M_master_alu_out64;
 wire [31:0]     M_master_mem_rdata;
 
 wire            W_master_memtoReg;
 wire [31:0]     W_master_mem_rdata;
 wire [31:0]     W_master_alu_res  ,W_slave_alu_res  ;
+wire            W_master_reg_wen  ,W_slave_reg_wen  ;
 wire [31:0]     W_master_reg_wdata,W_slave_reg_wdata;
 
-assign M_except = (|M_excepttype);
+// assign M_except = (|M_excepttype);
 // TODO 整个pipeline由冒险模块控制 / pipeline_ctrl 
 // D_en_master由pipeline_ctrl生成
 
@@ -136,6 +167,8 @@ pc_reg u_pc_reg(
 	.inst_data_ok1 		( inst_data_ok1 		),
 	.inst_data_ok2 		( inst_data_ok2 		),
 	.fifo_full     		( fifo_full     		),
+	.branch_taken       ( E_branch_taken ),
+	.pc_branch_addr     ( E_pc_branch_target          ),
 	.pc_curr       		( F_pc       		)
 );
 
@@ -170,104 +203,70 @@ inst_fifo u_inst_fifo(
 
 
 // XXX ====================================== Decode ======================================
-// TODO 结合之前的decoder和当前的decoder，结合二者的信号吧
-/*
-当前的decoder
-
-之前的decoder:
-hilowrite
-wire        E_master_alu_sela,E_slave_alu_sela;
-wire        E_master_alu_selb,E_slave_alu_selb;
-cp0writeM
-*/
-decoder decoder_master(
+decoder u_decoder_master(
 	//ports
-	.instr            		( D_master_inst            		    ),
-	.op               		( D_master_op               		),
-	.rs               		( D_master_rs               		),
-	.rt               		( D_master_rt               		),
-	.rd               		( D_master_rd               		),
-	.shamt            		( D_master_shamt            		),
-	.funct            		( D_master_funct            		),
-	.imm              		( D_master_imm              		),
-    .sign_extend_imm_value  ( D_master_imm_value                ),
-	.j_target         		( D_master_j_target         		),
-	.is_branch_link   		( D_master_is_branch_link   		),
-	.is_branch        		( D_master_is_branch        		),
-	.is_hilo_accessed 		( D_master_is_hilo_accessed 		),
-	.undefined_inst   		( D_master_undefined_inst   		),
-	.aluop            		( D_master_aluop            		),
-	.alusrc_op        		( D_master_alusrc_op        		),
-	.alu_imm_sign     		( D_master_alu_imm_sign     		),
-	.mem_type         		( D_master_mem_type         		),
-	.mem_size         		( D_master_mem_size         		),
-	.reg_waddr      		( D_master_reg_waddr                ),
-	.reg_wen        		( D_master_reg_wen           		),
-	.unsigned_flag    		( D_master_unsigned_flag    		),
-	.priv_inst        		( D_master_priv_inst        		)
+	.instr          		( D_master_inst          		),
+	.op             		( D_master_op             		),
+	.rs             		( D_master_rs             		),
+	.rt             		( D_master_rt             		),
+	.rd             		( D_master_rd             		),
+	.shamt          		( D_master_shamt          		),
+	.funct          		( D_master_funct          		),
+	.imm            		( D_master_imm            		),
+	.sign_extend_imm_value  ( D_master_imm_value            ),
+	.j_target       		( D_master_j_target       		),
+	.is_link_pc8    		( D_master_is_link_pc8    		),
+	.branch_type    		( D_master_branch_type    		),
+	.reg_waddr      		( D_master_reg_waddr      		),
+	.aluop          		( D_master_aluop          		),
+	.alu_sela       		( D_master_alu_sela       		),
+	.alu_selb       		( D_master_alu_selb       		),
+	.mem_en         		( D_master_mem_en         		),
+	.memWrite       		( D_master_memWrite       		),
+	.memtoReg       		( D_master_memtoReg       		),
+	.cp0write       		( D_master_cp0write       		),
+	.is_hilo_accessed       ( D_master_is_hilo_accessed     ),
+	.hilowrite      		( D_master_hilowrite      		),
+	.reg_wen        		( D_master_reg_wen        		),
+	.spec_inst      		( D_master_spec_inst      		),
+	.undefined_inst 		( D_master_undefined_inst 		)
 );
 
-decoder decoder_slave(
+decoder u_decoder_slave(
 	//ports
-	.instr            		( D_slave_inst            		),
-	.op               		( D_slave_op               		),
-	.rs               		( D_slave_rs               		),
-	.rt               		( D_slave_rt               		),
-	.rd               		( D_slave_rd               		),
-	.shamt            		( D_slave_shamt            		),
-	.funct            		( D_slave_funct            		),
-	.imm              		( D_slave_imm              		),
-    .sign_extend_imm_value  ( D_slave_imm_value             ),
-	.j_target         		( D_slave_j_target         		),
-	.is_branch_link   		( D_slave_is_branch_link   		),
-	.is_branch        		( D_slave_is_branch        		),
-	.is_hilo_accessed 		( D_slave_is_hilo_accessed 		),
-	.undefined_inst   		( D_slave_undefined_inst   		),
-	.aluop            		( D_slave_aluop            		),
-	.alusrc_op        		( D_slave_alusrc_op        		),
-	.alu_imm_sign     		( D_slave_alu_imm_sign     		),
-	.mem_type         		( D_slave_mem_type         		),
-	.mem_size         		( D_slave_mem_size         		),
-	.reg_waddr        		( D_slave_reg_waddr      		),
+	.instr          		( D_slave_inst          		),
+	.op             		( D_slave_op             		),
+	.rs             		( D_slave_rs             		),
+	.rt             		( D_slave_rt             		),
+	.rd             		( D_slave_rd             		),
+	.shamt          		( D_slave_shamt          		),
+	.funct          		( D_slave_funct          		),
+	.imm            		( D_slave_imm                   ),
+	.sign_extend_imm_value  ( D_slave_imm_value            ),
+	.j_target       		( D_slave_j_target       		),
+	.is_link_pc8    		( D_slave_is_link_pc8    		),
+	.branch_type    		( D_slave_branch_type    		),
+	.reg_waddr      		( D_slave_reg_waddr      		),
+	.aluop          		( D_slave_aluop          		),
+	.alu_sela       		( D_slave_alu_sela       		),
+	.alu_selb       		( D_slave_alu_selb       		),
+	.mem_en         		( D_slave_mem_en         		),
+	.memWrite       		( D_slave_memWrite       		),
+	.memtoReg       		( D_slave_memtoReg       		),
+	.cp0write       		( D_slave_cp0write       		),
+	.is_hilo_accessed       ( D_slave_is_hilo_accessed      ),
+	.hilowrite      		( D_slave_hilowrite      		),
 	.reg_wen        		( D_slave_reg_wen        		),
-	.unsigned_flag    		( D_slave_unsigned_flag    		),
-	.priv_inst        		( D_slave_priv_inst        		)
+	.spec_inst      		( D_slave_spec_inst      		),
+	.undefined_inst 		( D_slave_undefined_inst 		)
 );
 
-// DONE dual_engine signals define and connect
-issue_ctrl u_issue_ctrl(
-    //master's status
-    .D_inst_priv_master         (D_master_priv_inst), // 主分支是否是特权指令
-    .D_reg_en_master            (D_master_wb_reg_en), // regWrite
-    .D_reg_dst_master           (D_master_rd), // rd
-    .D_hilo_accessed_master     (D_master_is_hilo_accessed), // 是否用到hilo寄存器 hiloWrite/Read  // FIXME 为啥读也要管
-    .D_en_master                (D_master_en), // master是否发射
-    //slave's status
-    .D_op_slave                 (D_slave_op ),
-    .D_rs_slave                 (D_slave_rs),
-    .D_rt_slave                 (D_slave_rt),
-    .D_mem_type_slave           (D_slave_mem_type),
-    .D_branch_slave             (D_slave_is_branch),
-    .D_inst_priv_slave          (D_slave_inst_priv), // 是否是特权指令
-    .D_hilo_accessed_slave      (D_slave_is_hilo_accessed),
-    // .D_tlb_error                (),   暂不处理
 
-    .fifo_empty                 (fifo_empty ),
-    .fifo_almost_empty          (fifo_almost_empty),
-
-    //raw detection
-    // FIXME 应该是E阶段流水中的信号
-    .E_mem_type                 (E_master_mem_size ), // BUG 这信号是指啥？
-    .E_mem_wb_reg_dst           (E_master_reg_waddr),
-
-    .D_en_slave                 (D_slave_en)
-);
-
-// DONE regfile signals define and connect
 regfile u_regfile(
 	//ports
 	.clk   		( clk   		),
 	.rst   		( rst   		),
+	
 	.ra1_a 		( D_master_rs 		),
 	.rd1_a 		( D_master_rs_data ),
 	.ra1_b 		( D_master_rt 		),
@@ -275,6 +274,7 @@ regfile u_regfile(
 	.wen1  		( W_master_reg_wen  		),
 	.wa1   		( W_master_reg_waddr ),
 	.wd1   		( W_master_reg_wdata ),
+	
 	.ra2_a 		( D_slave_rs 		),
 	.rd2_a 		( D_slave_rs_data 		),
 	.ra2_b 		( D_slave_rs 		),
@@ -299,6 +299,7 @@ forward_top u_forward_top(
 	.M_master_reg_wen   		( M_master_reg_wen   		),
 	.M_master_reg_waddr 		( M_master_reg_waddr 		),
 	.M_master_reg_wdata 		( M_master_reg_wdata 		),
+	
 	.D_master_rs        		( D_master_rs        		),
 	.D_master_rs_dara   		( D_master_rs_dara   		),
 	.D_master_rs_value  		( D_master_rs_value  		),
@@ -313,52 +314,91 @@ forward_top u_forward_top(
 	.D_slave_rd_value   		( D_slave_rd_value   		)
 );
 
-// ====================================== Execute ======================================
-// TODO E阶段流水寄存器
-/*
-E_master_is_branch
-E_master_op,E_master_rt // 这两个可以用branch_type代替
-E_master_jump,E_master_jal, jr, bal
-E_master_shamt,E_slave_shamt
-E_master_rs_value,E_slave_rs_value
-E_master_rt_value,E_slave_rt_value
-E_master_imm_value,E_slave_imm_value
-E_master_aluop,E_slave_aluop,
-E_master_j_target
-E_master_pc
-*/
+issue_ctrl u_issue_ctrl(
+    //master's status
+    .D_inst_priv_master         (D_master_spec_inst), // 主分支是否是特权指令
+    .D_reg_en_master            (D_master_wb_reg_en), // regWrite
+    .D_reg_dst_master           (D_master_rd), // rd
+    .D_hilo_accessed_master     (D_master_is_hilo_accessed), // 是否用到hilo寄存器 hiloWrite/Read  // FIXME 为啥读也要管
+    .D_en_master                (D_master_en), // master是否发射
+    //slave's status
+    .D_op_slave                 (D_slave_op ),
+    .D_rs_slave                 (D_slave_rs),
+    .D_rt_slave                 (D_slave_rt),
+    .D_mem_type_slave           (D_slave_mem_type),
+    .D_branch_slave             (D_slave_is_branch),
+    .D_inst_priv_slave          (D_slave_inst_priv), // 是否是特权指令
+    .D_hilo_accessed_slave      (D_slave_is_hilo_accessed),
 
-// TODO branch_judge redecode
-// E_master_jump\E_master_jal\E_master_jr\E_master_is_branch
-branch_judge u_branch_judge(
-    //ports
-    .is_branch              ( E_master_is_branch          ), // 是否是branch指令
-    .j_instIndex       		( E_master_jump | E_master_jal),
-	.jr               		( E_master_jr                 ),
-	.op               		( E_master_op                 ), // 其实可以用branch_type代替
-	.rt               		( E_master_rt                 ),
-	.imm_value        		( E_master_imm_value          ),
-	.j_target         		( E_master_j_target         ),
-	.rs_data          		( E_master_rs_value          		  ),
-	.rt_data          		( E_master_rt_value          		  ),
-	.pc_curr          		( E_master_pc          		  ),
-	.branch_taken     		( E_branch_taken     		  ),
-	.pc_branch_target 		( E_pc_branch_target 		  )
+    .fifo_empty                 (fifo_empty ),
+    .fifo_almost_empty          (fifo_almost_empty),
+
+    //raw detection
+    // FIXME 应该是E阶段流水中的信号
+    .E_mem_type                 (E_master_mem_size ), // BUG 这信号是指啥？
+    .E_mem_wb_reg_dst           (E_master_reg_waddr),
+
+    .D_en_slave                 (D_slave_en)
 );
 
+// XXX ====================================== Execute ======================================
+flopenrc #(5 ) DFF_E_master_shamt       (clk,rst,E_master_flush,~E_master_stall,D_master_shamt       ,E_master_shamt       );
+flopenrc #(32) DFF_E_master_rs_value    (clk,rst,E_master_flush,~E_master_stall,D_master_rs_value    ,E_master_rs_value    );
+flopenrc #(32) DFF_E_master_rt_value    (clk,rst,E_master_flush,~E_master_stall,D_master_rt_value    ,E_master_rt_value    );
+flopenrc #(32) DFF_E_master_imm_value   (clk,rst,E_master_flush,~E_master_stall,D_master_imm_value   ,E_master_imm_value   );
+flopenrc #(8 ) DFF_E_master_aluop       (clk,rst,E_master_flush,~E_master_stall,D_master_aluop       ,E_master_aluop       );
+flopenrc #(1 ) DFF_E_master_alu_sela    (clk,rst,E_master_flush,~E_master_stall,D_master_alu_sela    ,E_master_alu_sela    );
+flopenrc #(1 ) DFF_E_master_alu_selb    (clk,rst,E_master_flush,~E_master_stall,D_master_alu_selb    ,E_master_alu_selb    );
+flopenrc #(26) DFF_E_master_j_target    (clk,rst,E_master_flush,~E_master_stall,D_master_j_target    ,E_master_j_target    );
+flopenrc #(32) DFF_E_master_pc          (clk,rst,E_master_flush,~E_master_stall,D_master_pc          ,E_master_pc          );
+flopenrc #(1 ) DFF_E_master_is_link_pc8 (clk,rst,E_master_flush,~E_master_stall,D_master_is_link_pc8 ,E_master_is_link_pc8 );
+flopenrc #(1 ) DFF_E_master_mem_en      (clk,rst,E_master_flush,~E_master_stall,D_master_mem_en      ,E_master_mem_en      );
+flopenrc #(1 ) DFF_E_master_hilowrite   (clk,rst,E_master_flush,~E_master_stall,D_master_hilowrite   ,E_master_hilowrite   );
+flopenrc #(6 ) DFF_E_master_op          (clk,rst,E_master_flush,~E_master_stall,D_master_op          ,E_master_op          );
+flopenrc #(1 ) DFF_E_master_memtoReg    (clk,rst,E_master_flush,~E_master_stall,D_master_memtoReg    ,E_master_memtoReg    );
+flopenrc #(5 ) DFF_E_master_reg_wen     (clk,rst,E_master_flush,~E_master_stall,D_master_reg_wen     ,E_master_reg_wen     );
+flopenrc #(5 ) DFF_E_master_reg_waddr   (clk,rst,E_master_flush,~E_master_stall,D_master_reg_waddr   ,E_master_reg_waddr   );
+flopenrc #(5 ) DFF_E_master_branch_type (clk,rst,E_master_flush,~E_master_stall,D_master_branch_type ,E_master_branch_type );
+
+flopenrc #(5 ) DFF_E_slave_shamt       (clk,rst,E_slave_flush,~E_slave_stall,D_slave_shamt       ,E_slave_shamt       );
+flopenrc #(32) DFF_E_slave_rs_value    (clk,rst,E_slave_flush,~E_slave_stall,D_slave_rs_value    ,E_slave_rs_value    );
+flopenrc #(32) DFF_E_slave_rt_value    (clk,rst,E_slave_flush,~E_slave_stall,D_slave_rt_value    ,E_slave_rt_value    );
+flopenrc #(32) DFF_E_slave_imm_value   (clk,rst,E_slave_flush,~E_slave_stall,D_slave_imm_value   ,E_slave_imm_value   );
+flopenrc #(8 ) DFF_E_slave_aluop       (clk,rst,E_slave_flush,~E_slave_stall,D_slave_aluop       ,E_slave_aluop       );
+flopenrc #(32) DFF_E_slave_pc          (clk,rst,E_slave_flush,~E_slave_stall,D_slave_pc          ,E_slave_pc          );
+flopenrc #(1 ) DFF_E_slave_reg_wen     (clk,rst,E_slave_flush,~E_slave_stall,D_slave_reg_wen     ,E_slave_reg_wen     );
+flopenrc #(5 ) DFF_E_slave_reg_waddr   (clk,rst,E_slave_flush,~E_slave_stall,D_slave_reg_waddr   ,E_slave_reg_waddr   );
+flopenrc #(1 ) DFF_E_slave_alu_sela    (clk,rst,E_slave_flush,~E_slave_stall,D_slave_alu_sela    ,E_slave_alu_sela    );
+flopenrc #(1 ) DFF_E_slave_alu_selb    (clk,rst,E_slave_flush,~E_slave_stall,D_slave_alu_selb    ,E_slave_alu_selb    );
+flopenrc #(1 ) DFF_E_slave_is_link_pc8 (clk,rst,E_slave_flush,~E_slave_stall,D_slave_is_link_pc8 ,E_slave_is_link_pc8 );
+
+
+
+branch_judge u_branch_judge(
+	//ports
+	.branch_type       		( E_master_branch_type       		),
+	.imm_value         		( E_master_imm_value         		),
+	.j_target          		( E_master_j_target          		),
+	.rs_data           		( E_master_rs_value           		),
+	.rt_data           		( E_master_rt_value           		),
+	.pc_plus4          		( E_master_pc + 32'd4          		),
+	.branch_taken      		( E_branch_taken      		),
+	.pc_branch_address 		( E_pc_branch_target 		)
+);
+
+
 // select_alusrc: 所有的pc要加8的，都在alu执行，进行电路复用
-// TODO select_alusrc redecode
 // FIXME 要不要封装呢
-assign E_master_alu_srca = (balE | jalE | jrE) ? E_master_pc : 
+assign E_master_alu_srca = (E_master_is_link_pc8) ? E_master_pc : 
                            (E_master_alu_sela) ? {{27{1'b0}},E_master_shamt} : 
                             E_master_rs_value;
-assign E_slave_alu_srca  = (balE | jalE | jrE) ? E_slave_pc :
+assign E_slave_alu_srca  = (E_slave_is_link_pc8 ) ? E_slave_pc :
                            (E_slave_alu_sela ) ? {{27{1'b0}},E_slave_shamt} : 
                             E_slave_rs_value ;                            
-assign E_master_alu_srcb = (balE | jalE | jrE) ? 32'd8 :
+assign E_master_alu_srcb = (E_master_is_link_pc8) ? 32'd8 :
                            (E_master_alu_selb) ? E_master_imm_value :
                             E_master_rt_value;
-assign E_salve_alu_srcb  = (balE | jalE | jrE) ? 32'd8 :
+assign E_salve_alu_srcb  = (E_slave_is_link_pc8 ) ? 32'd8 :
                            (E_slave_alu_selb) ? E_slave_imm_value :
                             E_slave_rt_value ;
 
@@ -387,17 +427,20 @@ alu_slave u_alu_slave(
 );
 
 // XXX ====================================== Memory ======================================
-// TODO M阶段流水寄存器
-/*
-M_master_mem_en
-M_master_hilowrite
-M_master_op       
-M_master_pc       
-M_master_rt_value 
-M_master_alu_res  
-M_master_mem_rdata
-M_master_alu_out64
-*/
+flopenrc #(1 ) DFF_M_master1 (clk,rst,M_master_flush,~M_master_stall,E_master_mem_en,M_master_mem_en);
+flopenrc #(1 ) DFF_M_master2 (clk,rst,M_master_flush,~M_master_stall,E_master_hilowrite,M_master_hilowrite);
+flopenrc #(6 ) DFF_M_master3 (clk,rst,M_master_flush,~M_master_stall,E_master_op,M_master_op);
+flopenrc #(32) DFF_M_master7 (clk,rst,M_master_flush,~M_master_stall,E_master_pc,M_master_pc);
+flopenrc #(32) DFF_M_master4 (clk,rst,M_master_flush,~M_master_stall,E_master_rt_value,M_master_rt_value);
+flopenrc #(8 ) DFF_M_master5 (clk,rst,M_master_flush,~M_master_stall,E_master_alu_res,M_master_alu_res);
+flopenrc #(1 ) DFF_M_master8 (clk,rst,M_master_flush,~M_master_stall,E_master_alu_out64,M_master_alu_out64);
+flopenrc #(1 ) DFF_M_master9 (clk,rst,E_master_flush,~E_master_stall,E_master_memtoReg,M_master_memtoReg);
+flopenrc #(5 ) DFF_M_master10(clk,rst,E_master_flush,~E_master_stall,E_master_reg_wen,M_master_reg_wen);
+flopenrc #(5 ) DFF_M_master11(clk,rst,E_master_flush,~E_master_stall,E_master_reg_waddr,M_master_reg_waddr);
+
+flopenrc #(1 ) DFF_M_slave1  (clk,rst,M_slave_flush ,~M_slave_stall ,E_slave_reg_wen,M_slave_reg_wen);
+flopenrc #(5 ) DFF_M_slave2  (clk,rst,M_slave_flush ,~M_slave_stall ,E_slave_reg_waddr,M_slave_reg_waddr);
+flopenrc #(32) DFF_M_slave5  (clk,rst,M_slave_flush ,~M_slave_stall ,E_slave_alu_res,M_slave_alu_res);
 
 mem_access u_mem_access(
 	//ports
@@ -418,14 +461,15 @@ mem_access u_mem_access(
 );
 
 // hilo到M阶段处理，W阶段写完
-hilo_reg u_hilo_reg(
-	//ports
-	.clk    		( clk    		   ),
-	.rst    		( rst    		   ),
-	.we     		( M_master_hilowrite & ~M_except & ~M_stall),
-	.hilo_i 		( M_master_alu_out64),
-	.hilo   		( hilo   	       )
-);
+// TODO hiloreg
+// hilo_reg u_hilo_reg(
+// 	//ports
+// 	.clk    		( clk    		   ),
+// 	.rst    		( rst    		   ),
+// 	.we     		( M_master_hilowrite & ~M_except & ~M_stall),
+// 	.hilo_i 		( M_master_alu_out64),
+// 	.hilo   		( hilo   	       )
+// );
 
 
 // TODO exception
@@ -471,11 +515,18 @@ hilo_reg u_hilo_reg(
 
 
 // XXX ====================================== WriteBack ======================================
-// TODO W阶段流水寄存器
-// W_master_memtoReg W_master_mem_rdata W_master_alu_res W_slave_alu_res
+flopenrc #(1 ) DFF_W_master1(clk,rst,W_master_flush,~W_master_stall,M_master_memtoReg,W_master_memtoReg);
+flopenrc #(32) DFF_W_master3(clk,rst,W_master_flush,~W_master_stall,M_master_mem_rdata,W_master_mem_rdata);
+flopenrc #(5 ) DFF_W_master4(clk,rst,W_master_flush,~W_master_stall,M_master_reg_wen,W_master_reg_wen);
+flopenrc #(5 ) DFF_W_master5(clk,rst,W_master_flush,~W_master_stall,M_master_reg_waddr,W_master_reg_waddr);
+flopenrc #(32) DFF_W_master6(clk,rst,W_master_flush,~W_master_stall,M_master_alu_res,M_master_alu_res);
 
-assign W_master_reg_wdata = W_master_memtoReg ? W_master_mem_rdata:
-                            W_master_alu_res;
+
+flopenrc #(1 ) DFF_W_slave1 (clk,rst,W_slave_flush ,~W_slave_stall ,M_slave_reg_wen,W_slave_reg_wen);
+flopenrc #(5 ) DFF_W_slave2 (clk,rst,W_slave_flush ,~W_slave_stall ,M_slave_reg_waddr,W_slave_reg_waddr);
+flopenrc #(32) DFF_W_slave5 (clk,rst,W_slave_flush ,~W_slave_stall ,M_slave_alu_res ,W_slave_alu_res);
+
+assign W_master_reg_wdata = W_master_memtoReg ? W_master_mem_rdata : W_master_alu_res;
 assign W_slave_reg_wdata = W_slave_alu_res;
 
 // ******************* 冒险处理 *****************

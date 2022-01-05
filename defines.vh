@@ -1,4 +1,4 @@
-// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½×°instrï¿½ï¿½ï¿½ï¿½
+// µ¥¶À·â×°instr¶¨Òå
 // global macro definition
 `define RstEnable 		1'b1
 `define RstDisable		1'b0
@@ -50,7 +50,7 @@
 `define FUN_SRA 		6'b000011
 `define FUN_SRAV 		6'b000111
 
-//move inst ï¿½ï¿½ï¿½ï¿½ï¿½Æ¶ï¿½Ö¸ï¿½ï¿½
+//move inst Êý¾ÝÒÆ¶¯Ö¸Áî
 `define FUN_MFHI  		6'b010000
 `define FUN_MTHI  		6'b010001
 `define FUN_MFLO  		6'b010010
@@ -73,15 +73,13 @@
 `define OP_SLTI         6'b001010
 `define OP_SLTIU        6'b001011   
 
-// ï¿½ï¿½Ö§ï¿½ï¿½×ªÖ¸ï¿½ï¿½
+// ·ÖÖ§Ìø×ªÖ¸Áî
 `define OP_BEQ          6'b000100
 `define OP_BNE          6'b000101
 
-`define OP_BGTZ         6'b000111   //ï¿½ï¿½ï¿½ï¿½
+`define OP_BGTZ         6'b000111   //´óÓÚ
 `define OP_BLEZ         6'b000110
-`define OP_BGEZ_         6'b000001
-`define OP_BLTZ_         6'b000001
-`define OP_SPEC_B       6'b000001
+`define OP_SPEC_B    6'b000001
 `define OP_J            6'b000010
 `define OP_JAL          6'b000011
 `define OP_JR           6'b000000
@@ -112,11 +110,11 @@
 // `define EXE_LL  6'b110000
 // `define EXE_LWL  6'b100010
 
-// ï¿½ï¿½ï¿½ï¿½Ö¸ï¿½ï¿½
+// ÄÚÏÝÖ¸Áî
 `define FUN_SYSCALL 6'b001100
 `define FUN_BREAK   6'b001101
 
-// ï¿½ï¿½È¨Ö¸ï¿½ï¿½
+// ÌØÈ¨Ö¸Áî
 `define EXE_ERET 32'b01000010000000000000000000011000
 `define OP_SPECIAL_INST 6'b010000
 `define RS_MTC0 5'b00100
@@ -223,9 +221,6 @@
 
 `define ALUOP_SYSCALL 8'b00001100
 `define ALUOP_BREAK 8'b00001011
-// FAKE ALU OP
-`define ALUOP_OUTA    8'd22   // from sirius
-`define ALUOP_OUTB    8'd23
 
 `define ALUOP_TEQ 8'b00110100
 `define ALUOP_TEQI 8'b01001000
@@ -243,9 +238,7 @@
 `define ALUOP_ERET 8'b01101011
 
 `define ALUOP_NOP    8'b00000000
-// FAKE ALU OP
-`define ALUOP_OUTA    8'd22   // from sirius
-`define ALUOP_OUTB    8'd23
+
 //ALU Sel
 `define EXE_RES_LOGIC 3'b001
 `define EXE_RES_SHIFT 3'b010
@@ -283,14 +276,14 @@
 
 
 //CP0
-`define CP0_REG_BADVADDR    5'b01000       //Ö»ï¿½ï¿½
-`define CP0_REG_COUNT    5'b01001        //ï¿½É¶ï¿½Ð´
-`define CP0_REG_COMPARE    5'b01011      //ï¿½É¶ï¿½Ð´
-`define CP0_REG_STATUS    5'b01100       //ï¿½É¶ï¿½Ð´
-`define CP0_REG_CAUSE    5'b01101        //Ö»ï¿½ï¿½
-`define CP0_REG_EPC    5'b01110          //ï¿½É¶ï¿½Ð´
-`define CP0_REG_PRID    5'b01111         //Ö»ï¿½ï¿½
-`define CP0_REG_CONFIG    5'b10000       //Ö»ï¿½ï¿½
+`define CP0_REG_BADVADDR    5'b01000       //Ö»¶Á
+`define CP0_REG_COUNT    5'b01001        //¿É¶ÁÐ´
+`define CP0_REG_COMPARE    5'b01011      //¿É¶ÁÐ´
+`define CP0_REG_STATUS    5'b01100       //¿É¶ÁÐ´
+`define CP0_REG_CAUSE    5'b01101        //Ö»¶Á
+`define CP0_REG_EPC    5'b01110          //¿É¶ÁÐ´
+`define CP0_REG_PRID    5'b01111         //Ö»¶Á
+`define CP0_REG_CONFIG    5'b10000       //Ö»¶Á
 
 //div
 `define DivFree 2'b00
@@ -379,11 +372,15 @@
 
 
 //branch instruction type
-`define B_EQNE          3'b000
-`define B_LTGE          3'b001
-`define B_JUMP          3'b010
-`define B_JREG          3'b011
-`define B_INVA          3'b111
+`define BT_NOP          4'b0000
+`define BT_BEQ          4'b0001
+`define BT_BNE          4'b0010
+`define BT_BGTZ         4'b0011
+`define BT_BLEZ         4'b0100
+`define BT_BGEZ_        4'b0101
+`define BT_BLTZ_        4'b0110
+`define BT_J            4'b1000 
+`define BT_JREG         4'b1001
 
 `define MEM_LOAD        2'b10
 `define MEM_STOR        2'b01

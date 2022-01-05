@@ -36,7 +36,7 @@ module hazard (
 
     // 阻塞
     wire lwstall,branch_stall,jr_stall;
-    assign lwstall = ((rsD == rtE) | (rtD == rsE)) & memtoRegE;
+    assign lwstall = ((rsD == rtE) | (rtD == rtE)) & memtoRegE;
     assign branch_stall =   (branchD & regwriteE & ((rsD == reg_waddrE)|(rtD == reg_waddrE))) | // 执行阶段阻塞，前面有写入的数据
                             (branchD & memtoRegM & ((rsD == reg_waddrM)|(rtD == reg_waddrM)));  // 写回阶段阻塞
     assign jr_stall =(jrD & regwriteE & ((rsD == reg_waddrE)|(rtD == reg_waddrE))) | 
