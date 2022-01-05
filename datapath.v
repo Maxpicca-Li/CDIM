@@ -54,7 +54,6 @@ wire  	E_flush;
 wire  	M_flush;
 wire  	W_flush;
 // 暂时未实现
-assign hilo = 64'b0;
 assign cp0_data = 32'b0;
 assign M_excepttype = 32'b0;
 assign M_except = (|M_excepttype);
@@ -75,7 +74,6 @@ wire        	D_master_undefined_inst  ,D_slave_undefined_inst  ;
 wire [3:0]  	D_master_branch_type     ,D_slave_branch_type     ;
 wire        	D_master_is_link_pc8     ,D_slave_is_link_pc8     ;
 wire [25:0] 	D_master_j_target        ,D_slave_j_target        ;
-// wire        	D_master_is_link_pc8     ,D_slave_is_branch       ;
 // alu
 wire [7:0]  	D_master_aluop           ,D_slave_aluop           ;
 wire        	D_master_alu_sela        ,D_slave_alu_sela        ;
@@ -138,7 +136,7 @@ wire            E_master_overflow,E_slave_overflow;
 wire [31:0] 	M_master_inst     ,M_slave_inst    ;
 wire            M_master_hilowrite;
 wire            M_master_mem_en   ;
-wire            M_master_memtoReg ;
+wire            M_master_memtoReg ,M_slave_memtoReg ;
 wire            M_master_cp0write ,M_slave_cp0write ;
 wire [ 5:0]     M_master_op       ;
 wire [31:0]     M_master_pc       ;
@@ -177,6 +175,7 @@ hazard u_hazard(
     .M_master_memtoReg  		( M_master_memtoReg  		),
     .M_master_reg_waddr 		( M_master_reg_waddr 		),
     .E_branch_taken     		( E_branch_taken     		),
+    .E_div_stall                ( E_div_stall               ),
     
     .F_ena              		( F_ena              		),
     .D_ena              		( D_ena              		),
@@ -194,7 +193,7 @@ hazard u_hazard(
 
 
 // XXX ====================================== Fetch ======================================
-assign inst_sram_en =  ~rst;
+assign inst_sram_en =  ~rst & F_ena;
 
 pc_reg u_pc_reg(
     //ports
@@ -311,8 +310,8 @@ regfile u_regfile(
     
     .ra2_a 		( D_slave_rs 		),
     .rd2_a 		( D_slave_rs_data 		),
-    .ra2_b 		( D_slave_rs 		),
-    .rd2_b 		( D_slave_rs_data 		),
+    .ra2_b 		( D_slave_rt 		),
+    .rd2_b 		( D_slave_rt_data 		),
     .wen2  		( W_slave_reg_wen  		),
     .wa2   		( W_slave_reg_waddr   		),
     .wd2   		( W_slave_reg_wdata   		)
@@ -361,6 +360,7 @@ issue_ctrl u_issue_ctrl(
     .D_slave_rt         		( D_slave_rt         		),
     .D_slave_mem_en     		( D_slave_mem_en     		),
     .D_slave_is_branch  		( (|D_slave_branch_type)  	),
+    .D_slave_is_hilo_accessed   ( D_slave_is_hilo_accessed  ),
     .fifo_empty         		( fifo_empty         		),
     .fifo_almost_empty  		( fifo_almost_empty  		),
     .D_slave_en         		( slave_ena         		)
@@ -471,6 +471,7 @@ flopenrc #(32) DFF_M_slave_inst         (clk,rst,M_flush,M_ena,E_slave_inst     
 flopenrc #(1 ) DFF_M_slave_reg_wen      (clk,rst,M_flush,M_ena,E_slave_reg_wen     ,M_slave_reg_wen     );
 flopenrc #(5 ) DFF_M_slave_reg_waddr    (clk,rst,M_flush,M_ena,E_slave_reg_waddr   ,M_slave_reg_waddr   );
 flopenrc #(32) DFF_M_slave_alu_res      (clk,rst,M_flush,M_ena,E_slave_alu_res     ,M_slave_alu_res     );
+flopenrc #(1 ) DFF_M_slave_memtoReg     (clk,rst,M_flush,M_ena,E_slave_memtoReg    ,M_slave_memtoReg    );
 
 mem_access u_mem_access(
     //ports
@@ -490,15 +491,14 @@ mem_access u_mem_access(
 );
 
 // hilo到M阶段处理，W阶段写完
-// TODO hiloreg
-// hilo_reg u_hilo_reg(
-// 	//ports
-// 	.clk    		( clk    		   ),
-// 	.rst    		( rst    		   ),
-// 	.we     		( M_master_hilowrite & ~M_except & ~M_stall),
-// 	.hilo_i 		( M_master_alu_out64),
-// 	.hilo   		( hilo   	       )
-// );
+hilo_reg u_hilo_reg(
+	//ports
+	.clk    		( clk    		   ),
+	.rst    		( rst    		   ),
+    .we     		( M_master_hilowrite & ~M_except & M_ena),
+	.hilo_i 		( M_master_alu_out64),
+	.hilo   		( hilo   	       )
+);
 
 
 // TODO exception

@@ -49,8 +49,8 @@ datapath u_datapath(
 	.data_sram_en   		( data_sram_en    		),
 	.data_sram_wen  		( data_sram_wen   		),
 	.data_sram_addr 		( data_sram_addr 		),
-    .data_sram_rdata		( data_sram_wdata 		),
-	.data_sram_wdata		( data_sram_rdata 		)
+    .data_sram_rdata		( data_sram_rdata 		),
+	.data_sram_wdata		( data_sram_wdata 		)
 );
 
 inst_diff u_inst_diff(

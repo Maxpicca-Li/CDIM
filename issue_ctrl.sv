@@ -14,6 +14,7 @@ module issue_ctrl (
     input  [4:0]    D_slave_rt,
     input           D_slave_mem_en,
     input           D_slave_is_branch,
+    input           D_slave_is_hilo_accessed,
     //FIFO's status
     input           fifo_empty,
     input           fifo_almost_empty,
@@ -29,7 +30,7 @@ module issue_ctrl (
     assign D_slave_en = _en_slave && fifo_crtl && (!load_stall); 
 
     always_comb begin : define_slave_en
-        if( !D_master_en || D_slave_is_branch || D_slave_mem_en)
+        if( !D_master_en || D_slave_is_branch || D_slave_mem_en || D_slave_is_hilo_accessed)
             _en_slave = 1'b0;
         else begin
             if(D_master_reg_wen && (D_master_reg_waddr != 5'd0)) begin
