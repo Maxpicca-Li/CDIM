@@ -35,6 +35,7 @@ wire        	fifo_empty;
 wire        	fifo_almost_empty;
 wire        	fifo_full;
 wire            E_div_stall;
+wire [31:0]     cp0_data;
 wire [63:0] 	hilo;
 wire            M_except;
 wire [31:0]     M_excepttype;
@@ -54,12 +55,12 @@ wire  	M_flush;
 wire  	W_flush;
 // 暂时未实现
 assign hilo = 64'b0;
+assign cp0_data = 32'b0;
 assign M_excepttype = 32'b0;
 assign M_except = (|M_excepttype);
 
 // D
 wire [31:0] 	D_master_inst     ,D_slave_inst    ;
-wire [11:0] 	D_master_inst_exp ,D_slave_inst_exp;
 wire [31:0] 	D_master_pc       ,D_slave_pc      ;
 // inst
 wire [5:0]  	D_master_op              ,D_slave_op              ;
@@ -101,28 +102,28 @@ wire [31:0] 	E_master_inst     ,E_slave_inst    ;
 wire  	        E_branch_taken;
 wire [31:0]     E_pc_branch_target;
 wire [ 3:0]     E_master_branch_type;
-wire [5 :0]     E_master_shamt       ;
-wire [32:0]     E_master_rs_value    ;
-wire [32:0]     E_master_rt_value    ;
-wire [32:0]     E_master_imm_value   ;
-wire [8 :0]     E_master_aluop       ;
-wire [26:0]     E_master_j_target    ;
-wire [32:0]     E_master_pc          ;
+wire [ 4:0]     E_master_shamt       ;
+wire [31:0]     E_master_rs_value    ;
+wire [31:0]     E_master_rt_value    ;
+wire [31:0]     E_master_imm_value   ;
+wire [ 7:0]     E_master_aluop       ;
+wire [25:0]     E_master_j_target    ;
+wire [31:0]     E_master_pc          ;
 wire            E_master_is_link_pc8 ;
 wire            E_master_mem_en      ;
 wire            E_master_hilowrite   ;
-wire [6 :0]     E_master_op          ;
+wire [ 5:0]     E_master_op          ;
 wire            E_master_memtoReg    ;
-wire [5 :0]     E_master_reg_wen     ;
-wire [5 :0]     E_master_reg_waddr   ;
-wire [5 :0]     E_slave_shamt        ;
-wire [32:0]     E_slave_rs_value     ;
-wire [32:0]     E_slave_rt_value     ;
-wire [32:0]     E_slave_imm_value    ;
-wire [8 :0]     E_slave_aluop        ;
-wire [32:0]     E_slave_pc           ;
+wire            E_master_reg_wen     ;
+wire [ 4:0]     E_master_reg_waddr   ;
+wire [ 4:0]     E_slave_shamt        ;
+wire [31:0]     E_slave_rs_value     ;
+wire [31:0]     E_slave_rt_value     ;
+wire [31:0]     E_slave_imm_value    ;
+wire [ 7:0]     E_slave_aluop        ;
+wire [31:0]     E_slave_pc           ;
 wire            E_slave_reg_wen      ;
-wire [5 :0]     E_slave_reg_waddr    ;
+wire [ 4:0]     E_slave_reg_waddr    ;
 wire            E_slave_is_link_pc8  ;
 // alu
 wire            E_master_alu_sela,E_slave_alu_sela;
@@ -132,19 +133,21 @@ wire [31:0]     E_master_alu_srcb,E_slave_alu_srcb;
 wire [31:0]     E_master_alu_res ,E_slave_alu_res;
 wire [63:0]     E_master_alu_out64;
 wire            E_master_overflow,E_slave_overflow;
-
+wire [31:0]     E_master_reg_wdata,E_slave_reg_wdata;
 // M
 wire [31:0] 	M_master_inst     ,M_slave_inst    ;
 wire            M_master_hilowrite;
 wire            M_master_mem_en   ;
 wire            M_master_cp0write ,M_slave_cp0write ;
-wire [ 6:0]     M_master_op       ;
+wire [ 5:0]     M_master_op       ;
 wire [31:0]     M_master_pc       ;
 wire [31:0]     M_master_rt_value ;
 wire            M_master_reg_wen  ,M_slave_reg_wen  ;
 wire [31:0]     M_master_alu_res  ,M_slave_alu_res  ;
-wire [31:0]     M_master_alu_out64;
+wire [63:0]     M_master_alu_out64;
 wire [31:0]     M_master_mem_rdata;
+wire [ 4:0]     M_master_reg_waddr,M_slave_reg_waddr ;
+wire [ 4:0]     M_master_reg_wdata,M_slave_reg_wdata ;
 
 // W
 wire [31:0] 	W_master_inst     ,W_slave_inst    ;
@@ -152,6 +155,7 @@ wire            W_master_memtoReg;
 wire [31:0]     W_master_mem_rdata;
 wire [31:0]     W_master_alu_res  ,W_slave_alu_res  ;
 wire            W_master_reg_wen  ,W_slave_reg_wen  ;
+wire [ 4:0]     W_master_reg_waddr,W_slave_reg_waddr;
 wire [31:0]     W_master_reg_wdata,W_slave_reg_wdata;
 
 
@@ -326,17 +330,17 @@ forward_top u_forward_top(
     .M_master_reg_wdata 		( M_master_reg_wdata 		),
     
     .D_master_rs        		( D_master_rs        		),
-    .D_master_rs_dara   		( D_master_rs_dara   		),
+    .D_master_rs_data   		( D_master_rs_data   		),
     .D_master_rs_value  		( D_master_rs_value  		),
-    .D_master_rd        		( D_master_rd        		),
-    .D_master_rd_dara   		( D_master_rd_dara   		),
-    .D_master_rd_value  		( D_master_rd_value  		),
+    .D_master_rt        		( D_master_rt        		),
+    .D_master_rt_data   		( D_master_rt_data   		),
+    .D_master_rt_value  		( D_master_rt_value  		),
     .D_slave_rs         		( D_slave_rs         		),
-    .D_slave_rs_dara    		( D_slave_rs_dara    		),
+    .D_slave_rs_data    		( D_slave_rs_data    		),
     .D_slave_rs_value   		( D_slave_rs_value   		),
-    .D_slave_rd         		( D_slave_rd         		),
-    .D_slave_rd_dara    		( D_slave_rd_dara    		),
-    .D_slave_rd_value   		( D_slave_rd_value   		)
+    .D_slave_rt         		( D_slave_rt         		),
+    .D_slave_rt_data    		( D_slave_rt_data    		),
+    .D_slave_rt_value   		( D_slave_rt_value   		)
 );
 
 issue_ctrl u_issue_ctrl(

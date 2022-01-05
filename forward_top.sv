@@ -13,18 +13,18 @@ module forward_top(
     input [31:0]            M_master_reg_wdata,
     
     input [ 4:0]            D_master_rs,
-    input [31:0]            D_master_rs_dara,
+    input [31:0]            D_master_rs_data,
     output logic [31:0]     D_master_rs_value,
-    input [ 4:0]            D_master_rd,
-    input [31:0]            D_master_rd_dara,
-    output logic [31:0]     D_master_rd_value,
+    input [ 4:0]            D_master_rt,
+    input [31:0]            D_master_rt_data,
+    output logic [31:0]     D_master_rt_value,
     
     input [ 4:0]            D_slave_rs,
-    input [31:0]            D_slave_rs_dara,
+    input [31:0]            D_slave_rs_data,
     output logic [31:0]     D_slave_rs_value,
-    input [ 4:0]            D_slave_rd,
-    input [31:0]            D_slave_rd_dara,
-    output logic [31:0]     D_slave_rd_value
+    input [ 4:0]            D_slave_rt,
+    input [31:0]            D_slave_rt_data,
+    output logic [31:0]     D_slave_rt_value
 
 );
 // DONE forward_mux
@@ -43,11 +43,11 @@ forwarding_mux forwarding_mux_rs_master(
 	.M_master_reg_waddr 		( M_master_reg_waddr 		),
 	.M_master_reg_wdata 		( M_master_reg_wdata 		),
 	.reg_addr           		( D_master_rs           		),
-	.reg_data           		( D_master_rs_dara ),
+	.reg_data           		( D_master_rs_data ),
 	.result_data        		( D_master_rs_value)
 );
 
-forwarding_mux forwarding_mux_rd_master(
+forwarding_mux forwarding_mux_rt_master(
 	//ports
 	.E_slave_reg_wen    		( E_slave_reg_wen    		),
 	.E_slave_reg_waddr  		( E_slave_reg_waddr  		),
@@ -61,9 +61,9 @@ forwarding_mux forwarding_mux_rd_master(
 	.M_master_reg_wen   		( M_master_reg_wen   		),
 	.M_master_reg_waddr 		( M_master_reg_waddr 		),
 	.M_master_reg_wdata 		( M_master_reg_wdata 		),
-	.reg_addr           		( D_master_rd           	),
-	.reg_data           		( D_master_rd_data          ),
-	.result_data        		( D_master_rd_value         )
+	.reg_addr           		( D_master_rt           	),
+	.reg_data           		( D_master_rt_data          ),
+	.result_data        		( D_master_rt_value         )
 );
 
 forwarding_mux forwarding_mux_rs_slave(
@@ -85,7 +85,7 @@ forwarding_mux forwarding_mux_rs_slave(
 	.result_data        		( D_slave_rs_value          )
 );
 
-forwarding_mux forwarding_mux_rd_slave(
+forwarding_mux forwarding_mux_rt_slave(
 	//ports
 	.E_slave_reg_wen    		( E_slave_reg_wen    		),
 	.E_slave_reg_waddr  		( E_slave_reg_waddr  		),
@@ -99,8 +99,8 @@ forwarding_mux forwarding_mux_rd_slave(
 	.M_master_reg_wen   		( M_master_reg_wen   		),
 	.M_master_reg_waddr 		( M_master_reg_waddr 		),
 	.M_master_reg_wdata 		( M_master_reg_wdata 		),
-	.reg_addr           		( D_slave_rd            	),
-	.reg_data           		( D_slave_rd_data           ),
-	.result_data        		( D_slave_rd_value          )
+	.reg_addr           		( D_slave_rt            	),
+	.reg_data           		( D_slave_rt_data           ),
+	.result_data        		( D_slave_rt_value          )
 );
 endmodule

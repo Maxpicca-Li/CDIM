@@ -8,7 +8,7 @@ module pc_reg (
         input               fifo_full,
 
         input               branch_taken,
-        input               branch_addr,
+        input       [31:0]  branch_addr,
         output logic[31:0]  pc_curr
     );
     

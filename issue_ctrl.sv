@@ -12,7 +12,7 @@ module issue_ctrl (
     input  [5:0]    D_slave_op,
     input  [4:0]    D_slave_rs,
     input  [4:0]    D_slave_rt,
-    input  [1:0]    D_slave_mem_en,
+    input           D_slave_mem_en,
     input           D_slave_is_branch,
     //FIFO's status
     input           fifo_empty,
