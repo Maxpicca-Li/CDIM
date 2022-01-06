@@ -27,6 +27,7 @@ module inst_fifo(
         input [31:0]                write_data1, // 读回的数据写入 
         input [31:0]                write_data2, // 读回的数据写入
         
+        output logic                master_is_in_delayslot_o,
         // fifo 状态
         output logic                empty, 
         output logic                almost_empty,  
@@ -62,6 +63,17 @@ module inst_fifo(
     wire [11:0] _inst_exp1 = inst_exp[read_pointer];
     wire [11:0] _inst_exp2 = inst_exp[read_pointer + 4'd1];
 
+    // TODO 简易版处理延迟槽问题，但是没有考虑数据满的情况
+    always_ff @(posedge clk)begin
+        if(rst) master_is_in_delayslot_o = 1'b0;
+        else if(master_is_branch) begin 
+            if(!read_en2) 
+                master_is_in_delayslot_o = 1'b1;
+            else 
+                master_is_in_delayslot_o = 1'b0;
+        end
+        else    master_is_in_delayslot_o = 1'b0;
+    end
     // Delay slot data FSM
     // reg delay_slot_refill; // 是否要等待一周期
 

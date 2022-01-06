@@ -8,6 +8,7 @@ module hazard (
     input wire [4:0] M_master_reg_waddr,
     input wire       E_branch_taken,
     input wire       E_div_stall,
+    input wire       fifo_full,
     
     output wire F_ena, 
     output wire D_ena, 
@@ -27,7 +28,7 @@ module hazard (
     assign lwstall = (E_master_memtoReg & (D_master_rs == E_master_reg_waddr | D_master_rt == E_master_reg_waddr)) || 
                      (M_master_memtoReg & (D_master_rs == M_master_reg_waddr | D_master_rt == M_master_reg_waddr));
     assign longest_stall = E_div_stall;
-    assign F_ena = ~(lwstall | E_div_stall);
+    assign F_ena = ~(lwstall | E_div_stall | fifo_full);
     assign D_ena = ~(lwstall | E_div_stall);
     assign E_ena = ~E_div_stall;
     assign M_ena = ~E_div_stall;
