@@ -180,7 +180,6 @@ hazard u_hazard(
     .M_master_reg_waddr 		( M_master_reg_waddr 		),
     .E_branch_taken     		( E_branch_taken     		),
     .E_div_stall                ( E_div_stall               ),
-    .fifo_full         		    ( fifo_full            		),
     
     .F_ena              		( F_ena              		),
     .D_ena              		( D_ena              		),
@@ -199,7 +198,7 @@ hazard u_hazard(
 
 // XXX ====================================== Fetch ======================================
 // FIXME 注意，这里如果是i_stall导致的F_ena=0，inst_sram_en仍然使能(不太确定这个逻辑)
-assign inst_sram_en =  F_ena;
+assign inst_sram_en =  F_ena & (~fifo_full);  // fifo_full 不取指
 
 pc_reg u_pc_reg(
     //ports
@@ -208,7 +207,7 @@ pc_reg u_pc_reg(
     .pc_en         		( F_ena         		),
     .inst_data_ok1 		( inst_data_ok1 		),
     .inst_data_ok2 		( inst_data_ok2 		),
-    .fifo_full     		( fifo_full     		),
+    .fifo_full     		( fifo_full     		), // fifo_full pc不变
     .branch_taken       ( E_branch_taken        ),
     .branch_addr        ( E_pc_branch_target    ),
     .pc_curr       		( F_pc       		    )
