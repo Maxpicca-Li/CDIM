@@ -71,7 +71,7 @@ module  decoder(
         undefined_inst = 1'b0;
         syscall_inst = 1'b0;
         break_inst = 1'b0;
-
+        spec_inst = 1'b0;
         signsD = {`ALUOP_NOP,14'b00000000000000};
         if (instr==32'b0) begin
             signsD = {`ALUOP_NOP,14'b00000000000000};

@@ -35,13 +35,16 @@ wire        	fifo_empty;
 wire        	fifo_almost_empty;
 wire        	fifo_full;
 wire            E_div_stall;
-wire [31:0]     cp0_data;
 wire [63:0] 	hilo;
-wire            M_except;
-wire [31:0]     M_excepttype;
+wire [31:0]     cp0_data;
 wire        	M_ades;
 wire        	M_adel;
 wire [31:0] 	M_bad_addr;
+wire            M_except;
+wire [31:0]     M_excepttype;
+wire [31:0]     M_except_inst_addr;
+wire [31:0]     M_except_in_delayslot;
+wire [31:0]     M_pc_except_target;
 wire  	F_ena;
 wire  	D_ena;
 wire    slave_ena;
@@ -63,8 +66,8 @@ wire            F_master_except_pc                 ;
 // D
 wire [31:0] 	D_master_inst     ,D_slave_inst    ;
 wire [31:0] 	D_master_pc       ,D_slave_pc      ;
-//TODO 检查这个逻辑是否有问题
-wire            D_master_is_in_delayslot;
+
+wire            D_master_is_in_delayslot ,D_slave_is_in_delayslot ;
 // inst
 wire [5:0]  	D_master_op              ,D_slave_op              ;
 wire [4:0]  	D_master_shamt           ,D_slave_shamt           ;
@@ -103,7 +106,7 @@ wire        	D_master_memtoReg        ,D_slave_memtoReg        ;
 // other
 wire        	D_master_cp0write        ,D_slave_cp0write        ;
 wire        	D_master_hilowrite       ,D_slave_hilowrite       ;
-wire            D_master_except_pc;
+wire            D_master_is_pc_except    ,D_slave_is_pc_except    ;
 // E
 wire [31:0] 	E_master_inst     ,E_slave_inst    ;
 wire  	        E_branch_taken;
@@ -132,7 +135,7 @@ wire [31:0]     E_slave_pc              ;
 wire            E_slave_reg_wen         ;
 wire [ 4:0]     E_slave_reg_waddr       ;
 wire            E_slave_is_link_pc8     ;
-wire            E_master_is_in_delayslot;
+wire            E_master_is_in_delayslot,E_slave_is_in_delayslot;
 // TODO: check the width
 wire [ 7:0]     E_master_except, E_slave_except;
 wire            E_master_cp0write, E_slave_cp0write ;
@@ -162,8 +165,9 @@ wire [31:0]     M_master_alu_res  ,M_slave_alu_res  ;
 wire [63:0]     M_master_alu_out64;
 wire [31:0]     M_master_mem_rdata;
 wire [ 4:0]     M_master_reg_waddr,M_slave_reg_waddr ;
-wire [ 2:0]     M_master_except, M_slave_except;
-wire            M_master_is_in_delayslot;
+wire [ 7:0]     M_master_except, M_slave_except;
+wire            M_master_is_in_delayslot, M_slave_is_in_delayslot;
+reg  [31:0]     M_except_pc;
 // W
 wire [31:0] 	W_master_inst     ,W_slave_inst    ;
 wire            W_master_memtoReg;
@@ -176,10 +180,8 @@ wire [31:0]     W_master_reg_wdata,W_slave_reg_wdata;
 
 
 // TODO 异常数据从上至下传递
-// assign D_master_syscall = (instrD[31:26] == 6'b000000 && instrD[5:0] == 6'b001100);
-// assign breakD = (instrD[31:26] == 6'b000000 && instrD[5:0] == 6'b001101);
-// assign eretD = (instrD == 32'b01000010000000000000000000011000);
-assign D_master_except_pc  = (D_master_pc[1:0] == 2'b00) ? 1'b0 : 1'b1;
+assign D_master_is_pc_except  = (D_master_pc[1:0] == 2'b00) ? 1'b0 : 1'b1;
+assign D_slave_is_pc_except  = (D_slave_pc[1:0] == 2'b00) ? 1'b0 : 1'b1;
 
 // TODO 冒险处理
 
@@ -193,7 +195,7 @@ hazard u_hazard(
     .M_master_reg_waddr 		( M_master_reg_waddr 		),
     .E_branch_taken     		( E_branch_taken     		),
     .E_div_stall                ( E_div_stall               ),
-    
+    .M_except                   ( M_except                  ),
     .F_ena              		( F_ena              		),
     .D_ena              		( D_ena              		),
     .E_ena              		( E_ena              		),
@@ -221,8 +223,11 @@ pc_reg u_pc_reg(
     .inst_data_ok1 		( inst_data_ok1 		),
     .inst_data_ok2 		( inst_data_ok2 		),
     .fifo_full     		( fifo_full     		), // fifo_full pc不变
+    .is_except          ( M_except              ),
+    .except_addr        ( M_pc_except_target    ),
     .branch_taken       ( E_branch_taken        ),
     .branch_addr        ( E_pc_branch_target    ),
+    
     .pc_curr       		( F_pc       		    )
 );
 
@@ -282,7 +287,6 @@ decoder u_decoder_master(
     .reg_wen        		( D_master_reg_wen        		),
     .spec_inst      		( D_master_spec_inst      		),
     .undefined_inst 		( D_master_undefined_inst 		),
-    .spec_inst              ( D_master_spec_inst            ),
     .break_inst             ( D_master_break_inst           ),
     .syscall_inst           ( D_master_syscall_inst         ),
     .eret_inst              ( D_master_eret_inst            )
@@ -320,9 +324,7 @@ decoder u_decoder_slave(
     .eret_inst              ( D_slave_eret_inst             )
 );
 
-assign D_master_except = {D_master_break_inst,D_master_syscall_inst,D_master_eret_inst};
 
-// assign D_slave_except =  {D_slave_break_inst,D_slave_syscall_inst,D_slave_eret_inst};
 
 regfile u_regfile(
     //ports
@@ -382,6 +384,8 @@ issue_ctrl u_issue_ctrl(
     .D_master_en        		( D_ena        		),
     .D_master_reg_wen   		( D_master_reg_wen   		),
     .D_master_reg_waddr 		( D_master_reg_waddr 		),
+    .master_is_branch 		    ( (|D_master_branch_type)   ),
+    .D_master_is_spec_inst      ( D_master_spec_inst        ),
     .E_master_memtoReg  		( E_master_memtoReg  		),
     .E_master_reg_waddr 		( E_master_reg_waddr 		),
     .D_slave_op         		( D_slave_op         		),
@@ -390,8 +394,11 @@ issue_ctrl u_issue_ctrl(
     .D_slave_mem_en     		( D_slave_mem_en     		),
     .D_slave_is_branch  		( (|D_slave_branch_type)  	),
     .D_slave_is_hilo_accessed   ( D_slave_is_hilo_accessed  ),
+    .D_slave_is_spec_inst       ( D_slave_spec_inst         ),
     .fifo_empty         		( fifo_empty         		),
     .fifo_almost_empty  		( fifo_almost_empty  		),
+    
+    .D_slave_is_in_delayslot    ( D_slave_is_in_delayslot   ),
     .D_slave_en         		( slave_ena         		)
 );
 
@@ -415,8 +422,7 @@ flopenrc #(1 ) DFF_E_master_memtoReg    (clk,rst,M_except|(!D_master_is_in_delay
 flopenrc #(1 ) DFF_E_master_reg_wen     (clk,rst,M_except|(!D_master_is_in_delayslot & E_flush) | (!D_ena & E_ena),E_ena,D_master_reg_wen     ,E_master_reg_wen     );
 flopenrc #(5 ) DFF_E_master_reg_waddr   (clk,rst,M_except|(!D_master_is_in_delayslot & E_flush) | (!D_ena & E_ena),E_ena,D_master_reg_waddr   ,E_master_reg_waddr   );
 flopenrc #(4 ) DFF_E_master_branch_type (clk,rst,M_except|(!D_master_is_in_delayslot & E_flush) | (!D_ena & E_ena),E_ena,D_master_branch_type ,E_master_branch_type );
-flopenrc #(8 ) DFF_E_master_except      (clk,rst,M_except|(!D_master_is_in_delayslot & E_flush) | (!D_ena & E_ena),E_ena,
-                                                    {D_master_except_pc,D_master_syscall_inst,D_master_break_inst,D_master_eret_inst,D_master_undefined_inst,3'b0},E_master_except      );
+flopenrc #(8 ) DFF_E_master_except      (clk,rst,M_except|(!D_master_is_in_delayslot & E_flush) | (!D_ena & E_ena),E_ena,{D_master_is_pc_except,D_master_syscall_inst,D_master_break_inst,D_master_eret_inst,D_master_undefined_inst,3'b0},E_master_except);
 flopenrc #(1 ) DFF_E_master_cp0write    (clk,rst,M_except|(!D_master_is_in_delayslot & E_flush) | (!D_ena & E_ena),E_ena,D_master_cp0write     ,E_master_cp0write   );
 flopenrc #(1 ) DFF_E_master_is_in_delayslot (clk,rst,M_except|(!D_master_is_in_delayslot & E_flush) | (!D_ena & E_ena),E_ena,D_master_is_in_delayslot,E_master_is_in_delayslot);
 
@@ -433,8 +439,9 @@ flopenrc #(1 ) DFF_E_slave_alu_sela    (clk,rst,E_flush || (E_ena & !slave_ena),
 flopenrc #(1 ) DFF_E_slave_alu_selb    (clk,rst,E_flush || (E_ena & !slave_ena),slave_ena,D_slave_alu_selb    ,E_slave_alu_selb    );
 flopenrc #(1 ) DFF_E_slave_is_link_pc8 (clk,rst,E_flush || (E_ena & !slave_ena),slave_ena,D_slave_is_link_pc8 ,E_slave_is_link_pc8 );
 flopenrc #(1 ) DFF_E_slave_memtoReg    (clk,rst,E_flush || (E_ena & !slave_ena),slave_ena,D_slave_memtoReg    ,E_slave_memtoReg    );
-flopenrc #(8 ) DFF_E_slave_except      (clk,rst,E_flush || (E_ena & !slave_ena),slave_ena,{D_slave_except_pc,D_slave_syscall_inst,D_slave_break_inst,D_slave_eret_inst,D_slave_undefined_inst,3'b0},E_slave_except);
+flopenrc #(8 ) DFF_E_slave_except      (clk,rst,E_flush || (E_ena & !slave_ena),slave_ena,{D_slave_is_pc_except,D_slave_syscall_inst,D_slave_break_inst,D_slave_eret_inst,D_slave_undefined_inst,3'b0},E_slave_except);
 flopenrc #(4 ) DFF_E_slave_cp0write    (clk,rst,E_flush || (E_ena & !slave_ena),slave_ena,D_slave_cp0write    ,E_slave_cp0write    );
+flopenrc #(1 ) DFF_E_slave_is_in_delayslot (clk,rst,E_flush || (E_ena & !slave_ena),slave_ena,D_slave_is_in_delayslot,E_slave_is_in_delayslot);
 
 branch_judge u_branch_judge(
     //ports
@@ -450,12 +457,12 @@ branch_judge u_branch_judge(
 
 
 // select_alusrc: 所有的pc要加8的，都在alu执行，进行电路复用
-// FIXME 还是需要单独列一个加法器来做pc+8
+// FIXME: 还是需要单独列一个加法器来做pc+8
 assign E_master_alu_srca =  E_master_alu_sela ? {{27{1'b0}},E_master_shamt} : 
                             E_master_rs_value;
 assign E_slave_alu_srca  =  E_slave_alu_sela  ? {{27{1'b0}},E_slave_shamt} : 
                             E_slave_rs_value ;                            
-// TODO 提频:为访存指令加base+offset单独设置一个加法器
+// TODO: 提频:为访存指令加base+offset单独设置一个加法器
 assign E_master_alu_srcb =  E_master_alu_selb ? E_master_imm_value :
                             E_master_rt_value;
 assign E_slave_alu_srcb  =  E_slave_alu_selb  ? E_slave_imm_value :
@@ -499,7 +506,7 @@ flopenrc #(64) DFF_M_master_alu_out64  (clk,rst,M_flush,M_ena,E_master_alu_out64
 flopenrc #(1 ) DFF_M_master_memtoReg   (clk,rst,M_flush,M_ena,E_master_memtoReg   ,M_master_memtoReg   );
 flopenrc #(1 ) DFF_M_master_reg_wen    (clk,rst,M_flush,M_ena,E_master_reg_wen    ,M_master_reg_wen    );
 flopenrc #(5 ) DFF_M_master_reg_waddr  (clk,rst,M_flush,M_ena,E_master_reg_waddr  ,M_master_reg_waddr  );
-flopenrc #(4 ) DFF_M_master_except     (clk,rst,M_flush,M_ena,E_master_except     ,M_master_except     );
+flopenrc #(4 ) DFF_M_master_except     (clk,rst,M_flush,M_ena,{E_master_except[7:3],E_master_overflow,E_master_except[1:0]},M_master_except);
 flopenrc #(4 ) DFF_M_master_cp0write    (clk,rst,M_flush,M_ena,E_master_cp0write   ,M_master_cp0write   );
 flopenrc #(4 ) DFF_M_master_is_in_delayslot  (clk,rst,M_flush,M_ena,E_master_is_in_delayslot ,M_master_is_in_delayslot);
 
@@ -508,8 +515,9 @@ flopenrc #(1 ) DFF_M_slave_reg_wen     (clk,rst,M_flush,M_ena,E_slave_reg_wen   
 flopenrc #(5 ) DFF_M_slave_reg_waddr   (clk,rst,M_flush,M_ena,E_slave_reg_waddr   ,M_slave_reg_waddr   );
 flopenrc #(32) DFF_M_slave_alu_res     (clk,rst,M_flush,M_ena,E_slave_alu_res     ,M_slave_alu_res     );
 flopenrc #(1 ) DFF_M_slave_memtoReg    (clk,rst,M_flush,M_ena,E_slave_memtoReg    ,M_slave_memtoReg    );
-flopenrc #(4 ) DFF_M_slave_except      (clk,rst,M_flush,M_ena,E_slave_except      ,M_slave_except      );
+flopenrc #(4 ) DFF_M_slave_except      (clk,rst,M_flush,M_ena,{E_slave_except[7:3],E_slave_overflow,E_slave_except[1:0]},M_slave_except);
 flopenrc #(4 ) DFF_M_slave_cp0write    (clk,rst,M_flush,M_ena,E_slave_cp0write    ,M_slave_cp0write    );
+flopenrc #(4 ) DFF_M_slave_is_in_delayslot  (clk,rst,M_flush,M_ena,E_slave_is_in_delayslot ,M_slave_is_in_delayslot);
 
 mem_access u_mem_access(
     //ports
@@ -544,12 +552,22 @@ hilo_reg u_hilo_reg(
 exception u_exp(
     //ports
     .rst            ( rst            ),
-    .except         ( M_master_except),
+    .master_except  ( M_master_except),
+    .master_pc      ( M_master_pc    ),
+    .slave_except   ( M_slave_except ),
+    .slave_pc       ( M_slave_pc     ),
     .adel           ( M_adel         ),
     .ades           ( M_ades         ),
-    .cp0_status     ( cp0_status       ),
-    .cp0_cause      ( cp0_cause        ),
-    .excepttype     ( M_excepttype   )
+    .cp0_status     ( cp0_status      ),
+    .cp0_cause      ( cp0_cause       ),
+    .cp0_epcM       ( cp0_epcM        ),
+    .master_is_in_delayslot( M_master_is_in_delayslot),
+    .slave_is_in_delayslot ( M_slave_is_in_delayslot ),
+    
+    .except_inst_addr   ( M_except_inst_addr),
+    .except_in_delayslot( M_except_in_delayslot),
+    .except_target      ( M_pc_except_target),
+    .excepttype         ( M_excepttype   )
  
 // M_slave_except 
 );
@@ -561,14 +579,14 @@ cp0_reg u_cp0_reg(
     //ports
     .clk                    ( clk                        ),
     .rst                    ( rst                        ),
-    .we_i                   ( M_master_cp0write  & M_ena ),
-	.waddr_i                ( M_master_reg_waddr         ),  // M阶段写入CP0
-	.raddr_i                ( E_master_reg_waddr         ),  // E阶段读取CP0，这两步可以避免数据冒险处理
+    .we_i                   ( M_master_cp0write  & M_ena ),  // 只有master访问cp0_reg,
+	.waddr_i                ( M_master_reg_waddr         ),  // M阶段写入CP0 // TODO: 需要改为wb阶段写寄存器吗？如果不前推访存的rt_value的话
+	.raddr_i                ( E_master_reg_waddr         ),  // E阶段读取CP0，这两步可以避免数据冒险处理 ==> 这个的E_master_reg_waddr默认是rd
 	.data_i                 ( M_master_rt_value          ),
 	.int_i                  ( ext_int                    ),
 	.excepttype_i           ( M_excepttype               ),
-	.current_inst_addr_i    ( M_master_pc                ),
-	.is_in_delayslot_i      ( M_master_is_in_delayslot   ),
+	.current_inst_addr_i    ( M_except_inst_addr     ),
+	.is_in_delayslot_i      ( M_except_in_delayslot      ),
 	.bad_addr_i             ( M_bad_addr                 ),
 	.data_o                 ( cp0_data                   ),
 	.count_o                ( cp0_count                  ),

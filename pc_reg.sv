@@ -6,9 +6,11 @@ module pc_reg (
         input               inst_data_ok1,
         input               inst_data_ok2,
         input               fifo_full,
-
+        input               is_except,
+        input       [31:0]  except_addr,
         input               branch_taken,
         input       [31:0]  branch_addr,
+
         output logic[31:0]  pc_curr
     );
     
@@ -26,7 +28,9 @@ module pc_reg (
     end
 
     always_comb begin : compute_pc_next
-        if(branch_taken) 
+        if (is_except) 
+            pc_next = except_addr;
+        else if(branch_taken) 
             pc_next = branch_addr;
         else if(fifo_full)
             pc_next = pc_curr;

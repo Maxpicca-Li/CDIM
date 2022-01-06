@@ -9,6 +9,9 @@ module hazard (
     input wire       E_branch_taken,
     input wire       E_div_stall,
     
+    //except
+    input wire M_except,
+
     output wire F_ena, 
     output wire D_ena, 
     output wire E_ena, 
@@ -20,6 +23,7 @@ module hazard (
     output wire E_flush, 
     output wire M_flush, 
     output wire W_flush
+
 );
     
     // 阻塞
@@ -41,9 +45,10 @@ module hazard (
     assign W_ena = ~E_div_stall;
 
     assign F_flush = 1'b0;
-    assign D_flush = E_branch_taken;
+    assign D_flush = E_branch_taken | M_except;
     assign E_flush = E_branch_taken;
-    assign M_flush = 1'b0;
-    assign W_flush = 1'b0;
-    
+    assign M_flush = M_except;
+    assign W_flush = M_except;
+
+
 endmodule
