@@ -384,7 +384,7 @@ issue_ctrl u_issue_ctrl(
     .D_master_en        		( D_ena        		),
     .D_master_reg_wen   		( D_master_reg_wen   		),
     .D_master_reg_waddr 		( D_master_reg_waddr 		),
-    .master_is_branch 		    ( (|D_master_branch_type)   ),
+    .D_master_is_branch		    ( (|D_master_branch_type)   ),
     .D_master_is_spec_inst      ( D_master_spec_inst        ),
     .E_master_memtoReg  		( E_master_memtoReg  		),
     .E_master_reg_waddr 		( E_master_reg_waddr 		),
@@ -560,7 +560,7 @@ exception u_exp(
     .ades           ( M_ades         ),
     .cp0_status     ( cp0_status      ),
     .cp0_cause      ( cp0_cause       ),
-    .cp0_epcM       ( cp0_epcM        ),
+    .cp0_epc        ( cp0_epc         ),
     .master_is_in_delayslot( M_master_is_in_delayslot),
     .slave_is_in_delayslot ( M_slave_is_in_delayslot ),
     
