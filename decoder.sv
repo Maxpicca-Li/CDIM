@@ -29,7 +29,11 @@ module  decoder(
     output logic                hilowrite,
     output logic                reg_wen,
     output logic				spec_inst,
-    output logic				undefined_inst  // 1 as received a unknown operation.
+    output logic				undefined_inst,  // 1 as received a unknown operation.
+    output logic                syscall_inst,
+    output logic                break_inst,
+    output logic                eret_inst
+
 );
 
     assign op = instr[31:26];
@@ -60,9 +64,14 @@ module  decoder(
     assign memtoReg  = signsD[ 1];
     assign jump      = signsD[ 0];        
 
+    assign eret_inst = (instr == 32'b01000010000000000000000000011000);
+
     // signsD = {[21:14]]ALUOP,13mem_en,12cp0write,11hilowrite,10bal,9jr,8jal,7alu_sela,6reg_wen,5regdst,4alu_selb,3branch,2memWrite,1memtoReg,0jump}
     always_comb begin : generate_control_signals
         undefined_inst = 1'b0;
+        syscall_inst = 1'b0;
+        break_inst = 1'b0;
+
         signsD = {`ALUOP_NOP,14'b00000000000000};
         if (instr==32'b0) begin
             signsD = {`ALUOP_NOP,14'b00000000000000};
@@ -106,8 +115,10 @@ module  decoder(
                         `FUN_SYSCALL:begin
                             spec_inst = 1'b1;
                             signsD = {`ALUOP_NOP  ,14'b00000000000000};
+                            syscall_inst =1'b1;
                         end
                         `FUN_BREAK  :begin
+                            break_inst = 1'b1;
                             spec_inst = 1'b1;
                             signsD = {`ALUOP_NOP  ,14'b00000000000000};
                         end
