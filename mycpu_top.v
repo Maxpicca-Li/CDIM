@@ -38,7 +38,7 @@ datapath u_datapath(
 	//ports
 	.clk              		( ~clk              	),
 	.rst              		( ~resetn        		), // to high active
-	// .ext_int          		( int          		),
+	.ext_int          		( int          		),
 	.inst_data_ok    		( inst_data_ok    		),
     .inst_data_ok1    		( inst_data_ok1    		),
 	.inst_data_ok2    		( inst_data_ok2    		),

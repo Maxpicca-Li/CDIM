@@ -183,8 +183,7 @@ wire [31:0]     W_master_reg_wdata,W_slave_reg_wdata;
 assign D_master_is_pc_except  = (D_master_pc[1:0] == 2'b00) ? 1'b0 : 1'b1;
 assign D_slave_is_pc_except  = (D_slave_pc[1:0] == 2'b00) ? 1'b0 : 1'b1;
 
-// TODO 冒险处理
-
+// 冒险处理
 hazard u_hazard(
     //ports
     .D_master_rs        		( D_master_rs        		),
@@ -207,9 +206,6 @@ hazard u_hazard(
     .M_flush            		( M_flush            		),
     .W_flush            		( W_flush            		)
 );
-
-
-
 
 // XXX ====================================== Fetch ======================================
 // FIXME 注意，这里如果是i_stall导致的F_ena=0，inst_sram_en仍然使能(不太确定这个逻辑)
@@ -506,16 +502,17 @@ flopenrc #(64) DFF_M_master_alu_out64  (clk,rst,M_flush,M_ena,E_master_alu_out64
 flopenrc #(1 ) DFF_M_master_memtoReg   (clk,rst,M_flush,M_ena,E_master_memtoReg   ,M_master_memtoReg   );
 flopenrc #(1 ) DFF_M_master_reg_wen    (clk,rst,M_flush,M_ena,E_master_reg_wen    ,M_master_reg_wen    );
 flopenrc #(5 ) DFF_M_master_reg_waddr  (clk,rst,M_flush,M_ena,E_master_reg_waddr  ,M_master_reg_waddr  );
-flopenrc #(4 ) DFF_M_master_except     (clk,rst,M_flush,M_ena,{E_master_except[7:3],E_master_overflow,E_master_except[1:0]},M_master_except);
+flopenrc #(8 ) DFF_M_master_except     (clk,rst,M_flush,M_ena,{E_master_except[7:3],E_master_overflow,E_master_except[1:0]},M_master_except);
 flopenrc #(4 ) DFF_M_master_cp0write    (clk,rst,M_flush,M_ena,E_master_cp0write   ,M_master_cp0write   );
 flopenrc #(4 ) DFF_M_master_is_in_delayslot  (clk,rst,M_flush,M_ena,E_master_is_in_delayslot ,M_master_is_in_delayslot);
 
+flopenrc #(32) DFF_M_slave_pc          (clk,rst,M_flush,M_ena,E_slave_pc          ,M_slave_pc          );
 flopenrc #(32) DFF_M_slave_inst        (clk,rst,M_flush,M_ena,E_slave_inst        ,M_slave_inst        );
 flopenrc #(1 ) DFF_M_slave_reg_wen     (clk,rst,M_flush,M_ena,E_slave_reg_wen     ,M_slave_reg_wen     );
 flopenrc #(5 ) DFF_M_slave_reg_waddr   (clk,rst,M_flush,M_ena,E_slave_reg_waddr   ,M_slave_reg_waddr   );
 flopenrc #(32) DFF_M_slave_alu_res     (clk,rst,M_flush,M_ena,E_slave_alu_res     ,M_slave_alu_res     );
 flopenrc #(1 ) DFF_M_slave_memtoReg    (clk,rst,M_flush,M_ena,E_slave_memtoReg    ,M_slave_memtoReg    );
-flopenrc #(4 ) DFF_M_slave_except      (clk,rst,M_flush,M_ena,{E_slave_except[7:3],E_slave_overflow,E_slave_except[1:0]},M_slave_except);
+flopenrc #(8 ) DFF_M_slave_except      (clk,rst,M_flush,M_ena,{E_slave_except[7:3],E_slave_overflow,E_slave_except[1:0]},M_slave_except);
 flopenrc #(4 ) DFF_M_slave_cp0write    (clk,rst,M_flush,M_ena,E_slave_cp0write    ,M_slave_cp0write    );
 flopenrc #(4 ) DFF_M_slave_is_in_delayslot  (clk,rst,M_flush,M_ena,E_slave_is_in_delayslot ,M_slave_is_in_delayslot);
 

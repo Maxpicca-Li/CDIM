@@ -45,8 +45,8 @@ module hazard (
     assign W_ena = ~E_div_stall;
 
     assign F_flush = 1'b0;
-    assign D_flush = E_branch_taken | M_except;
-    assign E_flush = E_branch_taken;
+    assign D_flush = M_except | E_branch_taken;
+    assign E_flush = M_except | E_branch_taken;
     assign M_flush = M_except;
     assign W_flush = M_except;
 

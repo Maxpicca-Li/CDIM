@@ -245,6 +245,11 @@ module  decoder(
                     `RT_BLTZAL: reg_waddr = 32'd31;
                     default:reg_waddr = rd;
                 endcase
+            `OP_SPECIAL_INST:
+                if (rs==`RS_MFC0)  // GPR[rt] ← CP0[rd, sel]
+                    reg_waddr = rt; 
+                else
+                    reg_waddr = rd; 
             default:reg_waddr = rd; 
         endcase
     end
