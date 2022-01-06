@@ -195,7 +195,7 @@ module  decoder(
             `OP_BGTZ  : {branch_type, is_link_pc8} = {`BT_BGTZ,1'b0}; // BGTZ
             `OP_BLEZ  : {branch_type, is_link_pc8} = {`BT_BLEZ,1'b0}; // BLEZ  
             `OP_SPEC_B:     // BGEZ,BLTZ,BGEZAL,BLTZAL
-                case(rt[3:0])
+                case(rt)
                     `RT_BGEZ  : {branch_type, is_link_pc8} = {`BT_BGEZ_, 1'b0};
                     `RT_BLTZ  : {branch_type, is_link_pc8} = {`BT_BLTZ_, 1'b0};
                     `RT_BGEZAL: {branch_type, is_link_pc8} = {`BT_BGEZ_, 1'b1}; // GPR[31] = PC + 8

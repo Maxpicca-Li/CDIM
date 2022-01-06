@@ -413,7 +413,7 @@ flopenrc #(1 ) DFF_E_slave_memtoReg    (clk,rst,E_flush || (E_ena & !slave_ena),
 branch_judge u_branch_judge(
     //ports
     .branch_type       		( E_master_branch_type       		),
-    .imm_value         		( E_master_imm_value         		),
+    .offset         		( {E_master_imm_value[29:0],2'b00}  ),
     .j_target          		( E_master_j_target          		),
     .rs_data           		( E_master_rs_value           		),
     .rt_data           		( E_master_rt_value           		),
