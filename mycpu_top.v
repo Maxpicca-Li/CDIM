@@ -1,7 +1,7 @@
 module mycpu_top(
     input clk,
     input resetn,  //low active
-    // input [5:0]ext_int,  //interrupt,high active
+    input [5:0]int,  //interrupt,high active
     //cpu inst sram
     output        inst_sram_en   ,
     output [7 :0] inst_sram_wen  ,
@@ -13,12 +13,12 @@ module mycpu_top(
     output [3 :0] data_sram_wen  ,
     output [31:0] data_sram_addr ,
     output [31:0] data_sram_wdata,
-    input  [31:0] data_sram_rdata
+    input  [31:0] data_sram_rdata,
     //debug
-    // output [31:0] debug_wb_pc     ,
-    // output [3:0] debug_wb_rf_wen  ,
-    // output [4:0] debug_wb_rf_wnum ,
-    // output [31:0] debug_wb_rf_wdata
+    output [31:0] debug_wb_pc     ,
+    output [3:0] debug_wb_rf_wen  ,
+    output [4:0] debug_wb_rf_wnum ,
+    output [31:0] debug_wb_rf_wdata
 );
 
     wire [31:0]pc_fetch;
@@ -37,8 +37,8 @@ module mycpu_top(
 datapath u_datapath(
 	//ports
 	.clk              		( ~clk              	),
-	.rst              		( ~resetn        		),
-	// .ext_int          		( ext_int          		),
+	.rst              		( ~resetn        		), // to high active
+	// .ext_int          		( int          		),
 	.inst_data_ok    		( inst_data_ok    		),
     .inst_data_ok1    		( inst_data_ok1    		),
 	.inst_data_ok2    		( inst_data_ok2    		),
@@ -72,9 +72,9 @@ inst_diff u_inst_diff(
     assign inst_sram_wdata = 64'b0;
 
     // debug
-    assign debug_wb_pc          = u_datapath.D_master_pc;
-    assign debug_wb_rf_wen      = {4{u_datapath.u_regfile.wen1}};
-    assign debug_wb_rf_wnum     = datapath.u_regfile.wa1;
-    assign debug_wb_rf_wdata    = datapath.u_regfile.wd1;
+    assign debug_wb_pc          = (~clk) ? u_datapath.W_master_pc : u_datapath.W_slave_pc;
+    assign debug_wb_rf_wen      = (~resetn) ? 4'b0000 : ((~clk) ? {4{u_datapath.u_regfile.wen1}} : {4{u_datapath.u_regfile.wen2}});
+    assign debug_wb_rf_wnum     = (~clk) ? u_datapath.u_regfile.wa1 : u_datapath.u_regfile.wa2;
+    assign debug_wb_rf_wdata    = (~clk) ? u_datapath.u_regfile.wd1 : u_datapath.u_regfile.wd2;
 
 endmodule

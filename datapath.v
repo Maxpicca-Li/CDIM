@@ -155,7 +155,7 @@ wire            M_master_mem_en   ;
 wire            M_master_memtoReg ,M_slave_memtoReg ;
 wire            M_master_cp0write ,M_slave_cp0write ;
 wire [ 5:0]     M_master_op       ;
-wire [31:0]     M_master_pc       ;
+wire [31:0]     M_master_pc       ,M_slave_pc       ;
 wire [31:0]     M_master_rt_value ;
 wire            M_master_reg_wen  ,M_slave_reg_wen  ;
 wire [31:0]     M_master_alu_res  ,M_slave_alu_res  ;
@@ -167,7 +167,7 @@ wire            M_master_is_in_delayslot;
 // W
 wire [31:0] 	W_master_inst     ,W_slave_inst    ;
 wire            W_master_memtoReg;
-wire [31:0]     W_master_pc       ;
+wire [31:0]     W_master_pc       ,W_slave_pc      ;
 wire [31:0]     W_master_mem_rdata;
 wire [31:0]     W_master_alu_res  ,W_slave_alu_res  ;
 wire            W_master_reg_wen  ,W_slave_reg_wen  ;
@@ -193,7 +193,6 @@ hazard u_hazard(
     .M_master_reg_waddr 		( M_master_reg_waddr 		),
     .E_branch_taken     		( E_branch_taken     		),
     .E_div_stall                ( E_div_stall               ),
-    .fifo_full         		    ( fifo_full            		),
     
     .F_ena              		( F_ena              		),
     .D_ena              		( D_ena              		),
@@ -212,7 +211,7 @@ hazard u_hazard(
 
 // XXX ====================================== Fetch ======================================
 // FIXME 注意，这里如果是i_stall导致的F_ena=0，inst_sram_en仍然使能(不太确定这个逻辑)
-assign inst_sram_en =  ~rst & F_ena;
+assign inst_sram_en =  F_ena & (~fifo_full);  // fifo_full 不取指
 
 pc_reg u_pc_reg(
     //ports
@@ -221,7 +220,7 @@ pc_reg u_pc_reg(
     .pc_en         		( F_ena         		),
     .inst_data_ok1 		( inst_data_ok1 		),
     .inst_data_ok2 		( inst_data_ok2 		),
-    .fifo_full     		( fifo_full     		),
+    .fifo_full     		( fifo_full     		), // fifo_full pc不变
     .branch_taken       ( E_branch_taken        ),
     .branch_addr        ( E_pc_branch_target    ),
     .pc_curr       		( F_pc       		    )
@@ -334,7 +333,7 @@ regfile u_regfile(
     .rd1_a 		( D_master_rs_data ),
     .ra1_b 		( D_master_rt 		),
     .rd1_b 		( D_master_rt_data 		),
-    .wen1  		( W_master_reg_wen  		),
+    .wen1  		( W_master_reg_wen & W_ena),
     .wa1   		( W_master_reg_waddr ),
     .wd1   		( W_master_reg_wdata ),
     
@@ -342,7 +341,7 @@ regfile u_regfile(
     .rd2_a 		( D_slave_rs_data 		),
     .ra2_b 		( D_slave_rt 		),
     .rd2_b 		( D_slave_rt_data 		),
-    .wen2  		( W_slave_reg_wen  		),
+    .wen2  		( W_slave_reg_wen & W_ena ),
     .wa2   		( W_slave_reg_waddr   		),
     .wd2   		( W_slave_reg_wdata   		)
 );
@@ -593,6 +592,7 @@ flopenrc #(1 ) DFF_W_master_memtoReg   (clk,rst,W_flush,W_ena,M_master_memtoReg 
 flopenrc #(5 ) DFF_W_master_reg_waddr  (clk,rst,W_flush,W_ena,M_master_reg_waddr   ,W_master_reg_waddr   );
 
 flopenrc #(32) DFF_W_slave_inst      (clk,rst,W_flush,W_ena,M_slave_inst      ,W_slave_inst      );
+flopenrc #(32) DFF_W_slave_pc        (clk,rst,W_flush,W_ena,M_slave_pc        ,W_slave_pc        );
 flopenrc #(32) DFF_W_slave_alu_res   (clk,rst,W_flush,W_ena,M_slave_alu_res   ,W_slave_alu_res   );
 flopenrc #(1 ) DFF_W_slave_reg_wen   (clk,rst,W_flush,W_ena,M_slave_reg_wen   ,W_slave_reg_wen   );
 flopenrc #(5 ) DFF_W_slave_reg_waddr (clk,rst,W_flush,W_ena,M_slave_reg_waddr ,W_slave_reg_waddr );
