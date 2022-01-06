@@ -223,36 +223,16 @@ module inst_fifo(
 
     // 写入数据更新
     always_ff @(posedge clk) begin : write_data 
-        if(write_en1) begin
+        if(~rst & write_en1) begin
             data[write_pointer] <= write_data1;
             address[write_pointer] <= write_address1;
             inst_exp[write_pointer] <= write_inst_exp1;
         end
-        if(write_en2) begin
+        if(~rst & write_en2) begin
             data[write_pointer + 4'd1] <= write_data2;
             address[write_pointer + 4'd1] <= write_address2;
             inst_exp[write_pointer + 4'd1] <= write_inst_exp1; // EXP (I)
         end
     end
-
-    // XXX 指令计数
-    logic [63:0] master_counter;
-    logic [63:0] slave_counter;
-
-    always_ff @(posedge clk) begin
-        if(rst)
-            master_counter <= 64'd0;
-        else if(read_en1 && (!empty)) //  || in_delay_slot))
-            master_counter <= master_counter + 64'd1;
-    end
-    
-    always_ff @(posedge clk) begin
-        if(rst)
-            slave_counter <= 64'd0;
-        else if(read_en2 && (!empty && !almost_empty)) //  && !in_delay_slot))
-            slave_counter <= slave_counter + 64'd1;
-    end
-
-    wire [63:0] total_inst = master_counter + slave_counter;
 
 endmodule
