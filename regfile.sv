@@ -52,7 +52,7 @@ module regfile(
     always_ff @(negedge clk) begin : write_data
         if(rst) begin
             for(int i = 0; i < 31; i++)
-                rf[i] <= 32'h0000_0000;
+                rf[i] <= 32'hxxxxxxxx;
         end
         else begin
             if(wen1 && wen2 && wa1 == wa2)
