@@ -5,6 +5,7 @@ module issue_ctrl (
     //master's status
     input           D_master_en,
     input           D_master_reg_wen,
+    input           D_master_mem_en,
     input [4:0]     D_master_reg_waddr,
     input           D_master_is_branch,
     input           D_master_is_spec_inst,
@@ -35,7 +36,7 @@ module issue_ctrl (
     assign D_slave_is_in_delayslot = D_master_is_branch & D_slave_en;
 
     always_comb begin : define_slave_en
-        if( !D_master_en || D_slave_is_branch || D_slave_mem_en || D_slave_is_hilo_accessed ||  D_master_is_spec_inst || D_slave_is_spec_inst)
+        if( !D_master_en || D_master_mem_en || D_slave_is_branch || D_slave_mem_en || D_slave_is_hilo_accessed ||  D_master_is_spec_inst || D_slave_is_spec_inst)
             _en_slave = 1'b0;
         else begin
             if(D_master_reg_wen && (D_master_reg_waddr != 5'd0)) begin

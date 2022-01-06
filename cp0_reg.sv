@@ -37,8 +37,6 @@
  			prid_o <= 32'b00000000010011000000000100000010;
  			timer_int_o <= `InterruptNotAssert;
  		end else begin
-			//  TODO �����ڼ�һ�Σ��ķ����飺���������������Ĵ���ÿ��1clk��һ�Σ�ÿ����βλΪ0��
-			// �����Ĵ���count_o��1
  			count_o <= count_o + 1;
 			cause_o[15:10] <= int_i;
  			if(compare_o != `ZeroWord && count_o == compare_o) begin

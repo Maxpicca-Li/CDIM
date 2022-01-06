@@ -27,7 +27,7 @@ module forward_top(
     output logic [31:0]     D_slave_rt_value
 
 );
-// DONE forward_mux
+
 forwarding_mux forwarding_mux_rs_master(
 	//ports
 	.E_slave_reg_wen    		( E_slave_reg_wen    		),

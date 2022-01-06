@@ -56,17 +56,17 @@ wire  	D_flush;
 wire  	E_flush;
 wire  	M_flush;
 wire  	W_flush;
-// except
+wire[31:0] cp0_count,cp0_compare,cp0_status,cp0_cause,cp0_epc,cp0_config,cp0_prid;
+wire[31:0] badvaddr;
 
 assign M_except = (|M_excepttype);
-wire[`RegBus] cp0_count,cp0_compare,cp0_status,cp0_cause,cp0_epc,cp0_config,cp0_prid;
-wire[`RegBus] badvaddr;
+
 //F
 wire            F_master_except_pc                 ;
+
 // D
 wire [31:0] 	D_master_inst     ,D_slave_inst    ;
 wire [31:0] 	D_master_pc       ,D_slave_pc      ;
-
 wire            D_master_is_in_delayslot ,D_slave_is_in_delayslot ;
 // inst
 wire [5:0]  	D_master_op              ,D_slave_op              ;
@@ -136,10 +136,9 @@ wire            E_slave_reg_wen         ;
 wire [ 4:0]     E_slave_reg_waddr       ;
 wire            E_slave_is_link_pc8     ;
 wire            E_master_is_in_delayslot,E_slave_is_in_delayslot;
-// TODO: check the width
-wire [ 7:0]     E_master_except, E_slave_except;
+wire [ 7:0]     E_master_except, E_slave_except;  // TODO: check the width
 wire            E_master_cp0write, E_slave_cp0write ;
-
+wire [ 4:0]     E_master_rd             ;
 // alu
 wire            E_master_alu_sela,E_slave_alu_sela;
 wire            E_master_alu_selb,E_slave_alu_selb;
@@ -167,7 +166,8 @@ wire [31:0]     M_master_mem_rdata;
 wire [ 4:0]     M_master_reg_waddr,M_slave_reg_waddr ;
 wire [ 7:0]     M_master_except, M_slave_except;
 wire            M_master_is_in_delayslot, M_slave_is_in_delayslot;
-reg  [31:0]     M_except_pc;
+wire [ 4:0]     M_master_rd       ;
+
 // W
 wire [31:0] 	W_master_inst     ,W_slave_inst    ;
 wire            W_master_memtoReg;
@@ -214,7 +214,7 @@ assign inst_sram_en =  F_ena & (~fifo_full);  // fifo_full 不取指
 pc_reg u_pc_reg(
     //ports
     .clk           		( clk           		),
-    .rst           		( rst || F_flush         ),
+    .rst           		( rst                   ),
     .pc_en         		( F_ena         		),
     .inst_data_ok1 		( inst_data_ok1 		),
     .inst_data_ok2 		( inst_data_ok2 		),
@@ -379,6 +379,7 @@ issue_ctrl u_issue_ctrl(
     //ports
     .D_master_en        		( D_ena        		),
     .D_master_reg_wen   		( D_master_reg_wen   		),
+    .D_master_mem_en            ( D_master_mem_en           ), // FIXME: 主线访存，一定要控制单发吗？如果满足不冲突条件，可以双发否？
     .D_master_reg_waddr 		( D_master_reg_waddr 		),
     .D_master_is_branch		    ( (|D_master_branch_type)   ),
     .D_master_is_spec_inst      ( D_master_spec_inst        ),
@@ -417,6 +418,7 @@ flopenrc #(6 ) DFF_E_master_op          (clk,rst,M_except|(!D_master_is_in_delay
 flopenrc #(1 ) DFF_E_master_memtoReg    (clk,rst,M_except|(!D_master_is_in_delayslot & E_flush) | (!D_ena & E_ena),E_ena,D_master_memtoReg    ,E_master_memtoReg    );
 flopenrc #(1 ) DFF_E_master_reg_wen     (clk,rst,M_except|(!D_master_is_in_delayslot & E_flush) | (!D_ena & E_ena),E_ena,D_master_reg_wen     ,E_master_reg_wen     );
 flopenrc #(5 ) DFF_E_master_reg_waddr   (clk,rst,M_except|(!D_master_is_in_delayslot & E_flush) | (!D_ena & E_ena),E_ena,D_master_reg_waddr   ,E_master_reg_waddr   );
+flopenrc #(5 ) DFF_E_master_rd          (clk,rst,M_except|(!D_master_is_in_delayslot & E_flush) | (!D_ena & E_ena),E_ena,D_master_rd          ,E_master_rd          );
 flopenrc #(4 ) DFF_E_master_branch_type (clk,rst,M_except|(!D_master_is_in_delayslot & E_flush) | (!D_ena & E_ena),E_ena,D_master_branch_type ,E_master_branch_type );
 flopenrc #(8 ) DFF_E_master_except      (clk,rst,M_except|(!D_master_is_in_delayslot & E_flush) | (!D_ena & E_ena),E_ena,{D_master_is_pc_except,D_master_syscall_inst,D_master_break_inst,D_master_eret_inst,D_master_undefined_inst,3'b0},E_master_except);
 flopenrc #(1 ) DFF_E_master_cp0write    (clk,rst,M_except|(!D_master_is_in_delayslot & E_flush) | (!D_ena & E_ena),E_ena,D_master_cp0write     ,E_master_cp0write   );
@@ -502,6 +504,7 @@ flopenrc #(64) DFF_M_master_alu_out64  (clk,rst,M_flush,M_ena,E_master_alu_out64
 flopenrc #(1 ) DFF_M_master_memtoReg   (clk,rst,M_flush,M_ena,E_master_memtoReg   ,M_master_memtoReg   );
 flopenrc #(1 ) DFF_M_master_reg_wen    (clk,rst,M_flush,M_ena,E_master_reg_wen    ,M_master_reg_wen    );
 flopenrc #(5 ) DFF_M_master_reg_waddr  (clk,rst,M_flush,M_ena,E_master_reg_waddr  ,M_master_reg_waddr  );
+flopenrc #(5 ) DFF_M_master_rd         (clk,rst,M_flush,M_ena,E_master_rd         ,M_master_rd         );
 flopenrc #(8 ) DFF_M_master_except     (clk,rst,M_flush,M_ena,{E_master_except[7:3],E_master_overflow,E_master_except[1:0]},M_master_except);
 flopenrc #(4 ) DFF_M_master_cp0write    (clk,rst,M_flush,M_ena,E_master_cp0write   ,M_master_cp0write   );
 flopenrc #(4 ) DFF_M_master_is_in_delayslot  (clk,rst,M_flush,M_ena,E_master_is_in_delayslot ,M_master_is_in_delayslot);
@@ -538,7 +541,7 @@ hilo_reg u_hilo_reg(
 	//ports
 	.clk    		( clk    		   ),
 	.rst    		( rst    		   ),
-    .we     		( M_master_hilowrite & ~M_except & M_ena),
+    .we     		( M_master_hilowrite & ~M_except & M_ena), // 写的时候没有异常，无阻塞
 	.hilo_i 		( M_master_alu_out64),
 	.hilo   		( hilo   	       )
 );
@@ -577,8 +580,10 @@ cp0_reg u_cp0_reg(
     .clk                    ( clk                        ),
     .rst                    ( rst                        ),
     .we_i                   ( M_master_cp0write  & M_ena ),  // 只有master访问cp0_reg,
-	.waddr_i                ( M_master_reg_waddr         ),  // M阶段写入CP0 // TODO: 需要改为wb阶段写寄存器吗？如果不前推访存的rt_value的话
-	.raddr_i                ( E_master_reg_waddr         ),  // E阶段读取CP0，这两步可以避免数据冒险处理 ==> 这个的E_master_reg_waddr默认是rd
+	// MTCP0 CP0[rd, sel] ← GPR[rt] 
+    .waddr_i                ( M_master_rd         ),  // M阶段写入CP0 // TODO: 需要改为wb阶段写寄存器吗？如果不前推访存的rt_value的话 
+	// MFCP0 GPR[rt] ← CP0[rd, sel] 写寄存器
+    .raddr_i                ( E_master_rd         ),  // E阶段读取CP0，这两步可以避免数据冒险处理 ==> 这个的E_master_reg_waddr默认是rd
 	.data_i                 ( M_master_rt_value          ),
 	.int_i                  ( ext_int                    ),
 	.excepttype_i           ( M_excepttype               ),

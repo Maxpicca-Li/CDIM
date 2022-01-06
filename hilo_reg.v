@@ -10,7 +10,7 @@ module hilo_reg(
 	output reg[63:0] hilo  // hilo current data
     );
 	
-	always @(negedge clk) begin
+	always @(posedge clk) begin
 		if(rst) begin
 			// hi_o <= `ZeroWord;
 			// lo_o <= `ZeroWord;
