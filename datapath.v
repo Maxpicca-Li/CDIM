@@ -375,24 +375,24 @@ issue_ctrl u_issue_ctrl(
 
 
 // XXX ====================================== Execute ======================================
-flopenrc #(32) DFF_E_master_inst        (clk,rst,M_except|(!D_master_is_in_delayslot & E_flush),E_ena,D_master_inst        ,E_master_inst        );
-flopenrc #(5 ) DFF_E_master_shamt       (clk,rst,M_except|(!D_master_is_in_delayslot & E_flush),E_ena,D_master_shamt       ,E_master_shamt       );
-flopenrc #(32) DFF_E_master_rs_value    (clk,rst,M_except|(!D_master_is_in_delayslot & E_flush),E_ena,D_master_rs_value    ,E_master_rs_value    );
-flopenrc #(32) DFF_E_master_rt_value    (clk,rst,M_except|(!D_master_is_in_delayslot & E_flush),E_ena,D_master_rt_value    ,E_master_rt_value    );
-flopenrc #(32) DFF_E_master_imm_value   (clk,rst,M_except|(!D_master_is_in_delayslot & E_flush),E_ena,D_master_imm_value   ,E_master_imm_value   );
-flopenrc #(8 ) DFF_E_master_aluop       (clk,rst,M_except|(!D_master_is_in_delayslot & E_flush),E_ena,D_master_aluop       ,E_master_aluop       );
-flopenrc #(1 ) DFF_E_master_alu_sela    (clk,rst,M_except|(!D_master_is_in_delayslot & E_flush),E_ena,D_master_alu_sela    ,E_master_alu_sela    );
-flopenrc #(1 ) DFF_E_master_alu_selb    (clk,rst,M_except|(!D_master_is_in_delayslot & E_flush),E_ena,D_master_alu_selb    ,E_master_alu_selb    );
-flopenrc #(26) DFF_E_master_j_target    (clk,rst,M_except|(!D_master_is_in_delayslot & E_flush),E_ena,D_master_j_target    ,E_master_j_target    );
-flopenrc #(32) DFF_E_master_pc          (clk,rst,M_except|(!D_master_is_in_delayslot & E_flush),E_ena,D_master_pc          ,E_master_pc          );
-flopenrc #(1 ) DFF_E_master_is_link_pc8 (clk,rst,M_except|(!D_master_is_in_delayslot & E_flush),E_ena,D_master_is_link_pc8 ,E_master_is_link_pc8 );
-flopenrc #(1 ) DFF_E_master_mem_en      (clk,rst,M_except|(!D_master_is_in_delayslot & E_flush),E_ena,D_master_mem_en      ,E_master_mem_en      );
-flopenrc #(1 ) DFF_E_master_hilowrite   (clk,rst,M_except|(!D_master_is_in_delayslot & E_flush),E_ena,D_master_hilowrite   ,E_master_hilowrite   );
-flopenrc #(6 ) DFF_E_master_op          (clk,rst,M_except|(!D_master_is_in_delayslot & E_flush),E_ena,D_master_op          ,E_master_op          );
-flopenrc #(1 ) DFF_E_master_memtoReg    (clk,rst,M_except|(!D_master_is_in_delayslot & E_flush),E_ena,D_master_memtoReg    ,E_master_memtoReg    );
-flopenrc #(1 ) DFF_E_master_reg_wen     (clk,rst,M_except|(!D_master_is_in_delayslot & E_flush),E_ena,D_master_reg_wen     ,E_master_reg_wen     );
-flopenrc #(5 ) DFF_E_master_reg_waddr   (clk,rst,M_except|(!D_master_is_in_delayslot & E_flush),E_ena,D_master_reg_waddr   ,E_master_reg_waddr   );
-flopenrc #(4 ) DFF_E_master_branch_type (clk,rst,M_except|(!D_master_is_in_delayslot & E_flush),E_ena,D_master_branch_type ,E_master_branch_type );
+flopenrc #(32) DFF_E_master_inst        (clk,rst,M_except|(!D_master_is_in_delayslot & E_flush) | (!D_ena & E_ena),E_ena,D_master_inst        ,E_master_inst        );
+flopenrc #(5 ) DFF_E_master_shamt       (clk,rst,M_except|(!D_master_is_in_delayslot & E_flush) | (!D_ena & E_ena),E_ena,D_master_shamt       ,E_master_shamt       );
+flopenrc #(32) DFF_E_master_rs_value    (clk,rst,M_except|(!D_master_is_in_delayslot & E_flush) | (!D_ena & E_ena),E_ena,D_master_rs_value    ,E_master_rs_value    );
+flopenrc #(32) DFF_E_master_rt_value    (clk,rst,M_except|(!D_master_is_in_delayslot & E_flush) | (!D_ena & E_ena),E_ena,D_master_rt_value    ,E_master_rt_value    );
+flopenrc #(32) DFF_E_master_imm_value   (clk,rst,M_except|(!D_master_is_in_delayslot & E_flush) | (!D_ena & E_ena),E_ena,D_master_imm_value   ,E_master_imm_value   );
+flopenrc #(8 ) DFF_E_master_aluop       (clk,rst,M_except|(!D_master_is_in_delayslot & E_flush) | (!D_ena & E_ena),E_ena,D_master_aluop       ,E_master_aluop       );
+flopenrc #(1 ) DFF_E_master_alu_sela    (clk,rst,M_except|(!D_master_is_in_delayslot & E_flush) | (!D_ena & E_ena),E_ena,D_master_alu_sela    ,E_master_alu_sela    );
+flopenrc #(1 ) DFF_E_master_alu_selb    (clk,rst,M_except|(!D_master_is_in_delayslot & E_flush) | (!D_ena & E_ena),E_ena,D_master_alu_selb    ,E_master_alu_selb    );
+flopenrc #(26) DFF_E_master_j_target    (clk,rst,M_except|(!D_master_is_in_delayslot & E_flush) | (!D_ena & E_ena),E_ena,D_master_j_target    ,E_master_j_target    );
+flopenrc #(32) DFF_E_master_pc          (clk,rst,M_except|(!D_master_is_in_delayslot & E_flush) | (!D_ena & E_ena),E_ena,D_master_pc          ,E_master_pc          );
+flopenrc #(1 ) DFF_E_master_is_link_pc8 (clk,rst,M_except|(!D_master_is_in_delayslot & E_flush) | (!D_ena & E_ena),E_ena,D_master_is_link_pc8 ,E_master_is_link_pc8 );
+flopenrc #(1 ) DFF_E_master_mem_en      (clk,rst,M_except|(!D_master_is_in_delayslot & E_flush) | (!D_ena & E_ena),E_ena,D_master_mem_en      ,E_master_mem_en      );
+flopenrc #(1 ) DFF_E_master_hilowrite   (clk,rst,M_except|(!D_master_is_in_delayslot & E_flush) | (!D_ena & E_ena),E_ena,D_master_hilowrite   ,E_master_hilowrite   );
+flopenrc #(6 ) DFF_E_master_op          (clk,rst,M_except|(!D_master_is_in_delayslot & E_flush) | (!D_ena & E_ena),E_ena,D_master_op          ,E_master_op          );
+flopenrc #(1 ) DFF_E_master_memtoReg    (clk,rst,M_except|(!D_master_is_in_delayslot & E_flush) | (!D_ena & E_ena),E_ena,D_master_memtoReg    ,E_master_memtoReg    );
+flopenrc #(1 ) DFF_E_master_reg_wen     (clk,rst,M_except|(!D_master_is_in_delayslot & E_flush) | (!D_ena & E_ena),E_ena,D_master_reg_wen     ,E_master_reg_wen     );
+flopenrc #(5 ) DFF_E_master_reg_waddr   (clk,rst,M_except|(!D_master_is_in_delayslot & E_flush) | (!D_ena & E_ena),E_ena,D_master_reg_waddr   ,E_master_reg_waddr   );
+flopenrc #(4 ) DFF_E_master_branch_type (clk,rst,M_except|(!D_master_is_in_delayslot & E_flush) | (!D_ena & E_ena),E_ena,D_master_branch_type ,E_master_branch_type );
 
 flopenrc #(32) DFF_E_slave_inst        (clk,rst,E_flush || (E_ena & !slave_ena),slave_ena,D_slave_inst        ,E_slave_inst        );
 flopenrc #(5 ) DFF_E_slave_shamt       (clk,rst,E_flush || (E_ena & !slave_ena),slave_ena,D_slave_shamt       ,E_slave_shamt       );
@@ -429,6 +429,7 @@ assign E_master_alu_srca =  E_master_alu_sela ? {{27{1'b0}},E_master_shamt} :
                             E_master_rs_value;
 assign E_slave_alu_srca  =  E_slave_alu_sela  ? {{27{1'b0}},E_slave_shamt} : 
                             E_slave_rs_value ;                            
+// TODO 提频:为访存指令加base+offset单独设置一个加法器
 assign E_master_alu_srcb =  E_master_alu_selb ? E_master_imm_value :
                             E_master_rt_value;
 assign E_slave_alu_srcb  =  E_slave_alu_selb  ? E_slave_imm_value :
