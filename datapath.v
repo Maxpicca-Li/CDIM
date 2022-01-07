@@ -177,6 +177,7 @@ wire [31:0]     W_master_alu_res  ,W_slave_alu_res  ;
 wire            W_master_reg_wen  ,W_slave_reg_wen  ;
 wire [ 4:0]     W_master_reg_waddr,W_slave_reg_waddr;
 wire [31:0]     W_master_reg_wdata,W_slave_reg_wdata;
+wire [ 7:0]     W_master_except   , W_slave_except  ;
 wire [63:0]     W_master_alu_out64;
 wire            W_master_hilowrite;
 
@@ -334,7 +335,7 @@ regfile u_regfile(
     .rd1_a 		( D_master_rs_data ),
     .ra1_b 		( D_master_rt 		),
     .rd1_b 		( D_master_rt_data 		),
-    .wen1  		( W_master_reg_wen & W_ena),
+    .wen1  		( W_master_reg_wen & W_ena & ~(|W_master_except)), // 跟踪异常，该指令出现异常，则不写
     .wa1   		( W_master_reg_waddr ),
     .wd1   		( W_master_reg_wdata ),
     
@@ -342,7 +343,7 @@ regfile u_regfile(
     .rd2_a 		( D_slave_rs_data 		),
     .ra2_b 		( D_slave_rt 		),
     .rd2_b 		( D_slave_rt_data 		),
-    .wen2  		( W_slave_reg_wen & W_ena ),
+    .wen2  		( W_slave_reg_wen & W_ena & ~(|W_slave_except)),
     .wa2   		( W_slave_reg_waddr   		),
     .wd2   		( W_slave_reg_wdata   		)
 );
@@ -628,12 +629,14 @@ flopenrc #(1 ) DFF_W_master_hilowrite  (clk,rst,W_flush,W_ena,M_master_hilowrite
 flopenrc #(1 ) DFF_W_master_reg_wen    (clk,rst,W_flush,W_ena,M_master_reg_wen     ,W_master_reg_wen     );
 flopenrc #(1 ) DFF_W_master_memtoReg   (clk,rst,W_flush,W_ena,M_master_memtoReg    ,W_master_memtoReg    );
 flopenrc #(5 ) DFF_W_master_reg_waddr  (clk,rst,W_flush,W_ena,M_master_reg_waddr   ,W_master_reg_waddr   );
+flopenrc #(7 ) DFF_W_master_except     (clk,rst,W_flush,W_ena,M_master_except      ,W_master_except      );
 
 flopenrc #(32) DFF_W_slave_inst      (clk,rst,W_flush,W_ena,M_slave_inst      ,W_slave_inst      );
 flopenrc #(32) DFF_W_slave_pc        (clk,rst,W_flush,W_ena,M_slave_pc        ,W_slave_pc        );
 flopenrc #(32) DFF_W_slave_alu_res   (clk,rst,W_flush,W_ena,M_slave_alu_res   ,W_slave_alu_res   );
 flopenrc #(1 ) DFF_W_slave_reg_wen   (clk,rst,W_flush,W_ena,M_slave_reg_wen   ,W_slave_reg_wen   );
 flopenrc #(5 ) DFF_W_slave_reg_waddr (clk,rst,W_flush,W_ena,M_slave_reg_waddr ,W_slave_reg_waddr );
+flopenrc #(7 ) DFF_W_slave_except    (clk,rst,W_flush,W_ena,M_slave_except    ,W_slave_except    );
 
 assign W_master_reg_wdata = W_master_memtoReg ? W_master_mem_rdata : W_master_alu_res;
 assign W_slave_reg_wdata = W_slave_alu_res;
