@@ -177,9 +177,12 @@ wire [31:0]     W_master_alu_res  ,W_slave_alu_res  ;
 wire            W_master_reg_wen  ,W_slave_reg_wen  ;
 wire [ 4:0]     W_master_reg_waddr,W_slave_reg_waddr;
 wire [31:0]     W_master_reg_wdata,W_slave_reg_wdata;
+wire [63:0]     W_master_alu_out64;
+wire            W_master_hilowrite;
 
 
 // TODO 异常数据从上至下传递
+// _except = [7pc_exp, 6syscall, 5break, 4eret, 3undefined, 2overflow, 2'b00]
 assign D_master_is_pc_except  = (D_master_pc[1:0] == 2'b00) ? 1'b0 : 1'b1;
 assign D_slave_is_pc_except  = (D_slave_pc[1:0] == 2'b00) ? 1'b0 : 1'b1;
 
@@ -215,7 +218,7 @@ pc_reg u_pc_reg(
     //ports
     .clk           		( clk           		),
     .rst           		( rst                   ),
-    .pc_en         		( F_ena         		),
+    .pc_en         		( F_ena | M_except         		), // 异常的优先级最高，必须使能
     .inst_data_ok1 		( inst_data_ok1 		),
     .inst_data_ok2 		( inst_data_ok2 		),
     .fifo_full     		( fifo_full     		), // fifo_full pc不变
@@ -469,7 +472,7 @@ assign E_slave_alu_srcb  =  E_slave_alu_selb  ? E_slave_imm_value :
 alu_master u_alu_master(
     //ports
     .clk       		( clk       		),
-    .rst       		( rst       		),
+    .rst       		( rst | M_except      		),
     .aluop     		( E_master_aluop    ),
     .a         		( E_master_alu_srca ),
     .b         		( E_master_alu_srcb ),
@@ -539,12 +542,25 @@ mem_access u_mem_access(
 // hilo到M阶段处理，W阶段写完
 hilo_reg u_hilo_reg(
 	//ports
-	.clk    		( clk    		   ),
-	.rst    		( rst    		   ),
-    .we     		( M_master_hilowrite & ~M_except & M_ena), // 写的时候没有异常，无阻塞
-	.hilo_i 		( M_master_alu_out64),
-	.hilo   		( hilo   	       )
+	.clk    		( clk    		),
+	.rst    		( rst    		),
+	.M_we   		( M_master_hilowrite & M_ena & ~M_except),
+    .W_we   		( W_master_hilowrite & W_ena ), // W_flush没有单独因为M_except而置1
+	.M_hilo 		( M_master_alu_out64 		),
+    .W_hilo 		( W_master_alu_out64 		),
+	
+	.hilo_o 		( hilo 		)
 );
+
+// hilo_reg u_hilo_reg(
+// 	//ports
+// 	.clk    		( clk    		),
+// 	.rst    		( rst    		),
+// 	.we     		( M_master_hilowrite & M_ena & ~M_except     		),
+// 	.hilo_i 		( M_master_alu_out64 		),
+// 	.hilo   		( hilo   		)
+// );
+
 
 
 // TODO exception
@@ -607,6 +623,8 @@ flopenrc #(32) DFF_W_master_inst       (clk,rst,W_flush,W_ena,M_master_inst     
 flopenrc #(32) DFF_W_master_pc         (clk,rst,W_flush,W_ena,M_master_pc          ,W_master_pc          );
 flopenrc #(32) DFF_W_master_alu_res    (clk,rst,W_flush,W_ena,M_master_alu_res     ,W_master_alu_res     );
 flopenrc #(32) DFF_W_master_mem_rdata  (clk,rst,W_flush,W_ena,M_master_mem_rdata   ,W_master_mem_rdata   );
+flopenrc #(64) DFF_W_master_alu_out64  (clk,rst,W_flush,W_ena,M_master_alu_out64   ,W_master_alu_out64   );
+flopenrc #(1 ) DFF_W_master_hilowrite  (clk,rst,W_flush,W_ena,M_master_hilowrite   ,W_master_hilowrite   );
 flopenrc #(1 ) DFF_W_master_reg_wen    (clk,rst,W_flush,W_ena,M_master_reg_wen     ,W_master_reg_wen     );
 flopenrc #(1 ) DFF_W_master_memtoReg   (clk,rst,W_flush,W_ena,M_master_memtoReg    ,W_master_memtoReg    );
 flopenrc #(5 ) DFF_W_master_reg_waddr  (clk,rst,W_flush,W_ena,M_master_reg_waddr   ,W_master_reg_waddr   );
