@@ -43,7 +43,8 @@ module hazard (
     assign D_ena = ~(lwstall | E_div_stall);
     assign E_ena = ~E_div_stall;
     assign M_ena = ~E_div_stall;
-    assign W_ena = ~E_div_stall;
+    // FIXME: M阶段异常不影响W阶段 ==> 该逻辑根据波形图硬改的
+    assign W_ena = ~E_div_stall | (E_div_stall & M_except);
 
     assign F_flush = 1'b0;
     assign D_flush = M_except | E_branch_taken;

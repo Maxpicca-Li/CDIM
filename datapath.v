@@ -37,13 +37,11 @@ wire        	fifo_full;
 wire            E_div_stall;
 wire [63:0] 	hilo;
 wire [31:0]     cp0_data;
-wire        	M_ades;
-wire        	M_adel;
 wire [31:0] 	M_bad_addr;
 wire            M_except;
 wire [31:0]     M_excepttype;
 wire [31:0]     M_except_inst_addr;
-wire [31:0]     M_except_in_delayslot;
+wire            M_except_in_delayslot;
 wire [31:0]     M_pc_except_target;
 wire  	F_ena;
 wire  	D_ena;
@@ -183,7 +181,7 @@ wire            W_master_hilowrite;
 
 
 // TODO 异常数据从上至下传递
-// _except = [7pc_exp, 6syscall, 5break, 4eret, 3undefined, 2overflow, 2'b00]
+// _except = [7pc_exp, 6syscall, 5break, 4eret, 3undefined, 2overflow, 1adel, 0ades]
 assign D_master_is_pc_except  = (D_master_pc[1:0] == 2'b00) ? 1'b0 : 1'b1;
 assign D_slave_is_pc_except  = (D_slave_pc[1:0] == 2'b00) ? 1'b0 : 1'b1;
 
@@ -442,7 +440,7 @@ flopenrc #(1 ) DFF_E_slave_alu_selb    (clk,rst,E_flush || (E_ena & !slave_ena),
 flopenrc #(1 ) DFF_E_slave_is_link_pc8 (clk,rst,E_flush || (E_ena & !slave_ena),slave_ena,D_slave_is_link_pc8 ,E_slave_is_link_pc8 );
 flopenrc #(1 ) DFF_E_slave_memtoReg    (clk,rst,E_flush || (E_ena & !slave_ena),slave_ena,D_slave_memtoReg    ,E_slave_memtoReg    );
 flopenrc #(8 ) DFF_E_slave_except      (clk,rst,E_flush || (E_ena & !slave_ena),slave_ena,{D_slave_is_pc_except,D_slave_syscall_inst,D_slave_break_inst,D_slave_eret_inst,D_slave_undefined_inst,3'b0},E_slave_except);
-flopenrc #(4 ) DFF_E_slave_cp0write    (clk,rst,E_flush || (E_ena & !slave_ena),slave_ena,D_slave_cp0write    ,E_slave_cp0write    );
+flopenrc #(1 ) DFF_E_slave_cp0write    (clk,rst,E_flush || (E_ena & !slave_ena),slave_ena,D_slave_cp0write    ,E_slave_cp0write    );
 flopenrc #(1 ) DFF_E_slave_is_in_delayslot (clk,rst,E_flush || (E_ena & !slave_ena),slave_ena,D_slave_is_in_delayslot,E_slave_is_in_delayslot);
 
 branch_judge u_branch_judge(
@@ -497,6 +495,7 @@ alu_slave u_alu_slave(
 assign E_master_alu_res = E_master_is_link_pc8 ? (E_master_pc + 32'd8) : E_master_alu_res_a;
 
 // XXX ====================================== Memory ======================================
+wire [7:0]  M_master_except_a;
 flopenrc #(32) DFF_M_master_inst       (clk,rst,M_flush,M_ena,E_master_inst       ,M_master_inst       );
 flopenrc #(1 ) DFF_M_master_mem_en     (clk,rst,M_flush,M_ena,E_master_mem_en     ,M_master_mem_en     );
 flopenrc #(1 ) DFF_M_master_hilowrite  (clk,rst,M_flush,M_ena,E_master_hilowrite  ,M_master_hilowrite  );
@@ -509,9 +508,9 @@ flopenrc #(1 ) DFF_M_master_memtoReg   (clk,rst,M_flush,M_ena,E_master_memtoReg 
 flopenrc #(1 ) DFF_M_master_reg_wen    (clk,rst,M_flush,M_ena,E_master_reg_wen    ,M_master_reg_wen    );
 flopenrc #(5 ) DFF_M_master_reg_waddr  (clk,rst,M_flush,M_ena,E_master_reg_waddr  ,M_master_reg_waddr  );
 flopenrc #(5 ) DFF_M_master_rd         (clk,rst,M_flush,M_ena,E_master_rd         ,M_master_rd         );
-flopenrc #(8 ) DFF_M_master_except     (clk,rst,M_flush,M_ena,{E_master_except[7:3],E_master_overflow,E_master_except[1:0]},M_master_except);
-flopenrc #(4 ) DFF_M_master_cp0write    (clk,rst,M_flush,M_ena,E_master_cp0write   ,M_master_cp0write   );
-flopenrc #(4 ) DFF_M_master_is_in_delayslot  (clk,rst,M_flush,M_ena,E_master_is_in_delayslot ,M_master_is_in_delayslot);
+flopenrc #(8 ) DFF_M_master_except_a   (clk,rst,M_flush,M_ena,{E_master_except[7:3],E_master_overflow,E_master_except[1:0]},M_master_except_a);
+flopenrc #(1 ) DFF_M_master_cp0write    (clk,rst,M_flush,M_ena,E_master_cp0write   ,M_master_cp0write   );
+flopenrc #(1 ) DFF_M_master_is_in_delayslot  (clk,rst,M_flush,M_ena,E_master_is_in_delayslot ,M_master_is_in_delayslot);
 
 flopenrc #(32) DFF_M_slave_pc          (clk,rst,M_flush,M_ena,E_slave_pc          ,M_slave_pc          );
 flopenrc #(32) DFF_M_slave_inst        (clk,rst,M_flush,M_ena,E_slave_inst        ,M_slave_inst        );
@@ -520,9 +519,10 @@ flopenrc #(5 ) DFF_M_slave_reg_waddr   (clk,rst,M_flush,M_ena,E_slave_reg_waddr 
 flopenrc #(32) DFF_M_slave_alu_res     (clk,rst,M_flush,M_ena,E_slave_alu_res     ,M_slave_alu_res     );
 flopenrc #(1 ) DFF_M_slave_memtoReg    (clk,rst,M_flush,M_ena,E_slave_memtoReg    ,M_slave_memtoReg    );
 flopenrc #(8 ) DFF_M_slave_except      (clk,rst,M_flush,M_ena,{E_slave_except[7:3],E_slave_overflow,E_slave_except[1:0]},M_slave_except);
-flopenrc #(4 ) DFF_M_slave_cp0write    (clk,rst,M_flush,M_ena,E_slave_cp0write    ,M_slave_cp0write    );
-flopenrc #(4 ) DFF_M_slave_is_in_delayslot  (clk,rst,M_flush,M_ena,E_slave_is_in_delayslot ,M_slave_is_in_delayslot);
+flopenrc #(1 ) DFF_M_slave_cp0write    (clk,rst,M_flush,M_ena,E_slave_cp0write    ,M_slave_cp0write    );
+flopenrc #(1 ) DFF_M_slave_is_in_delayslot  (clk,rst,M_flush,M_ena,E_slave_is_in_delayslot ,M_slave_is_in_delayslot);
 
+// TODO
 mem_access u_mem_access(
     //ports
     .opM             		( M_master_op           ),
@@ -535,10 +535,11 @@ mem_access u_mem_access(
     .data_sram_wen   		( data_sram_wen   		),
     .data_sram_addr 		( data_sram_addr 		),
     .data_sram_wdata 		( data_sram_wdata 		),
-    .ades           		( M_ades           		),
-    .adel           		( M_adel           		),
-    .bad_addr        		( M_bad_addr        	)
+    // 异常处理
+    .M_master_except_a      ( M_master_except_a     ),
+    .M_master_except        ( M_master_except       )
 );
+
 
 // hilo到M阶段处理，W阶段写完
 hilo_reg u_hilo_reg(
@@ -571,10 +572,9 @@ exception u_exp(
     .rst            ( rst            ),
     .master_except  ( M_master_except),
     .master_pc      ( M_master_pc    ),
+    .master_daddr   ( M_master_alu_res ), // 虚地址
     .slave_except   ( M_slave_except ),
     .slave_pc       ( M_slave_pc     ),
-    .adel           ( M_adel         ),
-    .ades           ( M_ades         ),
     .cp0_status     ( cp0_status      ),
     .cp0_cause      ( cp0_cause       ),
     .cp0_epc        ( cp0_epc         ),
@@ -584,6 +584,7 @@ exception u_exp(
     .except_inst_addr   ( M_except_inst_addr),
     .except_in_delayslot( M_except_in_delayslot),
     .except_target      ( M_pc_except_target),
+    .except_bad_addr    ( M_bad_addr        ),
     .excepttype         ( M_excepttype   )
  
 // M_slave_except 

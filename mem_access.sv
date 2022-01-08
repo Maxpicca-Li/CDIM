@@ -13,9 +13,13 @@ module mem_access (
         output logic [31:0] data_sram_addr,
         output logic [31:0] data_sram_wdata,
 
-        output logic ades, adel,
-        output logic [31:0] bad_addr
+        // 异常处理
+        input        [ 7:0] M_master_except_a,
+        output logic [ 7:0] M_master_except
     );
+
+    logic  ades, adel;
+    assign M_master_except = {M_master_except_a[7:2],adel,ades};
 
     assign data_sram_en    = mem_en;
     assign data_sram_addr = (mem_addr[31:28] == 4'hB) ? {4'h1, mem_addr[27:0]} :
@@ -23,7 +27,6 @@ module mem_access (
                               mem_addr;
                 
     always_comb begin:mem_access_transform
-        bad_addr = 32'b0; // 出错的内存地址
         ades = 1'b0; // 写指令地址错例外
         adel = 1'b0; // 读指令地址错例外
         case(opM)
@@ -31,7 +34,6 @@ module mem_access (
                 data_sram_wen = 4'b0000;
                 if(mem_addr[1:0] != 2'b00) begin
                     adel = 1'b1;
-                    bad_addr = mem_addr;
                 end
                 else begin
                     mem_rdata = data_sram_rdata;
@@ -67,7 +69,6 @@ module mem_access (
                 data_sram_wen = 4'b0000;
                 if(mem_addr[0] != 1'b0) begin
                     adel = 1'b1;
-                    bad_addr = mem_addr;
                 end
                 else begin
                     case(mem_addr[1])
@@ -82,7 +83,6 @@ module mem_access (
                 data_sram_wen = 4'b0000;
                 if(mem_addr[0] != 1'b0) begin
                     adel = 1'b1;
-                    bad_addr = mem_addr;
                 end
                 else begin
                     case(mem_addr[1])
@@ -96,7 +96,6 @@ module mem_access (
             `OP_SW: begin
                 if(mem_addr[1:0] != 2'b00) begin
                     ades = 1'b1;
-                    bad_addr = mem_addr;
                     data_sram_wen = 4'b0000;
                 end
                 else begin
@@ -107,7 +106,6 @@ module mem_access (
             `OP_SH: begin
                 if(mem_addr[0] != 1'b0) begin
                     ades = 1'b1;
-                    bad_addr = mem_addr;
                     data_sram_wen = 4'b0000;
                 end
                 else begin
