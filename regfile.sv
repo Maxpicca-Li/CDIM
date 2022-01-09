@@ -1,6 +1,6 @@
 `timescale 1ns / 1ps
 
-// NOTE: slave流水线处于更高的优先级，因为slave更接近下一条指令
+// 写回前推，参考
 module regfile(
     input                       clk,
     input                       rst,
@@ -28,7 +28,8 @@ module regfile(
 
     reg [31:0] rf[31:0];
 
-    // set read data
+    
+    // slave流水线处于更高的优先级，因为slave更接近下一条指令，故先前推slave
     assign rd1_a = (ra1_a == 5'b00000)     ? 32'h0000_0000 : 
                     (wen2 && wa2 == ra1_a) ? wd2 :
                     (wen1 && wa1 == ra1_a) ? wd1 :
@@ -46,10 +47,8 @@ module regfile(
                     (wen1 && wa1 == ra2_b) ? wd1 :
                     rf[ra2_b];
 
-    // FIXME 想法：可以从这里引出debugme的线
-    // FIXME inst_ram是clk，这里是negedge clk
-    always_ff @(posedge clk) begin : write_data
-    // always_ff @(negedge clk) begin : write_data
+    // always_ff @(negedge clk) begin : write_data  // lab4
+    always_ff @(posedge clk) begin : write_data     // sram_func
         if(rst) begin
             for(int i = 0; i < 31; i++)
                 rf[i] <= 32'hxxxxxxxx;

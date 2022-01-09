@@ -13,8 +13,7 @@ module branch_judge(
         output logic [31:0] pc_branch_address
 
     );
-    // TODO: optmize==> which quiker: unique case? assign? if-elseif-else?
-    // unique case: need decode branch_type in ID
+
     always_comb begin :branch_compute
         if(branch_type == `BT_BEQ && rs_data==rt_data) begin
             branch_taken = 1'b1;

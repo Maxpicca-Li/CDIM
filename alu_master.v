@@ -118,7 +118,6 @@ module alu_master(
             `ALUOP_MFHI: y <= hilo[63:32];
             `ALUOP_MFLO: y <= hilo[31:0];
             `ALUOP_MFC0: y <= cp0_data;
-            // FIXME `ALUOP_MTC0: y <= cp0_addr;
             default      : y <= 32'b0;
         endcase
     end

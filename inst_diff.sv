@@ -13,7 +13,6 @@ module inst_diff(
     output logic [31:0] inst_sram_addr
 );
     
-    // FIXME 这里是否需要时许逻辑，检测clk下降沿
     assign inst_sram_addr = {pc_fetch[31:3],3'b000};
     assign inst_data_ok = inst_sram_en;
     assign inst_data_ok1 = inst_sram_en;

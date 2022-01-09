@@ -28,11 +28,11 @@ module pc_reg (
     end
 
     always_comb begin : compute_pc_next
-        if (is_except) 
+        if (is_except) // 异常跳转
             pc_next = except_addr;
-        else if(branch_taken) 
+        else if(branch_taken) // 分支跳转
             pc_next = branch_addr;
-        else if(fifo_full)
+        else if(fifo_full) // full保持
             pc_next = pc_curr;
         else if(inst_data_ok1 && inst_data_ok2)
             pc_next = pc_curr + 32'd8;

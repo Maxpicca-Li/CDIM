@@ -27,44 +27,39 @@ module mycpu_top(
     wire inst_data_ok;
     wire inst_data_ok1;
     wire inst_data_ok2;
-    wire i_stall;
-    wire d_stall;
-
-    assign i_stall = 1'b0;
-    assign d_stall = 1'b0;
     
     // cpu master
-datapath u_datapath(
-	//ports
-	.clk              		( ~clk              	),
-	.rst              		( ~resetn        		), // to high active
-	.ext_int          		( int          		),
-	.inst_data_ok    		( inst_data_ok    		),
-    .inst_data_ok1    		( inst_data_ok1    		),
-	.inst_data_ok2    		( inst_data_ok2    		),
-	.inst_rdata1      		( inst_rdata1      		),
-	.inst_rdata2      		( inst_rdata2      		),
-	.inst_sram_en     		( inst_sram_en     		),
-	.F_pc             		( pc_fetch   		),
-	.data_sram_en   		( data_sram_en    		),
-	.data_sram_wen  		( data_sram_wen   		),
-	.data_sram_addr 		( data_sram_addr 		),
-    .data_sram_rdata		( data_sram_rdata 		),
-	.data_sram_wdata		( data_sram_wdata 		)
-);
+    datapath u_datapath(
+        //ports
+        .clk              		( ~clk              	),
+        .rst              		( ~resetn        		), // to high active
+        .ext_int          		( int          		),
+        .inst_data_ok    		( inst_data_ok    		),
+        .inst_data_ok1    		( inst_data_ok1    		),
+        .inst_data_ok2    		( inst_data_ok2    		),
+        .inst_rdata1      		( inst_rdata1      		),
+        .inst_rdata2      		( inst_rdata2      		),
+        .inst_sram_en     		( inst_sram_en     		),
+        .F_pc             		( pc_fetch   		),
+        .data_sram_en   		( data_sram_en    		),
+        .data_sram_wen  		( data_sram_wen   		),
+        .data_sram_addr 		( data_sram_addr 		),
+        .data_sram_rdata		( data_sram_rdata 		),
+        .data_sram_wdata		( data_sram_wdata 		)
+    );
 
-inst_diff u_inst_diff(
-	//ports
-	.inst_sram_en    		( inst_sram_en    		),
-	.pc_fetch        		( pc_fetch        		),
-	.inst_data_ok    		( inst_data_ok    		),
-	.inst_data_ok1   		( inst_data_ok1   		),
-	.inst_data_ok2   		( inst_data_ok2   		),
-	.inst_rdata1     		( inst_rdata1     		),
-	.inst_rdata2     		( inst_rdata2     		),
-	.inst_sram_rdata 		( inst_sram_rdata 		),
-	.inst_sram_addr  		( inst_sram_addr  		)
-);
+    inst_diff u_inst_diff(
+        //ports
+        .inst_sram_en    		( inst_sram_en    		),
+        .pc_fetch        		( pc_fetch        		),
+        .inst_data_ok    		( inst_data_ok    		),
+        .inst_data_ok1   		( inst_data_ok1   		),
+        .inst_data_ok2   		( inst_data_ok2   		),
+        .inst_rdata1     		( inst_rdata1     		),
+        .inst_rdata2     		( inst_rdata2     		),
+        .inst_sram_rdata 		( inst_sram_rdata 		),
+        .inst_sram_addr  		( inst_sram_addr  		)
+    );
 
 
     // instr

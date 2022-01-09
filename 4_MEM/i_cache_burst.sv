@@ -47,7 +47,6 @@ module i_cache_burst (
     wire [INDEX_WIDTH-1:0] index;
     wire [TAG_WIDTH-1:0] tag;
     wire [OFFSET_WIDTH-3:0] blocki;
-    // TODO 需要提供当前的block_num吗？
     assign index = cpu_inst_addr[INDEX_WIDTH + OFFSET_WIDTH - 1 : OFFSET_WIDTH];
     assign tag = cpu_inst_addr[31 : INDEX_WIDTH + OFFSET_WIDTH];
     assign blocki=cpu_inst_addr[OFFSET_WIDTH-1:2];

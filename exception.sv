@@ -17,7 +17,6 @@ module exception(
     output logic [31:0] except_bad_addr    ,
     output logic        except_in_delayslot,
     output logic [31:0] except_target      ,
-    // TODO: excepttype不需要32位表示
     output logic [31:0] excepttype         
 );
 

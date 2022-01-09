@@ -67,7 +67,6 @@ module  decoder(
     assign eret_inst = (instr == 32'b01000010000000000000000000011000);
 
     // signsD = {[21:14]]ALUOP,13mem_en,12cp0write,11hilowrite,10bal,9jr,8jal,7alu_sela,6reg_wen,5regdst,4alu_selb,3branch,2memWrite,1memtoReg,0jump}
-    // FIXME: 简单的指令判断，如syscall_inst，break_inst，spec_inst可以单独写assign判断，减少布线逻辑
     always_comb begin : generate_control_signals
         undefined_inst = 1'b0;
         syscall_inst = 1'b0;

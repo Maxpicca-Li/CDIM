@@ -3,9 +3,8 @@
 `include "defines.vh"
 
 module dec_crtl(
-        // input [31:0]				instr,    这个好像不用都行
         input [5:0]				op,
-        input [4:0]				rs,    // XXX 这里比原来的多加了一个rs
+        input [4:0]				rs,    
         input [4:0]				rt,
         input [4:0]				rd,
         input [5:0]				funct,
