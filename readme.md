@@ -8,3 +8,10 @@
 
 - 2019NSCSCC [name1e5s/Sirius: Asymmetric dual issue in-order microprocessor. (github.com)](https://github.com/name1e5s/Sirius)
 - 2020NSCSCC [SocialistDalao/UltraMIPS_NSCSCC: UltraMIPS SoC composed of dual-issue cpu, pipeline Cache and systematic peripheral. (github.com)](https://github.com/SocialistDalao/UltraMIPS_NSCSCC)
+
+
+
+----
+
+- MIPS CORE → axi接口， **i_stall，d_stall的问题**
+- 可以先尝试一下类sram的接口，分析哈可行度
