@@ -1,27 +1,33 @@
 // 类sram接口 转 类axi接口
-module i_cache_burst (
-    input wire clk, rst,                  
-    // 类sram从方
-    input  wire        cpu_inst_req     , 
-    input  wire        cpu_inst_wr      , 
-    input  wire [1 :0] cpu_inst_size    , 
-    input  wire [31:0] cpu_inst_addr    ,       
-    output wire [63:0] cpu_inst_rdata   , 
-    output wire        cpu_inst_addr_ok , 
-    output wire        cpu_inst_data_ok ,
+module i_cache_burst_sv (
+    input  clk, 
+    input  rst,
+
+    // cpu come
+    input         cpu_inst_req     , 
+    input         cpu_inst_wr      , 
+    input  [31:0] cpu_inst_wdata   ,
+    input  [1 :0] cpu_inst_size    , 
+    input  [31:0] cpu_inst_addr    ,
+    output logic [31:0] cpu_inst_rdata1  , 
+    output logic [31:0] cpu_inst_rdata2  , 
+    output logic        cpu_inst_addr_ok , 
+    output logic        cpu_inst_data_ok,
+    output logic        cpu_inst_data_ok1,
+    output logic        cpu_inst_data_ok2,
 
     // icache 主方
     // 读请求
-    output wire [31:0] araddr       ,
-    output wire [3 :0] arlen        ,
-    output wire [2 :0] arsize       ,
-    output wire        arvalid      ,
-    input  wire        arready      ,
+    output logic [31:0] araddr       ,
+    output logic [3 :0] arlen        ,
+    output logic [2 :0] arsize       ,
+    output logic        arvalid      ,
+    input         arready      ,
     // 读响应
-    input  wire [31:0] rdata        ,
-    input  wire        rlast        ,
-    input  wire        rvalid       ,
-    output wire        rready       
+    input  [31:0] rdata        ,
+    input         rlast        ,
+    input         rvalid       ,
+    output logic        rready       
 );
 
 //Cache配置
@@ -66,10 +72,16 @@ module i_cache_burst (
 
 //读或写
     wire read;
-    assign read  = ~cpu_inst_wr;
+    assign read  = 1'b1;
 
+// 访存事务线
+    reg  read_req;      //一次完整的读事务，从发出读请求到结束;读取内存请求
+    reg  raddr_rcv;      //地址接收成功(addr_ok)后到结束,代表地址已经收到了
+    wire read_one; // 写的每一拍数据成功
+    wire read_finish;   //数据接收成功(data_ok)，即读请求结束
+    
 //FSM
-    parameter IDLE = 2'b00, RM = 2'b01, WM = 2'b11;
+    localparam IDLE = 2'b00, RM = 2'b01, WM = 2'b11;
     reg [1:0] state;
     always @(posedge clk) begin
         if(rst) begin
@@ -83,15 +95,6 @@ module i_cache_burst (
         end
     end
 
-// 访存事务线
-    reg  read_req;      //一次完整的读事务，从发出读请求到结束;读取内存请求
-    reg  raddr_rcv;      //地址接收成功(addr_ok)后到结束,代表地址已经收到了
-    wire read_one; // 写的每一拍数据成功
-    wire read_finish;   //数据接收成功(data_ok)，即读请求结束
-    
-    assign read_one = raddr_rcv && (rvalid && rready);
-    assign read_finish = raddr_rcv && (rvalid && rready && rlast);
-
     always @(posedge clk) begin
         // 读事务
         read_req <= rst ? 1'b0 :
@@ -103,9 +106,14 @@ module i_cache_burst (
                     read_finish ? 1'b0 :raddr_rcv;
     end
     
+    assign read_one = raddr_rcv && (rvalid && rready);
+    assign read_finish = raddr_rcv && (rvalid && rready && rlast);
+
+    
 // 数据对接
 reg [OFFSET_WIDTH-3:0]ri;
 reg [31:0] rdata_blocki;
+reg [31:0] rdata_blockii;
 always @(posedge clk) begin
     ri <= rst ? 1'd0:
           read_finish ? 1'b0:
@@ -114,16 +122,42 @@ always @(posedge clk) begin
     rdata_blocki <= rst ? 32'b0:
                     (read_one && ri==blocki) ? rdata:
                     rdata_blocki;
+    rdata_blockii <= rst ? 32'b0:
+                    (read_one && ri==blocki+3'd1) ? rdata:
+                    rdata_blocki;
 end
+
 
 // CPU接口的输出对接
 wire no_mem;
 assign no_mem = (state==IDLE) && cpu_inst_req & read & hit;
-
-// FIXME: 需要修改字宽 !!!  
-assign cpu_inst_rdata   = no_mem ? cache_block[currused][index][blocki] : rdata_blocki; 
 assign cpu_inst_addr_ok = no_mem | (arvalid && arready);
-assign cpu_inst_data_ok = no_mem | (raddr_rcv && rvalid && rready && rlast);
+
+// [VRFC 10-1280] procedural assignment to a non-register cpu_inst_data_ok1 is not permitted, left-hand side should be reg/integer/time/genvarHDL:undefined(VRFC 10-1280)
+// why? I also hate verilog!
+// okk! I love system verilog!
+always_comb begin: set_cpu_output_
+    cpu_inst_data_ok  = 1'b0;
+    cpu_inst_data_ok1 = 1'b0;
+    cpu_inst_data_ok2 = 1'b0;
+    cpu_inst_rdata1   = 32'd0;
+    cpu_inst_rdata2   = 32'd0;
+    if(no_mem) begin
+        // TODO icache取指比较稳定，其实可以到16字
+        cpu_inst_data_ok = 1'b1;
+        cpu_inst_data_ok1 = 1'b1;
+        cpu_inst_data_ok2 = ~(&blocki); // 如果data1在多字中的最后一个字，则data2不处理
+        cpu_inst_rdata1 = cache_block[currused][index][blocki];
+        cpu_inst_rdata2 = (&blocki) ? 32'd0 : cache_block[currused][index][blocki+1];
+    end
+    else if (raddr_rcv && rvalid && rready && rlast) begin
+        cpu_inst_data_ok = 1'b1;
+        cpu_inst_data_ok1 = raddr_rcv && rvalid && rready && rlast;
+        cpu_inst_data_ok2 = raddr_rcv && rvalid && rready && rlast && (~(&blocki)); // 如果data1在多字中的最后一个字，则data2不处理
+        cpu_inst_rdata1 = rdata_blocki;
+        cpu_inst_rdata2 = (&blocki) ? 32'd0 : rdata_blockii;
+    end
+end
 
 // 类AXI接口的输出对接
 // 读请求

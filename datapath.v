@@ -5,10 +5,12 @@ module datapath (
     input wire clk,
     input wire rst,
     // except 
-    input wire [5:0]ext_int,
-    
+    input wire [5:0]ext_int ,
+    input wire i_stall      ,
+    input wire d_stall      ,
+    output wire longest_stall,
+
     // 指令读取
-    input wire inst_data_ok,
     input wire inst_data_ok1,
     input wire inst_data_ok2,
     input wire [31:0]inst_rdata1,
@@ -199,6 +201,9 @@ assign D_slave_is_pc_except  = (D_slave_pc[1:0] == 2'b00) ? 1'b0 : 1'b1;
 // 冒险处理
 hazard u_hazard(
     //ports
+    .i_stall                        ( i_stall                        ),
+    .d_stall                        ( d_stall                        ),
+    .longest_stall                  ( longest_stall                  ),
     .D_master_rs                    ( D_master_rs                    ),
     .D_master_rt                    ( D_master_rt                    ),
     .E_master_memtoReg              ( E_master_memtoReg              ),
@@ -255,8 +260,8 @@ inst_fifo u_inst_fifo(
     .read_data1                   ( D_master_inst          ),
     .read_data2                   ( D_slave_inst           ),
     
-    .write_en1                    ( inst_data_ok && inst_data_ok1),
-    .write_en2                    ( inst_data_ok && inst_data_ok2),
+    .write_en1                    ( inst_data_ok1),
+    .write_en2                    ( inst_data_ok2),
     .write_address1               ( F_pc                   ),
     .write_address2               ( F_pc + 32'd4           ),
     .write_data1                  ( inst_rdata1            ),

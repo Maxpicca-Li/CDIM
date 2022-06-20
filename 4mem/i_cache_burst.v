@@ -3,35 +3,34 @@ module i_cache_burst (
     input  clk, 
     input  rst,
 
-    // cpu come
+    // lsram (不需要写数据)
     input         cpu_inst_req     , 
     input  [1 :0] cpu_inst_size    , 
     input  [31:0] cpu_inst_addr    ,
-    output logic [31:0] cpu_inst_rdata1  , 
-    output logic [31:0] cpu_inst_rdata2  , 
-    output logic        cpu_inst_addr_ok , 
-    output logic        cpu_inst_data_ok,
-    output logic        cpu_inst_data_ok1,
-    output logic        cpu_inst_data_ok2,
+    output [31:0] cpu_inst_rdata1  , 
+    output [31:0] cpu_inst_rdata2  , 
+    output        cpu_inst_addr_ok , 
+    output        cpu_inst_data_ok1, 
+    output        cpu_inst_data_ok2, 
 
     // icache 主方
     // 读请求
-    output logic [31:0] araddr       ,
-    output logic [3 :0] arlen        ,
-    output logic [2 :0] arsize       ,
-    output logic        arvalid      ,
+    output [31:0] araddr       ,
+    output [3 :0] arlen        ,
+    output [2 :0] arsize       ,
+    output        arvalid      ,
     input         arready      ,
     // 读响应
     input  [31:0] rdata        ,
     input         rlast        ,
     input         rvalid       ,
-    output logic        rready       
+    output        rready       
 );
 
 //Cache配置
     parameter  INDEX_WIDTH  = 7, OFFSET_WIDTH = 5, WAY_NUM = 2;
     localparam TAG_WIDTH    = 32 - INDEX_WIDTH - OFFSET_WIDTH;
-    localparam BLOCK_NUM = (1<<(OFFSET_WIDTH-2)); // 1字1block
+    localparam BLOCK_NUM    = (1<<(OFFSET_WIDTH-2)); // 1字1block
     localparam CACHE_DEEPTH = 1 << INDEX_WIDTH;
     
 //Cache存储单元
@@ -45,10 +44,12 @@ module i_cache_burst (
     wire [INDEX_WIDTH-1:0] index;
     wire [TAG_WIDTH-1:0] tag;
     wire [OFFSET_WIDTH-3:0] blocki;
+    wire [OFFSET_WIDTH-3:0] blockii;
+    // TODO 需要提供当前的block_num吗？
     assign index = cpu_inst_addr[INDEX_WIDTH + OFFSET_WIDTH - 1 : OFFSET_WIDTH];
     assign tag = cpu_inst_addr[31 : INDEX_WIDTH + OFFSET_WIDTH];
     assign blocki=cpu_inst_addr[OFFSET_WIDTH-1:2];
-
+    assign blockii=cpu_inst_addr[OFFSET_WIDTH-1:2]+3'b1;
 
 //cache的index下的cache line解析
     wire currused;
@@ -78,7 +79,7 @@ module i_cache_burst (
     wire read_finish;   //数据接收成功(data_ok)，即读请求结束
     
 //FSM
-    localparam IDLE = 2'b00, RM = 2'b01, WM = 2'b11;
+    localparam IDLE = 2'b00, RM = 2'b01;
     reg [1:0] state;
     always @(posedge clk) begin
         if(rst) begin
@@ -120,54 +121,34 @@ always @(posedge clk) begin
                     (read_one && ri==blocki) ? rdata:
                     rdata_blocki;
     rdata_blockii <= rst ? 32'b0:
-                    (read_one && ri==blocki+3'd1) ? rdata:
+                    (read_one && ri==blockii) ? rdata:
                     rdata_blocki;
 end
 
 
 // CPU接口的输出对接
+// blockii 不能是000
 wire no_mem;
 assign no_mem = (state==IDLE) && cpu_inst_req & read & hit;
-assign cpu_inst_addr_ok = no_mem | (arvalid && arready);
-
-
-always_comb begin: set_cpu_output_
-    cpu_inst_data_ok  = 1'b0;
-    cpu_inst_data_ok1 = 1'b0;
-    cpu_inst_data_ok2 = 1'b0;
-    cpu_inst_rdata1   = 32'd0;
-    cpu_inst_rdata2   = 32'd0;
-    if(no_mem) begin
-        // TODO icache取指比较稳定，其实可以到16字
-        cpu_inst_data_ok = 1'b1;
-        cpu_inst_data_ok1 = 1'b1;
-        cpu_inst_data_ok2 = ~(&blocki); // 如果data1在多字中的最后一个字，则data2不处理
-        cpu_inst_rdata1 = cache_block[currused][index][blocki];
-        cpu_inst_rdata2 = (&blocki) ? 32'd0 : cache_block[currused][index][blocki+1];
-    end
-    else if (raddr_rcv && rvalid && rready && rlast) begin
-        cpu_inst_data_ok = 1'b1;
-        cpu_inst_data_ok1 = raddr_rcv && rvalid && rready && rlast;
-        cpu_inst_data_ok2 = raddr_rcv && rvalid && rready && rlast && (~(&blocki)); // 如果data1在多字中的最后一个字，则data2不处理
-        cpu_inst_rdata1 = rdata_blocki;
-        cpu_inst_rdata2 = (&blocki) ? 32'd0 : rdata_blockii;
-    end
-end
+assign cpu_inst_addr_ok  = no_mem | (arvalid && arready);
+assign cpu_inst_data_ok1 = no_mem ? 1'b1 : (raddr_rcv && rvalid && rready && rlast);
+assign cpu_inst_data_ok2 = no_mem ? (|blockii) : raddr_rcv && rvalid && rready && rlast && (|blockii);
+assign cpu_inst_rdata1   = no_mem ? cache_block[currused][index][blocki] : rdata_blocki;
+assign cpu_inst_rdata2   = (~(|blockii)) ? 32'd0 : 
+                            no_mem ? cache_block[currused][index][blockii] :
+                            rdata_blockii;
 
 // 类AXI接口的输出对接
 // 读请求
 assign araddr  = {tag,index}<<OFFSET_WIDTH;// output wire [31:0] 
 assign arlen   = BLOCK_NUM-1; // output wire [3 :0] 
-// FIXME 这里可以直接是64位吗？好像不行，主要是axi_ram里面是32位一行的
-// assign arsize  = cpu_inst_size;// output wire [2 :0] 
-assign arsize  = 2'b10;
+assign arsize  = cpu_inst_size;// output wire [2 :0] 
 assign arvalid = read_req && !raddr_rcv;// output wire
 // 读响应
 assign rready  = raddr_rcv;// output wire
 
 
 //更新cache
-    
     //保存地址中的tag, index，防止addr发生改变
     reg [TAG_WIDTH-1:0] tag_save;
     reg [INDEX_WIDTH-1:0] index_save;

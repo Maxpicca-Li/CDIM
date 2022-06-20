@@ -82,10 +82,12 @@ wire        cpu_inst_req  ;
 wire [31:0] cpu_inst_addr ;
 wire        cpu_inst_wr   ;
 wire [1:0]  cpu_inst_size ;
-wire [63:0] cpu_inst_wdata;
-wire [63:0] cpu_inst_rdata;
+wire [31:0] cpu_inst_wdata;
+wire [31:0] cpu_inst_rdata1;
+wire [31:0] cpu_inst_rdata2;
 wire        cpu_inst_addr_ok;
-wire        cpu_inst_data_ok;
+wire        cpu_inst_data_ok1;
+wire        cpu_inst_data_ok2;
 
 wire        cpu_data_req  ;
 wire [31:0] cpu_data_addr ;
@@ -191,24 +193,32 @@ wire        wrap_bvalid  ;
 wire        wrap_bready  ;
 
 
+// 1. cpu ==> sram ==> 类sram ==> axi
+// 2. cpu ==> sram ==> axi
+// 3. cpu ==> axi
 mips_core u_mips_core(
 	//ports
 	.clk               		( clk               		),
-	.resetn            		( resetn            		),
-	.int               		( int               		),
-	
-    .inst_sram_en      		( inst_sram_en      		),
-	.inst_sram_wen     		( inst_sram_wen     		),
-	.inst_sram_addr    		( inst_sram_addr    		),
-	.inst_sram_wdata   		( inst_sram_wdata   		),
-	.inst_sram_rdata   		( inst_sram_rdata   		),
-
-	.data_sram_en      		( data_sram_en      		),
-	.data_sram_wen     		( data_sram_wen     		),
-	.data_sram_addr    		( data_sram_addr    		),
-	.data_sram_wdata   		( data_sram_wdata   		),
-	.data_sram_rdata   		( data_sram_rdata   		),
-    
+	.rst               		( rst               		),
+	.ext_int           		( int                		),
+	.inst_req          		( cpu_inst_req         		),
+	.inst_wr           		( cpu_inst_wr          		),
+	.inst_size         		( cpu_inst_size        		),
+	.inst_addr         		( cpu_inst_addr        		),
+	.inst_wdata        		( cpu_inst_wdata       		),
+	.inst_addr_ok      		( cpu_inst_addr_ok     		),
+	.inst_data_ok1     		( cpu_inst_data_ok1    		),
+	.inst_data_ok2     		( cpu_inst_data_ok2    		),
+	.inst_rdata1       		( cpu_inst_rdata1      		),
+	.inst_rdata2       		( cpu_inst_rdata2      		),
+	.data_req          		( cpu_data_req         		),
+	.data_wr           		( cpu_data_wr          		),
+	.data_size         		( cpu_data_size        		),
+	.data_addr         		( cpu_data_addr        		),
+	.data_wdata        		( cpu_data_wdata       		),
+	.data_addr_ok      		( cpu_data_addr_ok     		),
+	.data_data_ok      		( cpu_data_data_ok     		),
+	.data_rdata        		( data_rdata        		),
 	.debug_wb_pc       		( debug_wb_pc       		),
 	.debug_wb_rf_wen   		( debug_wb_rf_wen   		),
 	.debug_wb_rf_wnum  		( debug_wb_rf_wnum  		),
@@ -302,69 +312,62 @@ sram_like_to_axi sram_like_to_axi (
     .bready  (conf_bready  )
 );
 
-//cache-->axi信号
-cache cache (
-    .clk(clk), .rst(rst),
-    //mips core
-    .cpu_inst_req     (cpu_inst_req     ),
-    .cpu_inst_wr      (cpu_inst_wr      ),
-    .cpu_inst_size    (cpu_inst_size    ),
-    .cpu_inst_addr    (cpu_inst_addr    ),
-    .cpu_inst_wdata   (cpu_inst_wdata   ),
-    .cpu_inst_rdata   (cpu_inst_rdata   ),
-    .cpu_inst_addr_ok (cpu_inst_addr_ok ),
-    .cpu_inst_data_ok (cpu_inst_data_ok ),
+i_cache_burst u_i_cache_burst(
+	//ports
+	.clk               		( clk               		),
+	.rst               		( rst               		),
+	.cpu_inst_req      		( cpu_inst_req      		),
+	.cpu_inst_size     		( cpu_inst_size     		),
+	.cpu_inst_addr     		( cpu_inst_paddr     		), // 虚拟地址
+	.cpu_inst_rdata1   		( cpu_inst_rdata1   		),
+	.cpu_inst_rdata2   		( cpu_inst_rdata2   		),
+	.cpu_inst_addr_ok  		( cpu_inst_addr_ok  		),
+	.cpu_inst_data_ok1 		( cpu_inst_data_ok1 		),
+	.cpu_inst_data_ok2 		( cpu_inst_data_ok2 		),
+	.araddr            		( i_araddr            		),
+	.arlen             		( i_arlen             		),
+	.arsize            		( i_arsize            		),
+	.arvalid           		( i_arvalid           		),
+	.arready           		( i_arready           		),
+	.rdata             		( i_rdata             		),
+	.rlast             		( i_rlast             		),
+	.rvalid            		( i_rvalid            		),
+	.rready            		( i_rready            		)
+);
 
-    .cpu_data_req     (ram_data_req     ),
-    .cpu_data_wr      (ram_data_wr      ),
-    .cpu_data_size    (ram_data_size    ),
-    .cpu_data_addr    (ram_data_addr    ),
-    .cpu_data_wdata   (ram_data_wdata   ),
-    .cpu_data_rdata   (ram_data_rdata   ),
-    .cpu_data_addr_ok (ram_data_addr_ok ),
-    .cpu_data_data_ok (ram_data_data_ok ),
-
-    //axi interface
-    // icache
-    // ar
-    .i_araddr  (i_araddr  ),
-    .i_arlen   (i_arlen   ),
-    .i_arsize  (i_arsize  ),
-    .i_arvalid (i_arvalid ),
-    .i_arready (i_arready ),
-    // r
-    .i_rdata   (i_rdata   ),
-    .i_rlast   (i_rlast   ),
-    .i_rvalid  (i_rvalid  ),
-    .i_rready  (i_rready  ),
-
-    // dcache
-    // ar
-    .d_araddr  (cache_araddr  ),
-    .d_arlen   (cache_arlen   ),
-    .d_arsize  (cache_arsize  ),
-    .d_arvalid (cache_arvalid ),
-    .d_arready (cache_arready ),
-    // r
-    .d_rdata   (cache_rdata   ),
-    .d_rlast   (cache_rlast   ),
-    .d_rvalid  (cache_rvalid  ),
-    .d_rready  (cache_rready  ),
-    // aw
-    .d_awaddr  (cache_awaddr  ),
-    .d_awlen   (cache_awlen   ),
-    .d_awsize  (cache_awsize  ),
-    .d_awvalid (cache_awvalid ),
-    .d_awready (cache_awready ),
-    // w
-    .d_wdata   (cache_wdata   ),
-    .d_wstrb   (cache_wstrb   ),
-    .d_wlast   (cache_wlast   ),
-    .d_wvalid  (cache_wvalid  ),
-    .d_wready  (cache_wready  ),
-    // b
-    .d_bvalid  (cache_bvalid  ),
-    .d_bready  (cache_bready  )
+d_cache_burst u_d_cache_burst(
+	//ports
+	.clk              		( clk              		    ),
+	.rst              		( rst              		    ),
+	.cpu_data_req     		( ram_data_req     		    ),
+	.cpu_data_wr      		( ram_data_wr      		    ),
+	.cpu_data_size    		( ram_data_size    		    ),
+	.cpu_data_addr    		( ram_data_addr    		    ),
+	.cpu_data_wdata   		( ram_data_wdata   		    ),
+	.cpu_data_rdata   		( ram_data_rdata   		    ),
+	.cpu_data_addr_ok 		( ram_data_addr_ok 		    ),
+	.cpu_data_data_ok 		( ram_data_data_ok 		    ),
+	.araddr           		( cache_araddr         		),
+	.arlen            		( cache_arlen          		),
+	.arsize           		( cache_arsize         		),
+	.arvalid          		( cache_arvalid        		),
+	.arready          		( cache_arready        		),
+	.rdata            		( cache_rdata          		),
+	.rlast            		( cache_rlast          		),
+	.rvalid           		( cache_rvalid         		),
+	.rready           		( cache_rready         		),
+	.awaddr           		( cache_awaddr         		),
+	.awlen            		( cache_awlen          		),
+	.awsize           		( cache_awsize         		),
+	.awvalid          		( cache_awvalid        		),
+	.awready          		( cache_awready        		),
+	.wdata            		( cache_wdata          		),
+	.wstrb            		( cache_wstrb          		),
+	.wlast            		( cache_wlast          		),
+	.wvalid           		( cache_wvalid         		),
+	.wready           		( cache_wready         		),
+	.bvalid           		( cache_bvalid         		),
+	.bready           		( cache_bready         		)
 );
 
 bridge_2x1_axi bridge_2x1_axi (
