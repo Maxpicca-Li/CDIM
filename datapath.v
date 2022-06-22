@@ -71,7 +71,7 @@ wire [31:0]     badvaddr;
 wire [63:0]     hilo;
 
 // ===== F =====
-wire            F_master_except_pc                 ;
+wire            F_pc_except                 ;
 
 // ===== D =====
 wire [31:0]     D_master_inst     ,D_slave_inst    ;
@@ -226,15 +226,18 @@ hazard u_hazard(
 );
 
 // ====================================== Fetch ======================================
-
+assign F_pc_except = (|F_pc[1:0]); // 必须是2'b00
 // FIXME: 注意，这里如果是i_stall导致的F_ena=0，inst_sram_en仍然使能(不太确定这个逻辑)
-assign inst_sram_en =  F_ena & (~fifo_full);  // fifo_full 不取指
+// assign inst_sram_en =  F_ena & (!fifo_full);  // fifo_full 不取指
+// assign inst_sram_en =  !(rst | M_except | F_pc_except | fifo_full);  // fifo_full 不取指
+assign inst_sram_en =  (F_ena | i_stall) & !(rst | M_except | F_pc_except | fifo_full);  // fifo_full 不取指
+
 
 pc_reg u_pc_reg(
     //ports
     .clk                       ( clk                   ),
     .rst                       ( rst                   ),
-    .pc_en                     ( F_ena | M_except       ), // 异常的优先级最高，必须使能
+    .pc_en                     ( F_ena | M_except      ), // 异常的优先级最高，必须使能
     .inst_data_ok1             ( inst_data_ok1         ),
     .inst_data_ok2             ( inst_data_ok2         ),
     .fifo_full                 ( fifo_full             ), // fifo_full pc不变
@@ -350,6 +353,7 @@ regfile u_regfile(
     .ra1_b             ( D_master_rt             ),
     .rd1_b             ( D_master_rt_data             ),
     .wen1              ( W_master_reg_wen & W_ena & ~(|W_master_except)), // 跟踪异常，该指令出现异常，则不写
+    // .wen1              ( W_master_reg_wen & ~(|W_master_except)), // 跟踪异常，该指令出现异常，则不写
     .wa1               ( W_master_reg_waddr ),
     .wd1               ( W_master_reg_wdata ),
     

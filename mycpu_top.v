@@ -200,7 +200,7 @@ mips_core u_mips_core(
 	//ports
 	.clk               		( clk               		),
 	.rst               		( rst               		),
-	.ext_int           		( int                		),
+	.ext_int           		( ext_int              		),
 	.inst_req          		( cpu_inst_req         		),
 	.inst_wr           		( cpu_inst_wr          		),
 	.inst_size         		( cpu_inst_size        		),
@@ -218,7 +218,7 @@ mips_core u_mips_core(
 	.data_wdata        		( cpu_data_wdata       		),
 	.data_addr_ok      		( cpu_data_addr_ok     		),
 	.data_data_ok      		( cpu_data_data_ok     		),
-	.data_rdata        		( data_rdata        		),
+	.data_rdata        		( cpu_data_rdata     		),
 	.debug_wb_pc       		( debug_wb_pc       		),
 	.debug_wb_rf_wen   		( debug_wb_rf_wen   		),
 	.debug_wb_rf_wnum  		( debug_wb_rf_wnum  		),

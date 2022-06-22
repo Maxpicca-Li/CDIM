@@ -60,19 +60,6 @@ module d_cache_burst (
     wire [TAG_WIDTH-1:0] tag;
     wire [OFFSET_WIDTH-3:0] blocki;
     wire [31:0] write_cache_data;
-    assign index = cpu_data_addr[INDEX_WIDTH + OFFSET_WIDTH - 1 : OFFSET_WIDTH];
-    assign tag = cpu_data_addr[31 : INDEX_WIDTH + OFFSET_WIDTH];
-    assign blocki=cpu_data_addr[OFFSET_WIDTH-1:2];
-
-    // 通过掩码确认写入的数据，位为1的代表需要更新的。
-    wire [3:0] write_mask4;
-    wire [31:0] write_mask32;
-    //根据地址低两位和size，生成写掩码（针对sb，sh等不是写完整一个字的指令），4位对应1个字（4字节）中每个字的写使能
-    assign write_mask4 = cpu_data_size==2'd0 ? 4'b0001<<cpu_data_addr[1:0] :
-                        cpu_data_size==2'd1 ? 4'b0011<<cpu_data_addr[1:0] : 4'b1111;
-    //位拓展：{8{1'b1}} -> 8'b11111111
-    assign write_mask32 = { {8{write_mask4[3]}}, {8{write_mask4[2]}}, {8{write_mask4[1]}}, {8{write_mask4[0]}} };
-    assign write_cache_data = cache_block[currused][index][blocki] & ~write_mask32 | cpu_data_wdata & write_mask32; // 默认原数据，有写请求再写入读到的数据
 
 //cache的index下的cache line解析
     wire currused;
@@ -80,6 +67,62 @@ module d_cache_burst (
     wire c_dirty;
     wire c_lastused;
     wire [TAG_WIDTH-1:0] c_tag;
+
+// 通过掩码确认写入的数据，位为1的代表需要更新的。
+    wire [3:0] write_mask4;
+    wire [31:0] write_mask32;
+
+//判断是否命中
+    wire hit, miss;
+
+//FSM
+    localparam IDLE = 2'b00, RM = 2'b01, WM = 2'b11;
+    reg [1:0] state;
+
+//读或写
+    wire read, write;
+
+// 访存事务线
+    reg  read_req;      //一次完整的读事务，从发出读请求到结束;读取内存请求
+    reg  raddr_rcv;      //地址接收成功(addr_ok)后到结束,代表地址已经收到了
+    wire read_one; // 写的每一拍数据成功
+    wire read_finish;   //数据接收成功(data_ok)，即读请求结束
+    reg  read_finish_save;
+
+    reg  write_req;     
+    reg  waddr_rcv; 
+    reg  wdata_rcv;     
+    wire write_one; // 读的每一拍数据返回
+    wire write_finish;
+
+// CPU接口的输出对接
+    wire no_mem;
+
+// 数据对接
+    reg [OFFSET_WIDTH-3:0]ri;
+    reg [OFFSET_WIDTH-3:0]wi;
+    reg [31:0] rdata_blocki;
+
+//保存地址中的tag, index，防止addr发生改变
+    reg [TAG_WIDTH-1:0] tag_save;
+    reg [INDEX_WIDTH-1:0] index_save;
+    reg [OFFSET_WIDTH-3:0] blocki_save;
+    reg c_lastused_save;
+    reg currused_save;
+    reg [31:0]write_cache_data_save;
+
+    assign index = cpu_data_addr[INDEX_WIDTH + OFFSET_WIDTH - 1 : OFFSET_WIDTH];
+    assign tag = cpu_data_addr[31 : INDEX_WIDTH + OFFSET_WIDTH];
+    assign blocki=cpu_data_addr[OFFSET_WIDTH-1:2];
+
+    //根据地址低两位和size，生成写掩码（针对sb，sh等不是写完整一个字的指令），4位对应1个字（4字节）中每个字的写使能
+    assign write_mask4 = cpu_data_size==2'd0 ? 4'b0001<<cpu_data_addr[1:0] :
+                        cpu_data_size==2'd1 ? 4'b0011<<cpu_data_addr[1:0] : 4'b1111;
+    //位拓展：{8{1'b1}} -> 8'b11111111
+    assign write_mask32 = { {8{write_mask4[3]}}, {8{write_mask4[2]}}, {8{write_mask4[1]}}, {8{write_mask4[0]}} };
+    assign write_cache_data = cache_block[currused][index][blocki] & ~write_mask32 | cpu_data_wdata & write_mask32; // 默认原数据，有写请求再写入读到的数据
+
+
     assign currused = (cache_valid[1][index] & (cache_tag[1][index]==tag)) ? 1'b1 : 
                       (cache_valid[0][index] & (cache_tag[0][index]==tag)) ? 1'b0 : 
                       !c_lastused;
@@ -88,19 +131,12 @@ module d_cache_burst (
     assign c_dirty = cache_dirty[currused][index];
     assign c_lastused = cache_lastused[index];
     
-//判断是否命中
-    wire hit, miss;
     assign hit  = c_valid & (c_tag == tag);  //cache line的valid位为1，且tag与地址中tag相等
     assign miss = ~hit;
 
-//读或写
-    wire read, write;
     assign write = cpu_data_wr;
     assign read  = ~cpu_data_wr;
 
-//FSM
-    localparam IDLE = 2'b00, RM = 2'b01, WM = 2'b11;
-    reg [1:0] state;
     always @(posedge clk) begin
         if(rst) begin
             state <= IDLE;
@@ -129,19 +165,6 @@ module d_cache_burst (
         end
     end
 
-// 访存事务线
-    reg  read_req;      //一次完整的读事务，从发出读请求到结束;读取内存请求
-    reg  raddr_rcv;      //地址接收成功(addr_ok)后到结束,代表地址已经收到了
-    wire read_one; // 写的每一拍数据成功
-    wire read_finish;   //数据接收成功(data_ok)，即读请求结束
-    reg  read_finish_save;
-
-    reg  write_req;     
-    reg  waddr_rcv; 
-    reg  wdata_rcv;     
-    wire write_one; // 读的每一拍数据返回
-    wire write_finish;
-    
     assign read_one = raddr_rcv && (rvalid && rready);
     assign write_one = waddr_rcv && (wvalid && wready);
     assign read_finish = raddr_rcv && (rvalid && rready && rlast);
@@ -174,65 +197,50 @@ module d_cache_burst (
                             1'b0;
     end
     
-// 数据对接
-reg [OFFSET_WIDTH-3:0]ri;
-reg [OFFSET_WIDTH-3:0]wi;
-reg [31:0] rdata_blocki;
-always @(posedge clk) begin
-    ri <= rst ? 1'd0:
-          read_finish ? 1'b0:
-          read_one ? ri+1 : ri;
-    wi <= rst ? 1'd0:
-          write_finish ? 1'b0:
-          write_one ? wi+1 : wi;
-    rdata_blocki <= rst ? 32'b0:
-                    read_one && ri==blocki ? rdata:
-                    rdata_blocki;
-end
+    always @(posedge clk) begin
+        ri <= rst ? 1'd0:
+            read_finish ? 1'b0:
+            read_one ? ri+1 : ri;
+        wi <= rst ? 1'd0:
+            write_finish ? 1'b0:
+            write_one ? wi+1 : wi;
+        rdata_blocki <= rst ? 32'b0:
+                        read_one && ri==blocki ? rdata:
+                        rdata_blocki;
+    end
 
-// CPU接口的输出对接
-wire no_mem;
-assign no_mem = (state==IDLE) && cpu_data_req && hit;
-assign cpu_data_rdata   = hit ? cache_block[currused][index][blocki] : rdata_blocki; 
-assign cpu_data_addr_ok = no_mem | (read && arvalid && arready) ||(write && awvalid && awready); // FIXME 感觉这里要拖到3个周期
-// assign cpu_data_data_ok = no_mem || (raddr_rcv && rvalid && rready && rlast) || (waddr_rcv && bvalid && bready); // 按照状态机模式，缺失访存，都以RM收尾，所以只需要判断RM即可。
-// assign cpu_data_data_ok = no_mem || read_finish_save; // 最好延迟一个周期，遇到读存blocki=7的数据，不能够及时返回 // FIXME 感觉这样写会多很多周期，可以做一个判断吗？如果blocki==7，就等一下；<7，就直接返回read_finish
-assign cpu_data_data_ok = no_mem || (blocki_save==3'b111 ? read_finish_save : read_finish); // 最好延迟一个周期，遇到读存blocki=7的数据，不能够及时返回 // FIXME 感觉这样写会多很多周期，可以做一个判断吗？如果blocki==7，就等一下；<7，就直接返回read_finish
+    assign no_mem = (state==IDLE) && cpu_data_req && hit;
+    assign cpu_data_rdata   = hit ? cache_block[currused][index][blocki] : rdata_blocki; 
+    assign cpu_data_addr_ok = no_mem | (read && arvalid && arready) ||(write && awvalid && awready); // FIXME 感觉这里要拖到3个周期
+    // assign cpu_data_data_ok = no_mem || (raddr_rcv && rvalid && rready && rlast) || (waddr_rcv && bvalid && bready); // 按照状态机模式，缺失访存，都以RM收尾，所以只需要判断RM即可。
+    // assign cpu_data_data_ok = no_mem || read_finish_save; // 最好延迟一个周期，遇到读存blocki=7的数据，不能够及时返回 // FIXME 感觉这样写会多很多周期，可以做一个判断吗？如果blocki==7，就等一下；<7，就直接返回read_finish
+    assign cpu_data_data_ok = no_mem || (blocki_save==3'b111 ? read_finish_save : read_finish); // 最好延迟一个周期，遇到读存blocki=7的数据，不能够及时返回 // FIXME 感觉这样写会多很多周期，可以做一个判断吗？如果blocki==7，就等一下；<7，就直接返回read_finish
 
-// 类AXI接口的输出对接
-// 读请求
-assign araddr  = {tag,index}<<OFFSET_WIDTH;// output wire [31:0] 
-assign arlen   = BLOCK_NUM-1; // output wire [3 :0] 
-assign arsize  = cpu_data_size;// output wire [2 :0] 
-assign arvalid = read_req && !raddr_rcv;// output wire
-// 读响应
-assign rready  = raddr_rcv;// output wire
-// 写请求
-assign awaddr  =  {c_tag,index} << OFFSET_WIDTH ;// output wire [31:0] 
-assign awlen   = BLOCK_NUM-1;// output wire [3 :0] 
-assign awsize  = 2'b10;// output wire [2 :0] 
-assign awvalid = write_req && !waddr_rcv;// output wire        
-// 写返回
-assign wdata   = cache_block[currused_save][index_save][wi];// output wire [31:0]，因为只会涉及到写脏数据，不会涉及将cpu_data_wdata写入内存的问题
-assign wstrb = 4'b1111;  // 写回的数据，是需要全部写回哦
-// assign wstrb   = cpu_data_size==2'd0 ? 4'b0001<<cpu_data_addr[1:0] :
-//                  cpu_data_size==2'd1 ? 4'b0011<<cpu_data_addr[1:0] : 4'b1111; // output wire [3 :0] 
-assign wlast   = wi==awlen;// output wire        
-assign wvalid  = waddr_rcv & ~wdata_rcv;// output wire        
-// 写响应
-assign bready  = waddr_rcv;// output wire        
+    // 类AXI接口的输出对接
+    // 读请求
+    assign araddr  = {tag,index}<<OFFSET_WIDTH;// output wire [31:0] 
+    assign arlen   = BLOCK_NUM-1; // output wire [3 :0] 
+    assign arsize  = cpu_data_size;// output wire [2 :0] 
+    assign arvalid = read_req && !raddr_rcv;// output wire
+    // 读响应
+    assign rready  = raddr_rcv;// output wire
+    // 写请求
+    assign awaddr  =  {c_tag,index} << OFFSET_WIDTH ;// output wire [31:0] 
+    assign awlen   = BLOCK_NUM-1;// output wire [3 :0] 
+    assign awsize  = 2'b10;// output wire [2 :0] 
+    assign awvalid = write_req && !waddr_rcv;// output wire        
+    // 写返回
+    assign wdata   = cache_block[currused_save][index_save][wi];// output wire [31:0]，因为只会涉及到写脏数据，不会涉及将cpu_data_wdata写入内存的问题
+    assign wstrb = 4'b1111;  // 写回的数据，是需要全部写回哦
+    // assign wstrb   = cpu_data_size==2'd0 ? 4'b0001<<cpu_data_addr[1:0] :
+    //                  cpu_data_size==2'd1 ? 4'b0011<<cpu_data_addr[1:0] : 4'b1111; // output wire [3 :0] 
+    assign wlast   = wi==awlen;// output wire        
+    assign wvalid  = waddr_rcv & ~wdata_rcv;// output wire        
+    // 写响应
+    assign bready  = waddr_rcv;// output wire        
 
 
 //更新cache
-    
-
-    //保存地址中的tag, index，防止addr发生改变
-    reg [TAG_WIDTH-1:0] tag_save;
-    reg [INDEX_WIDTH-1:0] index_save;
-    reg [OFFSET_WIDTH-3:0] blocki_save;
-    reg c_lastused_save;
-    reg currused_save;
-    reg [31:0]write_cache_data_save;
     always @(posedge clk) begin
         tag_save        <= rst ? 0 :
                          cpu_data_req ? tag : tag_save;

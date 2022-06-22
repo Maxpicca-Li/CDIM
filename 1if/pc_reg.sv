@@ -39,7 +39,7 @@ module pc_reg (
         else if(inst_data_ok1)
             pc_next = pc_curr + 32'd4;
         else
-            pc_next = pc_curr;
+            pc_next = pc_next;
     end
 
 endmodule

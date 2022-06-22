@@ -112,6 +112,7 @@ module i_cache_burst (
 reg [OFFSET_WIDTH-3:0]ri;
 reg [31:0] rdata_blocki;
 reg [31:0] rdata_blockii;
+reg behind_rlast;
 always @(posedge clk) begin
     ri <= rst ? 1'd0:
           read_finish ? 1'b0:
@@ -122,19 +123,28 @@ always @(posedge clk) begin
                     rdata_blocki;
     rdata_blockii <= rst ? 32'b0:
                     (read_one && ri==blockii) ? rdata:
-                    rdata_blocki;
+                    rdata_blockii;
+    behind_rlast <= rst ? 1'b0 : rlast;
 end
 
 
 // CPU接口的输出对接
-// blockii 不能是000
+// blockii 不能是000或111
 wire no_mem;
+wire available_blockii;
 assign no_mem = (state==IDLE) && cpu_inst_req & read & hit;
+// assign available_blockii = (|blockii) && (~(&blockii));
+assign available_blockii = (|blockii);
+
 assign cpu_inst_addr_ok  = no_mem | (arvalid && arready);
-assign cpu_inst_data_ok1 = no_mem ? 1'b1 : (raddr_rcv && rvalid && rready && rlast);
-assign cpu_inst_data_ok2 = no_mem ? (|blockii) : raddr_rcv && rvalid && rready && rlast && (|blockii);
+
+// assign cpu_inst_data_ok1 = no_mem ? 1'b1 : (raddr_rcv && rvalid && rready && rlast);
+// assign cpu_inst_data_ok2 = no_mem ? available_blockii : raddr_rcv && rvalid && rready && rlast && available_blockii;
+assign cpu_inst_data_ok1 = no_mem ? 1'b1 : behind_rlast;
+assign cpu_inst_data_ok2 = no_mem ? available_blockii : behind_rlast && available_blockii;
+
 assign cpu_inst_rdata1   = no_mem ? cache_block[currused][index][blocki] : rdata_blocki;
-assign cpu_inst_rdata2   = (~(|blockii)) ? 32'd0 : 
+assign cpu_inst_rdata2   = ~available_blockii ? 32'd0 : 
                             no_mem ? cache_block[currused][index][blockii] :
                             rdata_blockii;
 

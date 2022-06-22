@@ -54,19 +54,22 @@ module mips_core (
     wire [ 3:0] data_sram_wen   ;
     wire [31:0] data_sram_wdata ;
     
-    wire i_stall          ;
-    wire d_stall          ;
-    wire longest_stall    ;
+    
+    wire inst_sram_data_ok1;
+    wire inst_sram_data_ok2;
+    wire i_stall           ;
+    wire d_stall           ;
+    wire longest_stall     ;
 
     datapath u_datapath(
         //ports
         .clk             		( clk             		),
         .rst             		( rst             		),
         .ext_int         		( ext_int         		),
-        .inst_data_ok1   		( inst_data_ok1   		),
-        .inst_data_ok2   		( inst_data_ok2   		), 
-        .inst_rdata1     		( inst_rdata1     		), // 这里应该是 cpu_inst_rdata1
-        .inst_rdata2     		( inst_rdata2     		),
+        .inst_data_ok1   		( inst_sram_data_ok1	),
+        .inst_data_ok2   		( inst_sram_data_ok2	), 
+        .inst_rdata1     		( inst_sram_rdata1  	), // 这里应该是 cpu_inst_rdata1
+        .inst_rdata2     		( inst_sram_rdata2  	),
         .inst_sram_en    		( inst_sram_en    		),
         .F_pc            		( inst_sram_addr        ), // 32bit的地址，但是一次传回2个数据
         .data_sram_rdata 		( data_sram_rdata 		),
@@ -87,6 +90,8 @@ module mips_core (
         .inst_sram_addr   		( inst_sram_addr   		),
         .inst_sram_rdata1 		( inst_sram_rdata1 		),
         .inst_sram_rdata2 		( inst_sram_rdata2 		),
+        .inst_sram_data_ok1     ( inst_sram_data_ok1    ),
+        .inst_sram_data_ok2     ( inst_sram_data_ok2    ),
         .i_stall          		( i_stall          		),
         .inst_req         		( inst_req         		),
         .inst_wr          		( inst_wr          		),
@@ -124,9 +129,9 @@ module mips_core (
         .longest_stall(longest_stall)
     );
 
-    assign debug_wb_pc          = (~clk) ? u_datapath.W_master_pc : u_datapath.W_slave_pc;
-    assign debug_wb_rf_wen      = (~rst) ? 4'b0000 : ((~clk) ? {4{u_datapath.u_regfile.wen1}} : {4{u_datapath.u_regfile.wen2}});
-    assign debug_wb_rf_wnum     = (~clk) ? u_datapath.u_regfile.wa1 : u_datapath.u_regfile.wa2;
-    assign debug_wb_rf_wdata    = (~clk) ? u_datapath.u_regfile.wd1 : u_datapath.u_regfile.wd2;
+    assign debug_wb_pc          = (clk) ? u_datapath.W_master_pc : u_datapath.W_slave_pc;
+    assign debug_wb_rf_wen      = (rst) ? 4'b0000 : ((clk) ? {4{u_datapath.u_regfile.wen1}} : {4{u_datapath.u_regfile.wen2}});
+    assign debug_wb_rf_wnum     = (clk) ? u_datapath.u_regfile.wa1 : u_datapath.u_regfile.wa2;
+    assign debug_wb_rf_wdata    = (clk) ? u_datapath.u_regfile.wd1 : u_datapath.u_regfile.wd2;
 
 endmodule

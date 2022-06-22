@@ -5,6 +5,8 @@ module i_sram_to_sram_like (
     input wire [31:0] inst_sram_addr,
     output wire [31:0] inst_sram_rdata1,
     output wire [31:0] inst_sram_rdata2,
+    output wire inst_sram_data_ok1,
+    output wire inst_sram_data_ok2,
     output wire i_stall,
     //sram like
     output wire inst_req, //
@@ -22,6 +24,8 @@ module i_sram_to_sram_like (
 );
     reg addr_rcv;      //地址握手成功
     reg do_finish;     //读事务结束
+    reg data_ok_save1;
+    reg data_ok_save2;
 
     always @(posedge clk) begin
         addr_rcv <= rst          ? 1'b0 :
@@ -33,6 +37,8 @@ module i_sram_to_sram_like (
         do_finish <= rst          ? 1'b0 :
                      inst_data_ok1 ? 1'b1 :
                      ~longest_stall ? 1'b0 : do_finish;
+        data_ok_save1  <= rst ? 1'b0 : inst_data_ok1;
+        data_ok_save2  <= rst ? 1'b0 : inst_data_ok2;
     end
 
     //save rdata
@@ -55,5 +61,8 @@ module i_sram_to_sram_like (
     //sram
     assign inst_sram_rdata1 = inst_rdata_save1;
     assign inst_sram_rdata2 = inst_rdata_save2;
+    assign inst_sram_data_ok1 = data_ok_save1;
+    assign inst_sram_data_ok2 = data_ok_save2;
     assign i_stall = inst_sram_en & ~do_finish;
+
 endmodule

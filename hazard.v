@@ -51,7 +51,8 @@ module hazard (
 
     assign F_flush = 1'b0;
     assign D_flush = M_except | E_branch_taken;
-    assign E_flush = M_except | E_branch_taken;
+    // assign E_flush = M_except | E_branch_taken;
+    assign E_flush = M_except;
     assign M_flush = M_except;
     assign W_flush = 1'b0;
 
