@@ -237,7 +237,7 @@ pc_reg u_pc_reg(
     //ports
     .clk                       ( clk                   ),
     .rst                       ( rst                   ),
-    .pc_en                     ( F_ena | M_except      ), // 异常的优先级最高，必须使能
+    .pc_en                     ( F_ena | M_except | inst_data_ok1 ), // 异常的优先级最高，必须使能
     .inst_data_ok1             ( inst_data_ok1         ),
     .inst_data_ok2             ( inst_data_ok2         ),
     .fifo_full                 ( fifo_full             ), // fifo_full pc不变

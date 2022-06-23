@@ -22,9 +22,10 @@ module mem_access (
     assign M_master_except = {M_master_except_a[7:2],adel,ades};
 
     assign data_sram_en    = mem_en;
-    assign data_sram_addr = (mem_addr[31:28] == 4'hB) ? {4'h1, mem_addr[27:0]} :
-                             (mem_addr[31:28] == 4'h8) ? {4'h0, mem_addr[27:0]} :
-                              mem_addr;
+    assign data_sram_addr  = mem_addr;
+    // assign data_sram_addr = (mem_addr[31:28] == 4'hB) ? {4'h1, mem_addr[27:0]} :
+    //                          (mem_addr[31:28] == 4'h8) ? {4'h0, mem_addr[27:0]} :
+    //                           mem_addr;
                 
     always_comb begin:mem_access_transform
         ades = 1'b0; // 写指令地址错例外
