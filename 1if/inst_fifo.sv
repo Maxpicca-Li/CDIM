@@ -42,11 +42,6 @@ module inst_fifo(
     assign almost_empty = (data_count == 4'd1); //0001
 
     // fifo读
-    wire [31:0] _read_data1 = data[read_pointer];
-    wire [31:0] _read_data2 = data[read_pointer + 4'd1];
-    wire [31:0] _read_addres1 = address[read_pointer];
-    wire [31:0] _read_addres2 = address[read_pointer + 4'd1];
-
     // 简易版处理延迟槽：若master是分支指令，slave没发射，则下一次的master一定是在延迟槽，延迟槽不因非except之外的其他因素而清空
     // 取指限制：注意需要保证fifo中至少有一条指令
     always_ff @(posedge clk)begin
@@ -61,26 +56,29 @@ module inst_fifo(
         else    master_is_in_delayslot_o = 1'b0;
     end
 
-    always_comb begin : read_data
-        if(empty) begin
-            read_data1      = 32'd0;
-            read_data2      = 32'd0;
-            read_addres1    = 32'd0;
-            read_addres2    = 32'd0;
+    // always_comb begin : read_data
+    // 转成时序逻辑, 其中read_pointer和master_is_in_delayslot_o需要1个周期
+    // 故read_data共要2个周期，达成同步
+    always_ff @(posedge clk)begin
+        if(empty || fifo_rst) begin
+            read_data1      <= 32'd0;
+            read_data2      <= 32'd0;
+            read_addres1    <= 32'd0;
+            read_addres2    <= 32'd0;
         end
         else if(almost_empty) begin
             // 只能取一条数据
-            read_data1       = _read_data1;
-            read_data2       = 32'd0;
-            read_addres1    = _read_addres1;
-            read_addres2    = 32'd0;
+            read_data1      <= data[read_pointer];
+            read_data2      <= 32'd0;
+            read_addres1    <= address[read_pointer];
+            read_addres2    <= 32'd0;
         end 
         else begin
             // 可以取两条数据
-            read_data1       = _read_data1;
-            read_data2       = _read_data2;
-            read_addres1    = _read_addres1;
-            read_addres2    = _read_addres2;
+            read_data1      <= data[read_pointer];
+            read_data2      <= data[read_pointer + 4'd1];
+            read_addres1    <= address[read_pointer];
+            read_addres2    <= address[read_pointer + 4'd1];
         end
     end
 
