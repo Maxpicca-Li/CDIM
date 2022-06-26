@@ -4,26 +4,36 @@
 module datapath (
     input wire clk,
     input wire rst,
-    // except 
     input wire [5:0]ext_int ,
-    input wire i_stall      ,
-    input wire d_stall      ,
-    output wire longest_stall,
-
-    // 指令读取
-    input wire inst_data_ok1,
-    input wire inst_data_ok2,
-    input wire [31:0]inst_rdata1,
-    input wire [31:0]inst_rdata2,
+    
+    // inst
     output wire inst_sram_en, 
+    output wire stallF     ,
     output wire [31:0]F_pc, // 取回pc, pc+4的指令
-
-    // 数据读取
-    input wire [31:0]data_sram_rdata,
-    output wire data_sram_en,
-    output wire [3:0] data_sram_wen,
-    output wire [31:0]data_sram_addr,
-    output wire [31:0]data_sram_wdata
+    output wire [31:0]F_pc_next, // 取回pc, pc+4的指令
+    input  wire i_stall      ,
+    input  wire inst_data_ok1,
+    input  wire inst_data_ok2,
+    input  wire [31:0]inst_rdata1,
+    input  wire [31:0]inst_rdata2,
+    
+    // data
+    output wire mem_read_enE,
+    output wire mem_write_enE, // 
+    output wire [31:0] mem_addrE,
+    output wire mem_enM,                    
+    output wire stallM,
+    output wire [ 3:0] mem_wenM,
+    output wire [31:0] mem_addrM,
+    output wire [31:0] mem_wdataM,
+    input  wire d_stall,
+    input  wire [31:0] mem_rdataM,
+    
+    //debug
+    output wire [31:0]  debug_wb_pc,      
+    output wire [3:0]   debug_wb_rf_wen,
+    output wire [4:0]   debug_wb_rf_wnum, 
+    output wire [31:0]  debug_wb_rf_wdata
 );
 
 // ====================================== 变量定义区 ======================================
@@ -88,6 +98,9 @@ wire            D_master_spec_inst       ,D_slave_spec_inst       ;
 wire            D_master_break_inst      ,D_slave_break_inst      ;
 wire            D_master_syscall_inst    ,D_slave_syscall_inst    ;
 wire            D_master_eret_inst       ,D_slave_undefined_inst  ;
+wire            D_master_memRead         ,D_slave_memRead         ;
+wire            E_master_memWrite;
+wire            E_master_memRead ;
 // branch
 wire [3:0]      D_master_branch_type     ,D_slave_branch_type     ;
 wire            D_master_is_link_pc8     ,D_slave_is_link_pc8     ;
@@ -231,13 +244,14 @@ assign F_pc_except = (|F_pc[1:0]); // 必须是2'b00
 // assign inst_sram_en =  F_ena & (!fifo_full);  // fifo_full 不取指
 // assign inst_sram_en =  !(rst | M_except | F_pc_except | fifo_full);  // fifo_full 不取指
 assign inst_sram_en =  (F_ena | i_stall) & !(rst | M_except | F_pc_except | fifo_full);  // fifo_full 不取指
+assign stallF = ~F_ena;
 
 
 pc_reg u_pc_reg(
     //ports
     .clk                       ( clk                   ),
     .rst                       ( rst                   ),
-    .pc_en                     ( F_ena | M_except | inst_data_ok1 ), // 异常的优先级最高，必须使能
+    .pc_en                     ( F_ena | M_except      ), // 异常的优先级最高，必须使能
     .inst_data_ok1             ( inst_data_ok1         ),
     .inst_data_ok2             ( inst_data_ok2         ),
     .fifo_full                 ( fifo_full             ), // fifo_full pc不变
@@ -246,6 +260,7 @@ pc_reg u_pc_reg(
     .branch_taken              ( E_branch_taken        ),
     .branch_addr               ( E_pc_branch_target    ),
     
+    .pc_next                   ( F_pc_next             ),
     .pc_curr                   ( F_pc                  )
 );
 
@@ -298,6 +313,7 @@ decoder u_decoder_master(
     .alu_selb                   ( D_master_alu_selb                   ),
     .mem_en                     ( D_master_mem_en                     ),
     .memWrite                   ( D_master_memWrite                   ),
+    .memRead                    ( D_master_memRead                    ),
     .memtoReg                   ( D_master_memtoReg                   ),
     .cp0write                   ( D_master_cp0write                   ),
     .is_hilo_accessed           ( D_master_is_hilo_accessed     ),
@@ -330,6 +346,7 @@ decoder u_decoder_slave(
     .alu_selb                   ( D_slave_alu_selb                   ),
     .mem_en                     ( D_slave_mem_en                     ),
     .memWrite                   ( D_slave_memWrite                   ),
+    .memRead                    ( D_slave_memRead                    ),
     .memtoReg                   ( D_slave_memtoReg                   ),
     .cp0write                   ( D_slave_cp0write                   ),
     .is_hilo_accessed           ( D_slave_is_hilo_accessed      ),
@@ -440,6 +457,8 @@ flopenrc #(26) DFF_E_master_j_target        (clk,rst,D2E_clear1,E_ena,D_master_j
 flopenrc #(32) DFF_E_master_pc              (clk,rst,D2E_clear1,E_ena,D_master_pc             ,E_master_pc          );
 flopenrc #(1 ) DFF_E_master_is_link_pc8     (clk,rst,D2E_clear1,E_ena,D_master_is_link_pc8    ,E_master_is_link_pc8 );
 flopenrc #(1 ) DFF_E_master_mem_en          (clk,rst,D2E_clear1,E_ena,D_master_mem_en         ,E_master_mem_en      );
+flopenrc #(1 ) DFF_E_master_memWrite        (clk,rst,D2E_clear1,E_ena,D_master_memWrite       ,E_master_memWrite    );
+flopenrc #(1 ) DFF_E_master_memRead         (clk,rst,D2E_clear1,E_ena,D_master_memRead        ,E_master_memRead     );
 flopenrc #(1 ) DFF_E_master_hilowrite       (clk,rst,D2E_clear1,E_ena,D_master_hilowrite      ,E_master_hilowrite   );
 flopenrc #(6 ) DFF_E_master_op              (clk,rst,D2E_clear1,E_ena,D_master_op             ,E_master_op          );
 flopenrc #(1 ) DFF_E_master_memtoReg        (clk,rst,D2E_clear1,E_ena,D_master_memtoReg       ,E_master_memtoReg    );
@@ -486,6 +505,11 @@ assign E_master_alu_srca =  E_master_alu_sela ? {{27{1'b0}},E_master_shamt} : E_
 assign E_slave_alu_srca  =  E_slave_alu_sela  ? {{27{1'b0}},E_slave_shamt} : E_slave_rs_value ;                            
 assign E_master_alu_srcb =  E_master_alu_selb ? E_master_imm_value : E_master_rt_value;
 assign E_slave_alu_srcb  =  E_slave_alu_selb  ? E_slave_imm_value : E_slave_rt_value ;
+
+// 提前访存
+assign mem_read_enE = E_master_memRead;
+assign mem_write_enE = E_master_memWrite;
+assign mem_addrE = E_master_alu_srca + E_master_alu_srcb;
 
 alu_master u_alu_master(
     //ports
@@ -547,11 +571,11 @@ mem_access u_mem_access(
     .mem_wdata              ( M_master_rt_value     ),
     .mem_addr               ( M_master_alu_res      ),
     .mem_rdata              ( M_master_mem_rdata    ),
-    .data_sram_en           ( data_sram_en          ),
-    .data_sram_rdata        ( data_sram_rdata       ),
-    .data_sram_wen          ( data_sram_wen         ),
-    .data_sram_addr         ( data_sram_addr        ),
-    .data_sram_wdata        ( data_sram_wdata       ),
+    .data_sram_en           ( mem_enM          ),
+    .data_sram_rdata        ( mem_rdataM       ),
+    .data_sram_wen          ( mem_wenM         ),
+    .data_sram_addr         ( mem_addrM        ),
+    .data_sram_wdata        ( mem_wdataM       ),
     // 异常处理
     .M_master_except_a      ( M_master_except_a     ),
     .M_master_except        ( M_master_except       )
@@ -640,7 +664,12 @@ flopenrc #(8 ) DFF_W_slave_except    (clk,rst,W_flush,W_ena,M_slave_except    ,W
 assign W_master_reg_wdata = W_master_memtoReg ? W_master_mem_rdata : W_master_alu_res;
 assign W_slave_reg_wdata = W_slave_alu_res;
 
-// ====================================== ascii ======================================
+// debug
+assign debug_wb_pc          = (clk) ? W_master_pc : W_slave_pc;
+assign debug_wb_rf_wen      = (rst) ? 4'b0000 : ((clk) ? {4{u_regfile.wen1}} : {4{u_regfile.wen2}});
+assign debug_wb_rf_wnum     = (clk) ? u_regfile.wa1 : u_regfile.wa2;
+assign debug_wb_rf_wdata    = (clk) ? u_regfile.wd1 : u_regfile.wd2;
+// ascii
 wire [39:0] master_asciiD;
 wire [39:0] master_asciiE;
 wire [39:0] master_asciiM;
