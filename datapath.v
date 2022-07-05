@@ -502,14 +502,14 @@ branch_judge u_branch_judge(
 
 // select_alusrc: 所有的pc要加8的，都在alu执行，进行电路复用
 assign E_master_alu_srca =  E_master_alu_sela ? {{27{1'b0}},E_master_shamt} : E_master_rs_value;
-assign E_slave_alu_srca  =  E_slave_alu_sela  ? {{27{1'b0}},E_slave_shamt} : E_slave_rs_value ;                            
 assign E_master_alu_srcb =  E_master_alu_selb ? E_master_imm_value : E_master_rt_value;
+assign E_slave_alu_srca  =  E_slave_alu_sela  ? {{27{1'b0}},E_slave_shamt} : E_slave_rs_value ;                            
 assign E_slave_alu_srcb  =  E_slave_alu_selb  ? E_slave_imm_value : E_slave_rt_value ;
 
 // 提前访存
 assign mem_read_enE = E_master_memRead;
 assign mem_write_enE = E_master_memWrite;
-assign mem_addrE = E_master_alu_srca + E_master_alu_srcb;
+assign mem_addrE = E_master_alu_srca + E_master_alu_srcb; // assign mem_addrE = (E_master_alu_sela ? {{27{1'b0}},E_master_shamt} : E_master_rs_value) + (E_master_alu_selb ? E_master_imm_value : E_master_rt_value);
 
 alu_master u_alu_master(
     //ports

@@ -28,6 +28,7 @@ module pc_reg (
             pc_reg <= pc_reg;
     end
     
+    // reg
     always_ff @(posedge clk) begin
         if(rst)
             pc_next <= 32'hbfc00008;
@@ -36,6 +37,7 @@ module pc_reg (
         else
             pc_next <= pc_next;
     end
+    // wire
     // assign pc_next = pc_next_wire;
 
     always_comb begin : compute_pc_next
@@ -52,8 +54,7 @@ module pc_reg (
         else if(inst_data_ok1)
             pc_next_wire = pc_curr + 32'd4;
         else
-            pc_next_wire = pc_next_wire;
-            // pc_next_wire = pc_curr;
+            pc_next_wire = pc_curr;
     end
 
 endmodule

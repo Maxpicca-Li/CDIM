@@ -8,12 +8,12 @@ module i_cache_daxi (
     input wire inst_en,
     input wire [31:0] pc_next,
     input wire [31:0] pcF,
+    input wire stallF,
+    output wire stall,
     output wire inst_data_ok1,
     output wire inst_data_ok2,
     output wire [31:0] inst_rdata1,
     output wire [31:0] inst_rdata2,
-    output wire stall,
-    input wire stallF,
 
     //arbitrater
     output wire [31:0] araddr,
@@ -112,15 +112,8 @@ module i_cache_daxi (
         end
     end
 
-//DATAPATH
-    reg [31:0] saved_rdata1, saved_rdata2;
-    assign stall = ~(state==IDLE || (state==HitJudge) && hit && ~no_cache);
-    assign inst_data_ok1 = hit & ~no_cache ? 1'b1 : read_finish_save;
-    assign inst_data_ok2 = (hit & ~no_cache ? 1'b1: read_finish_save) & available;
-    assign inst_rdata1 = hit & ~no_cache ? block_sel_way1[sel] : saved_rdata1;
-    assign inst_rdata2 = hit & ~no_cache ? block_sel_way2[sel] : saved_rdata2;
-
 //AXI
+    reg [31:0] saved_rdata1, saved_rdata2;
     always @(posedge clk) begin
         read_req <= (rst)               ? 1'b0 :
                     inst_en & (state == HitJudge) & miss & ~read_req ? 1'b1 :
@@ -148,11 +141,7 @@ module i_cache_daxi (
     end
     assign data_back = addr_rcv & (rvalid & rready);
     assign read_finish = addr_rcv & (rvalid & rready & rlast);
-    //AXI signal
-    assign araddr = ~no_cache ? {tag, index}<<OFFSET_WIDTH : pcF; //如果是可以cache的数据,就把8个字的起始地址传过去,否则只传一个字的地址
-    assign arlen = ~no_cache ? BLOCK_NUM-1 : 8'd0;
-    assign arvalid = read_req & ~addr_rcv;
-    assign rready = addr_rcv;
+
 //LRU
     wire write_LRU_en;
     assign write_LRU_en = ~no_cache & hit | ~no_cache & read_finish;
@@ -224,4 +213,16 @@ module i_cache_daxi (
             end
         end
     endgenerate
+
+//DATAPATH OUTPUT
+    assign stall = ~(state==IDLE || (state==HitJudge) && hit && ~no_cache);
+    assign inst_data_ok1 = hit & ~no_cache ? 1'b1 : read_finish_save;
+    assign inst_data_ok2 = (hit & ~no_cache ? 1'b1: read_finish_save) & available;
+    assign inst_rdata1 = hit & ~no_cache ? block_sel_way1[sel] : saved_rdata1;
+    assign inst_rdata2 = hit & ~no_cache ? block_sel_way2[sel] : saved_rdata2;
+//AXI OUTPUT
+    assign araddr = ~no_cache ? {tag, index}<<OFFSET_WIDTH : pcF; //如果是可以cache的数据,就把8个字的起始地址传过去,否则只传一个字的地址
+    assign arlen = ~no_cache ? BLOCK_NUM-1 : 8'd0;
+    assign arvalid = read_req & ~addr_rcv;
+    assign rready = addr_rcv;
 endmodule

@@ -52,7 +52,7 @@ module mycpu_top (
     output wire[31:0] debug_wb_rf_wdata
 );
     wire clk, rst;
-    assign clk = aclk;
+    assign clk = aclk; // assign clk = aclk;
     assign rst = ~aresetn;
 
     //d_tlb - d_cache
@@ -62,10 +62,9 @@ module mycpu_top (
     //datapath - cache
     wire inst_en            ;
     wire [31:0] pcF         ;
-    wire [31:0] pcF_tmp     ;
+    wire [31:0] pcF_dp     ;
     wire [31:0] pc_next     ;
-    wire [31:0] pc_next_tmp ;
-    wire [31:0] inst_rdata  ; 
+    wire [31:0] pc_next_dp ;
     wire i_cache_stall      ;
     wire stallF             ;
     wire stallM             ;
@@ -76,13 +75,13 @@ module mycpu_top (
 
     wire data_en            ;
     wire [31:0] data_addr   ;
-    wire [31:0] data_addr_tmp;
+    wire [31:0] data_addr_dp;
     wire [31:0] data_rdata  ;
     wire [3:0] data_wen     ;
     wire [31:0] data_wdata  ;
     wire d_cache_stall      ;
     wire [31:0] mem_addrE   ;
-    wire [31:0] mem_addrE_tmp;
+    wire [31:0] mem_addrE_dp;
     wire mem_read_enE       ;
     wire mem_write_enE      ;
 
@@ -132,8 +131,8 @@ module mycpu_top (
         // inst
         .inst_sram_en      		( inst_en      		),
         .stallF            		( stallF            		),
-        .F_pc              		( pcF_tmp              		),
-        .F_pc_next         		( pc_next_tmp         		),
+        .F_pc              		( pcF_dp              		),
+        .F_pc_next         		( pc_next_dp         		),
         .i_stall           		( i_cache_stall           		),
         .inst_data_ok1     		( inst_data_ok1     		),
         .inst_data_ok2     		( inst_data_ok2     		),
@@ -143,11 +142,11 @@ module mycpu_top (
         // data
         .mem_read_enE      		( mem_read_enE      		),
         .mem_write_enE     		( mem_write_enE     		),
-        .mem_addrE         		( mem_addrE         		),
+        .mem_addrE         		( mem_addrE_dp     		),
         .mem_enM           		( data_en           		),
         .stallM            		( stallM            		),
         .mem_wenM          		( data_wen          		),
-        .mem_addrM         		( data_addr_tmp         		),
+        .mem_addrM         		( data_addr_dp         		),
         .mem_wdataM        		( data_wdata        		),
         .d_stall           		( d_cache_stall           		),
         .mem_rdataM        		( data_rdata        		),
@@ -160,10 +159,10 @@ module mycpu_top (
 
     //简易的MMU
     mmu u_mmu(
-        .inst_vaddr(pcF_tmp),
-        .inst_vaddr2(pc_next_tmp),
-        .data_vaddr(data_addr_tmp),
-        .data_vaddr2(mem_addrE_tmp),
+        .inst_vaddr(pcF_dp),
+        .inst_vaddr2(pc_next_dp),
+        .data_vaddr(data_addr_dp),
+        .data_vaddr2(mem_addrE_dp),
 
         .inst_paddr(pcF),
         .inst_paddr2(pc_next),
@@ -177,7 +176,7 @@ module mycpu_top (
         .clk(clk), .rst(rst),
 
         //TLB
-        .no_cache(1'b0),  //.no_cache(no_cache_i),
+        .no_cache(no_cache_i),
         
         //datapath
         .inst_en(inst_en),

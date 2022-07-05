@@ -9,6 +9,7 @@ module flopenrc #(parameter WIDTH = 32) (
         if(rst) q<=0;
         else if (clear) q<=0;
         else if (ena) q<=d;
+        else q<=q;
     end
     
 endmodule
