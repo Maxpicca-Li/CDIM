@@ -45,7 +45,8 @@ module i_cache_daxi (
     assign index_next = pc_next [INDEX_WIDTH+OFFSET_WIDTH-1 : OFFSET_WIDTH             ];
     assign offset1    = pcF     [OFFSET_WIDTH-1             : 2                       ];
     assign offset2    = pcF     [OFFSET_WIDTH-1             : 2                       ] + 1;
-    assign available  = (|offset2) && (~(&offset2)); // offset2不等于0和7（7，刚好rlast=1）
+    // assign available  = (|offset2) && (~(&offset2)); // offset2不等于0和7（7，刚好rlast=1）
+    assign available  = (|offset2); // offset2不等于0
 
     wire enb;       //cache读使能
     wire [INDEX_WIDTH-1:0] addrb;     //cache读的地址

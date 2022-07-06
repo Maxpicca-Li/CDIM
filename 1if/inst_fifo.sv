@@ -5,6 +5,7 @@ module inst_fifo(
         input                       clk,
         input                       rst,
         input                       fifo_rst,                 // fifo读写指针重置位
+        input                       F_ena,
         input                       master_is_branch,         // 延迟槽判断
         output logic                master_is_in_delayslot_o, // 延迟槽判断结果
 
@@ -59,8 +60,9 @@ module inst_fifo(
     // always_comb begin : read_data
     // 转成时序逻辑, 其中read_pointer和master_is_in_delayslot_o需要1个周期
     // 故read_data共要2个周期，达成同步
-    always_ff @(posedge clk)begin
-        if(empty || fifo_rst) begin
+    // always_ff @(posedge clk)begin
+    always_ff @(negedge clk)begin
+        if(empty || fifo_rst || !F_ena) begin
             read_data1      <= 32'd0;
             read_data2      <= 32'd0;
             read_addres1    <= 32'd0;
@@ -104,14 +106,15 @@ module inst_fifo(
     end
 
     always_ff @(posedge clk) begin : update_read_pointer
-        if(fifo_rst)
+        if(fifo_rst) begin
             read_pointer <= 4'd0;
-        else if(empty)
+        end else if(empty || !F_ena) begin
             read_pointer <= read_pointer;
-        else if(read_en1 && read_en2)
+        end else if(read_en1 && read_en2) begin
             read_pointer <= read_pointer + 4'd2;
-        else if(read_en1)
+        end else if(read_en1) begin
             read_pointer <= read_pointer + 4'd1;
+        end
     end
 
     always_ff @(posedge clk) begin : update_counter

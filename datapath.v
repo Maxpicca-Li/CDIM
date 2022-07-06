@@ -130,8 +130,8 @@ wire            D_master_is_pc_except    ,D_slave_is_pc_except    ;
 
 // ===== E =====
 wire [31:0]     E_master_inst     ,E_slave_inst    ;
-wire            E_branch_taken;
-wire [31:0]     E_pc_branch_target;
+wire            D_branch_taken;
+wire [31:0]     D_pc_branch_target;
 wire [ 3:0]     E_master_branch_type;
 wire [ 4:0]     E_master_shamt          ;
 wire [31:0]     E_master_rs_value       ;
@@ -223,7 +223,7 @@ hazard u_hazard(
     .E_master_reg_waddr             ( E_master_reg_waddr             ),
     .M_master_memtoReg              ( M_master_memtoReg              ),
     .M_master_reg_waddr             ( M_master_reg_waddr             ),
-    .E_branch_taken                 ( E_branch_taken                 ),
+    .D_branch_taken                 ( D_branch_taken                 ),
     .E_div_stall                    ( E_div_stall                    ),
     .M_except                       ( M_except                       ),
     .F_ena                          ( F_ena                          ),
@@ -241,10 +241,9 @@ hazard u_hazard(
 // ====================================== Fetch ======================================
 assign F_pc_except = (|F_pc[1:0]); // 必须是2'b00
 // FIXME: 注意，这里如果是i_stall导致的F_ena=0，inst_sram_en仍然使能(不太确定这个逻辑)
-// assign inst_sram_en =  F_ena & (!fifo_full);  // fifo_full 不取指
-// assign inst_sram_en =  !(rst | M_except | F_pc_except | fifo_full);  // fifo_full 不取指
-assign inst_sram_en =  (F_ena | i_stall) & !(rst | M_except | F_pc_except | fifo_full);  // fifo_full 不取指
+assign inst_sram_en =  !(rst | F_pc_except | fifo_full);  // assign inst_sram_en =  !(rst | M_except | F_pc_except | fifo_full);  // fifo_full 不取指
 assign stallF = ~F_ena;
+assign stallM = ~M_ena;
 
 
 pc_reg u_pc_reg(
@@ -252,13 +251,13 @@ pc_reg u_pc_reg(
     .clk                       ( clk                   ),
     .rst                       ( rst                   ),
     .pc_en                     ( F_ena | M_except      ), // 异常的优先级最高，必须使能
-    .inst_data_ok1             ( inst_data_ok1         ),
-    .inst_data_ok2             ( inst_data_ok2         ),
+    .inst_data_ok1             ( inst_data_ok1 ),
+    .inst_data_ok2             ( inst_data_ok2 ),
     .fifo_full                 ( fifo_full             ), // fifo_full pc不变
     .is_except                 ( M_except              ),
     .except_addr               ( M_pc_except_target    ),
-    .branch_taken              ( E_branch_taken        ),
-    .branch_addr               ( E_pc_branch_target    ),
+    .branch_taken              ( D_branch_taken        ),
+    .branch_addr               ( D_pc_branch_target    ),
     
     .pc_next                   ( F_pc_next             ),
     .pc_curr                   ( F_pc                  )
@@ -269,6 +268,7 @@ inst_fifo u_inst_fifo(
     .clk                          ( clk                    ),
     .rst                          ( rst                    ),
     .fifo_rst                     ( rst || D_flush         ),
+    .F_ena                        ( F_ena ),
     .master_is_branch             ( (|D_master_branch_type)),
     
     .read_en1                     ( D_ena                  ),
@@ -439,11 +439,22 @@ issue_ctrl u_issue_ctrl(
     .D_slave_en                     ( slave_ena                )
 );
 
+branch_judge u_branch_judge(
+    //ports
+    .branch_type                   ( D_master_branch_type                   ),
+    .offset                        ( {D_master_imm_value[29:0],2'b00}  ),
+    .j_target                      ( D_master_j_target                      ),
+    .rs_data                       ( D_master_rs_value                       ),
+    .rt_data                       ( D_master_rt_value                       ),
+    .pc_plus4                      ( D_master_pc + 32'd4                      ),
+    .branch_taken                  ( D_branch_taken                  ),
+    .pc_branch_address             ( D_pc_branch_target             )
+);
 
 // ====================================== Execute ======================================
 wire D2E_clear1,D2E_clear2;
 assign D2E_clear1 = M_except|(!D_master_is_in_delayslot & E_flush) | (!D_ena & E_ena);
-assign D2E_clear2 = E_flush || (E_ena & !slave_ena);
+assign D2E_clear2 = (!D_slave_is_in_delayslot & E_flush) || (E_ena & !slave_ena);
 
 flopenrc #(32) DFF_E_master_inst            (clk,rst,D2E_clear1,E_ena,D_master_inst           ,E_master_inst        );
 flopenrc #(5 ) DFF_E_master_shamt           (clk,rst,D2E_clear1,E_ena,D_master_shamt          ,E_master_shamt       );
@@ -486,19 +497,6 @@ flopenrc #(1 ) DFF_E_slave_memtoReg    (clk,rst,D2E_clear2,slave_ena,D_slave_mem
 flopenrc #(8 ) DFF_E_slave_except      (clk,rst,D2E_clear2,slave_ena,{D_slave_is_pc_except,D_slave_syscall_inst,D_slave_break_inst,D_slave_eret_inst,D_slave_undefined_inst,3'b0},E_slave_except);
 flopenrc #(1 ) DFF_E_slave_cp0write    (clk,rst,D2E_clear2,slave_ena,D_slave_cp0write    ,E_slave_cp0write    );
 flopenrc #(1 ) DFF_E_slave_is_in_delayslot (clk,rst,D2E_clear2,slave_ena,D_slave_is_in_delayslot,E_slave_is_in_delayslot);
-
-branch_judge u_branch_judge(
-    //ports
-    .branch_type                   ( E_master_branch_type                   ),
-    .offset                        ( {E_master_imm_value[29:0],2'b00}  ),
-    .j_target                      ( E_master_j_target                      ),
-    .rs_data                       ( E_master_rs_value                       ),
-    .rt_data                       ( E_master_rt_value                       ),
-    .pc_plus4                      ( E_master_pc + 32'd4                      ),
-    .branch_taken                  ( E_branch_taken                  ),
-    .pc_branch_address             ( E_pc_branch_target             )
-);
-
 
 // select_alusrc: 所有的pc要加8的，都在alu执行，进行电路复用
 assign E_master_alu_srca =  E_master_alu_sela ? {{27{1'b0}},E_master_shamt} : E_master_rs_value;
