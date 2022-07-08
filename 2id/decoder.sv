@@ -128,14 +128,14 @@ module  decoder(
                         end
                     endcase
                 // lsmen
-                `OP_LB    : signsD = {`ALUOP_ADDU ,15'b010000001010010};
-                `OP_LBU   : signsD = {`ALUOP_ADDU ,15'b010000001010010};
-                `OP_LH    : signsD = {`ALUOP_ADDU ,15'b010000001010010};
-                `OP_LHU   : signsD = {`ALUOP_ADDU ,15'b010000001010010};
-                `OP_LW    : signsD = {`ALUOP_ADDU ,15'b010000001010010}; // lw
-                `OP_SB    : signsD = {`ALUOP_ADDU ,15'b110000000010100};
-                `OP_SH    : signsD = {`ALUOP_ADDU ,15'b110000000010100};
-                `OP_SW    : signsD = {`ALUOP_ADDU ,15'b110000000010100}; // sw
+                `OP_LB    : signsD = {`ALUOP_ADDU ,15'b110000001010010};
+                `OP_LBU   : signsD = {`ALUOP_ADDU ,15'b110000001010010};
+                `OP_LH    : signsD = {`ALUOP_ADDU ,15'b110000001010010};
+                `OP_LHU   : signsD = {`ALUOP_ADDU ,15'b110000001010010};
+                `OP_LW    : signsD = {`ALUOP_ADDU ,15'b110000001010010}; // lw
+                `OP_SB    : signsD = {`ALUOP_ADDU ,15'b010000000010100};
+                `OP_SH    : signsD = {`ALUOP_ADDU ,15'b010000000010100};
+                `OP_SW    : signsD = {`ALUOP_ADDU ,15'b010000000010100}; // sw
                 // arith imme
                 `OP_ADDI  : signsD = {`ALUOP_ADD  ,15'b000000001010000}; // addi
                 `OP_ADDIU : signsD = {`ALUOP_ADDU ,15'b000000001010000}; // addiu

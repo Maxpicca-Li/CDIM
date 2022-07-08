@@ -47,7 +47,6 @@ module regfile(
                     (wen1 && wa1 == ra2_b) ? wd1 :
                     rf[ra2_b];
 
-    // always_ff @(negedge clk) begin : write_data  // lab4
     always_ff @(posedge clk) begin : write_data     // sram_func
         if(rst) begin
             for(int i = 0; i < 31; i++)
