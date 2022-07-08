@@ -9,7 +9,7 @@ module hazard (
     input wire [4:0] E_master_reg_waddr,
     input wire       M_master_memtoReg,
     input wire [4:0] M_master_reg_waddr,
-    input wire       E_branch_taken,
+    input wire       D_branch_taken,
     input wire       E_div_stall,
     
     //except
@@ -50,8 +50,8 @@ module hazard (
     assign W_ena = ~longest_stall | (E_div_stall & M_except); // FIXME: M阶段异常不影响W阶段 ==> 该逻辑根据波形图硬改的
 
     assign F_flush = 1'b0;
-    assign D_flush = M_except | E_branch_taken;
-    // assign E_flush = M_except | E_branch_taken; // pclk-fifo, nclk-ibram
+    assign D_flush = M_except | D_branch_taken;
+    // assign E_flush = M_except | D_branch_taken; // pclk-fifo, nclk-ibram
     assign E_flush = M_except;                     // nclk-fifo, pclk-ibram
     assign M_flush = M_except;
     assign W_flush = 1'b0;
