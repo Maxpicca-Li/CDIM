@@ -12,10 +12,10 @@ module inst_fifo(
 
         input                       read_en1,    // master是否发射
         input                       read_en2,    // slave是否发射
-        output logic [31:0]         read_data1,  // 指令
-        output logic [31:0]         read_data2,
-        output logic [31:0]         read_address1, // 指令地址，即pc
-        output logic [31:0]         read_address2, 
+        (*make_debug = "true"*)output logic [31:0]         read_data1,  // 指令
+        (*make_debug = "true"*)output logic [31:0]         read_data2,
+        (*make_debug = "true"*)output logic [31:0]         read_address1, // 指令地址，即pc
+        (*make_debug = "true"*)output logic [31:0]         read_address2, 
 
         input                       write_en1, // 数据读回 ==> inst_ok & inst_ok_1
         input                       write_en2, // 数据读回 ==> inst_ok & inst_ok_2

@@ -30,10 +30,10 @@ module datapath (
     input  wire [31:0] mem_rdataM,
     
     //debug
-    output wire [31:0]  debug_wb_pc,      
-    output wire [3:0]   debug_wb_rf_wen,
-    output wire [4:0]   debug_wb_rf_wnum, 
-    output wire [31:0]  debug_wb_rf_wdata
+    (*make_debug = "true"*)output wire [31:0]  debug_wb_pc,      
+    (*make_debug = "true"*)output wire [3:0]   debug_wb_rf_wen,
+    (*make_debug = "true"*)output wire [4:0]   debug_wb_rf_wnum, 
+    (*make_debug = "true"*)output wire [31:0]  debug_wb_rf_wdata
 );
 
 // ====================================== 变量定义区 ======================================
@@ -428,7 +428,9 @@ issue_ctrl u_issue_ctrl(
     .D_master_is_branch             ( (|D_master_branch_type)  ),
     .D_master_is_spec_inst          ( D_master_spec_inst       ),
     .E_master_memtoReg              ( E_master_memtoReg        ),
+    .M_master_memtoReg              ( M_master_memtoReg        ),
     .E_master_reg_waddr             ( E_master_reg_waddr       ),
+    .M_master_reg_waddr             ( M_master_reg_waddr       ),
     .D_slave_op                     ( D_slave_op               ),
     .D_slave_rs                     ( D_slave_rs               ),
     .D_slave_rt                     ( D_slave_rt               ),
@@ -447,7 +449,7 @@ issue_ctrl u_issue_ctrl(
 wire D2E_clear1,D2E_clear2;
 // 在使能的情况下跳转清空才成立
 assign D2E_clear1 = M_except | (!D_master_is_in_delayslot & E_flush & E_ena) | (!D_ena & E_ena);
-assign D2E_clear2 = M_except | (!D_slave_is_in_delayslot & E_flush & D_slave_ena) || (E_ena & !D_slave_ena);
+assign D2E_clear2 = M_except | (E_flush & D_slave_ena) || (E_ena & !D_slave_ena);
 
 id_ex u_id_ex(
 	//ports

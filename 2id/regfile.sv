@@ -50,7 +50,7 @@ module regfile(
     always_ff @(posedge clk) begin : write_data     // sram_func
         if(rst) begin
             for(int i = 0; i < 31; i++)
-                rf[i] <= 32'hxxxxxxxx;
+                rf[i] <= 32'h00000000; // rf[i] <= 32'hxxxxxxxx;
         end
         else begin
             if(wen1 && wen2 && wa1 == wa2)

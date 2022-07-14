@@ -10,7 +10,9 @@ module issue_ctrl (
     input           D_master_is_branch,
     input           D_master_is_spec_inst,
     input           E_master_memtoReg,
+    input           M_master_memtoReg,
     input [4:0]     E_master_reg_waddr,
+    input [4:0]     M_master_reg_waddr,
     //slave's status
     input  [5:0]    D_slave_op,
     input  [4:0]    D_slave_rs,
@@ -53,13 +55,7 @@ module issue_ctrl (
         end
     end
 
-    always_comb begin : define_load_stall
-        if(E_master_memtoReg && ((D_slave_rs == E_master_reg_waddr) || (D_slave_rt == E_master_reg_waddr) )) begin
-            load_stall = 1'b1;
-        end
-        else begin
-            load_stall = 1'b0;
-        end
-    end
+    assign load_stall = (E_master_memtoReg & (D_slave_rs == E_master_reg_waddr | D_slave_rt == E_master_reg_waddr)) || 
+                        (M_master_memtoReg & (D_slave_rs == M_master_reg_waddr | D_slave_rt == M_master_reg_waddr));
 
 endmodule
