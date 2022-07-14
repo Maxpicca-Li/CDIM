@@ -14,8 +14,8 @@ module inst_fifo(
         input                       read_en2,    // slave是否发射
         output logic [31:0]         read_data1,  // 指令
         output logic [31:0]         read_data2,
-        output logic [31:0]         read_addres1, // 指令地址，即pc
-        output logic [31:0]         read_addres2, 
+        output logic [31:0]         read_address1, // 指令地址，即pc
+        output logic [31:0]         read_address2, 
 
         input                       write_en1, // 数据读回 ==> inst_ok & inst_ok_1
         input                       write_en2, // 数据读回 ==> inst_ok & inst_ok_2
@@ -51,7 +51,7 @@ module inst_fifo(
     always_ff @(posedge clk)begin
         if(rst) 
             master_is_in_delayslot_o <= 1'b0;
-        else if(!F_ena)
+        else if(!read_en1)
             master_is_in_delayslot_o <= master_is_in_delayslot_o;
         else if(master_is_branch && !read_en2)
             master_is_in_delayslot_o <= 1'b1;
@@ -61,75 +61,127 @@ module inst_fifo(
 
     // 跳转延迟槽处理  ==> 参考sirius延迟槽的处理方式
     // 升级版处理延迟槽：若master是分支指令，slave没发射，则下一次的master一定是在延迟槽，延迟槽不因非except之外的其他因素而清空; 且要保存相关数据
-    always_ff @(posedge clk) begin // 延迟槽读取信号
-        if(fifo_rst && delay_rst && !write_en1 && (read_pointer + 4'd1 == write_pointer || read_pointer == write_pointer)) begin
-            delayslot_stall   <= 1'd1;
-        end
-        else if(delayslot_stall && write_en1)
-            delayslot_stall   <= 1'd0;
-        else if(delayslot_stall)
-            delayslot_stall   <= delayslot_stall;
-        else
-            delayslot_stall   <= 1'd0;
-    end
+    // D阶段延迟槽判断
+    // always_ff @(posedge clk) begin // 延迟槽读取信号
+    //     if(fifo_rst && delay_rst && !write_en1 && (read_pointer + 4'd1 == write_pointer || read_pointer == write_pointer)) begin
+    //         delayslot_stall   <= 1'd1;
+    //     end
+    //     else if(delayslot_stall && write_en1)
+    //         delayslot_stall   <= 1'd0;
+    //     else if(delayslot_stall)
+    //         delayslot_stall   <= delayslot_stall;
+    //     else
+    //         delayslot_stall   <= 1'd0;
+    // end
+    // always_ff @(posedge clk) begin // 下一条指令是延迟槽，存储延迟槽数据
+    //     if(fifo_rst && delay_rst && ~read_en1) begin // 初步判断
+    //         delayslot_enable <= 1'b1;
+    //         delayslot_data  <= (read_pointer + 4'd1 == write_pointer || read_pointer == write_pointer)? write_data1 : data[read_pointer + 4'd1];
+    //         delayslot_addr  <= (read_pointer + 4'd1 == write_pointer || read_pointer == write_pointer)? write_address1 : address[read_pointer + 4'd1];
+    //     end
+    //     else if(delayslot_stall && write_en1) begin // 要写的数据回来了
+    //         delayslot_data    <= write_data1;
+    //     end
+    //     else if(!delayslot_stall && read_en1) begin // 清空
+    //         delayslot_enable <= 1'b0;
+    //         delayslot_data   <= 32'd0;
+    //         delayslot_addr   <= 32'd0;
+    //     end
+    // end
 
-    always_ff @(posedge clk) begin // 下一条指令是延迟槽，存储延迟槽数据
-        if(fifo_rst && delay_rst) begin // 初步判断
+    // E阶段跳转判断
+    always_ff @(posedge clk) begin  // 当前指令在需要执行的延迟槽中
+        if(fifo_rst && delay_rst && ~read_en1) begin // 初步判断
             delayslot_enable <= 1'b1;
-            delayslot_data  <= (read_pointer + 4'd1 == write_pointer || read_pointer == write_pointer)? write_data1 : data[read_pointer + 4'd1];
-            delayslot_addr  <= (read_pointer + 4'd1 == write_pointer || read_pointer == write_pointer)? write_address1 : address[read_pointer + 4'd1];
+            delayslot_data  <= read_data1;
+            delayslot_addr  <= read_address1;
         end
-        else if(delayslot_stall && write_en1) begin // 要写的数据回来了
-            delayslot_data    <= write_data1;
-        end
-        else if(!delayslot_stall && read_en1) begin // 清空
+        else if(read_en1) begin // 清空
             delayslot_enable <= 1'b0;
-            delayslot_data           <= 32'd0;
-            delayslot_addr           <= 32'd0;
+            delayslot_data   <= 32'd0;
+            delayslot_addr   <= 32'd0;
         end
     end
     
+    reg [31:0] read_data1_save;
+    reg [31:0] read_data2_save;
+    reg [31:0] read_address1_save;
+    reg [31:0] read_address2_save;
+
+    always_ff @(posedge clk) begin
+        read_data1_save <= read_data1;
+        read_data2_save <= read_data2;
+        read_address1_save <= read_address1;
+        read_address2_save <= read_address2;
+    end
     // fifo读
     // 1、取指限制：注意需要保证fifo中至少有一条指令
-    // always_comb begin : read_data
+    always_comb begin
+        if(delayslot_enable) begin
+            read_data1      = delayslot_data;
+            read_data2      = 32'd0;
+            read_address1   = delayslot_addr;
+            read_address2   = 32'd0;
+        end
+        else if(empty) begin
+            read_data1      = 32'd0;
+            read_data2      = 32'd0;
+            read_address1   = 32'd0;
+            read_address2   = 32'd0;
+        end
+        else if(almost_empty) begin
+            // 只能取一条数据
+            read_data1      = data[read_pointer];
+            read_data2      = 32'd0;
+            read_address1   = address[read_pointer];
+            read_address2   = 32'd0;
+        end 
+        else begin
+            // 可以取两条数据
+            read_data1      = data[read_pointer];
+            read_data2      = data[read_pointer + 4'd1];
+            read_address1   = address[read_pointer];
+            read_address2   = address[read_pointer + 4'd1];
+        end
+    end
     // 2、转成时序逻辑, 其中read_pointer和master_is_in_delayslot_o需要1个周期
     // 故read_data共要2个周期，达成同步
     // always_ff @(posedge clk)begin
     // 3、下降沿读，去模拟组合逻辑，但是留给D阶段的只剩半个clk了（因为单独的组合逻辑会导致：FATAL_ERROR: Iteration limit 10000 is reached. Possible zero delay oscillation detected where simulation time can not advance. Please check your source code. Note that the iteration limit can be changed using switch -maxdeltaid.）
-    always_ff @(negedge clk)begin 
-        if(delayslot_enable) begin
-            read_data1      <= delayslot_data;
-            read_data2      <= 32'd0;
-            read_addres1    <= delayslot_addr;
-            read_addres2    <= 32'd0;
-        end
-        else if(empty || fifo_rst) begin
-            read_data1      <= 32'd0;
-            read_data2      <= 32'd0;
-            read_addres1    <= 32'd0;
-            read_addres2    <= 32'd0;
-        end
-        else if(!F_ena) begin
-            read_data1      <= read_data1;
-            read_data2      <= read_data2;
-            read_addres1    <= read_addres1;
-            read_addres2    <= read_addres2;
-        end
-        else if(!F_ena || almost_empty) begin
-            // 只能取一条数据
-            read_data1      <= data[read_pointer];
-            read_data2      <= 32'd0;
-            read_addres1    <= address[read_pointer];
-            read_addres2    <= 32'd0;
-        end 
-        else begin
-            // 可以取两条数据
-            read_data1      <= data[read_pointer];
-            read_data2      <= data[read_pointer + 4'd1];
-            read_addres1    <= address[read_pointer];
-            read_addres2    <= address[read_pointer + 4'd1];
-        end
-    end
+    // always_ff @(negedge clk)begin 
+    //     if(delayslot_enable) begin
+    //         read_data1      <= delayslot_data;
+    //         read_data2      <= 32'd0;
+    //         read_address1   <= delayslot_addr;
+    //         read_address2   <= 32'd0;
+    //     end
+    //     else if(empty || fifo_rst) begin
+    //         read_data1      <= 32'd0;
+    //         read_data2      <= 32'd0;
+    //         read_address1   <= 32'd0;
+    //         read_address2   <= 32'd0;
+    //     end
+    //     else if(!F_ena) begin
+    //         read_data1      <= read_data1;
+    //         read_data2      <= read_data2;
+    //         read_address1   <= read_address1;
+    //         read_address2   <= read_address2;
+    //     end
+    //     else if(almost_empty) begin
+    //         // 只能取一条数据
+    //         read_data1      <= data[read_pointer];
+    //         read_data2      <= 32'd0;
+    //         read_address1   <= address[read_pointer];
+    //         read_address2   <= 32'd0;
+    //     end 
+    //     else begin
+    //         // 可以取两条数据
+    //         read_data1      <= data[read_pointer];
+    //         read_data2      <= data[read_pointer + 4'd1];
+    //         read_address1   <= address[read_pointer];
+    //         read_address2   <= address[read_pointer + 4'd1];
+    //     end
+    // end
 
     // 写入数据更新
     always_ff @(posedge clk) begin : write_data 

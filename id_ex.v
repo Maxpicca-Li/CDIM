@@ -74,6 +74,7 @@ module id_ex(
     output reg [31:0]E_master_rt_value,
     output reg [31:0]E_master_imm_value,
 
+    output reg E_slave_ena,
     output reg E_slave_reg_wen,
     output reg E_slave_alu_sela,
     output reg E_slave_alu_selb,
@@ -165,6 +166,7 @@ module id_ex(
             E_slave_rt_value <= 0;
             E_slave_imm_value <= 0;
             E_slave_pc <= 0;
+            E_slave_ena <= 0;
         end
         else if (ena2) begin
             E_slave_reg_wen <= D_slave_reg_wen;
@@ -183,6 +185,7 @@ module id_ex(
             E_slave_rt_value <= D_slave_rt_value;
             E_slave_imm_value <= D_slave_imm_value;
             E_slave_pc <= D_slave_pc;
+            E_slave_ena <= ena2;
         end
     end
 
