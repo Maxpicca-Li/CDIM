@@ -16,9 +16,6 @@ module pc_reg (
         output      [31:0]  pc_curr
     );
 
-    // OUTPUT
-    assign pc_curr = pc_reg;
-
     // 中间逻辑
     reg  [31:0] pc_reg;
     always_ff @(posedge clk) begin
@@ -45,5 +42,8 @@ module pc_reg (
         //     pc_next = pc_curr;
         // end
     end
+
+    // OUTPUT
+    assign pc_curr = pc_reg;
 
 endmodule
