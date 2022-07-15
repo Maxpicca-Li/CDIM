@@ -28,7 +28,11 @@ module regfile(
 
     reg [31:0] rf[31:0];
 
-    
+    // integer i;
+    // initial begin
+    //     for (i=0;i<32;i=i+1) rf[i] <= 0;
+    // end
+
     // slave流水线处于更高的优先级，因为slave更接近下一条指令，故先前推slave
     assign rd1_a =  (~(|ra1_a))                  ? 32'h0000_0000 : 
                     (wen2 && ~(|(wa2 ^ ra1_a))) ? wd2 :
