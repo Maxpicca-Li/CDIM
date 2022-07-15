@@ -27,6 +27,7 @@ module exception(
 
     always_comb begin: excepttype_define
         except_target = 32'hBFC00380;
+        except_bad_addr = 0;
         if(rst) begin
             excepttype = 32'b0;
         end else begin

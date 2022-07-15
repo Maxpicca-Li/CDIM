@@ -30,6 +30,9 @@ module mem_access (
     always_comb begin:mem_access_transform
         ades = 1'b0; // 写指令地址错例外
         adel = 1'b0; // 读指令地址错例外
+        data_sram_wen = 4'b0000;
+        mem_rdata = 0;
+        data_sram_wdata = 0;
         case(opM)
             `OP_LW: begin
                 data_sram_wen = 4'b0000;
