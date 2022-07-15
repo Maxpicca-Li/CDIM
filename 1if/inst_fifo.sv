@@ -12,10 +12,10 @@ module inst_fifo(
 
         input                       read_en1,    // master是否发射
         input                       read_en2,    // slave是否发射
-        (*make_debug = "true"*)output logic [31:0]         read_data1,  // 指令
-        (*make_debug = "true"*)output logic [31:0]         read_data2,
-        (*make_debug = "true"*)output logic [31:0]         read_address1, // 指令地址，即pc
-        (*make_debug = "true"*)output logic [31:0]         read_address2, 
+        output logic [31:0]         read_data1,  // 指令
+        output logic [31:0]         read_data2,
+        output logic [31:0]         read_address1, // 指令地址，即pc
+        output logic [31:0]         read_address2, 
 
         input                       write_en1, // 数据读回 ==> inst_ok & inst_ok_1
         input                       write_en2, // 数据读回 ==> inst_ok & inst_ok_2
@@ -102,21 +102,9 @@ module inst_fifo(
             delayslot_addr   <= 32'd0;
         end
     end
-    
-    reg [31:0] read_data1_save;
-    reg [31:0] read_data2_save;
-    reg [31:0] read_address1_save;
-    reg [31:0] read_address2_save;
 
-    always_ff @(posedge clk) begin
-        read_data1_save <= read_data1;
-        read_data2_save <= read_data2;
-        read_address1_save <= read_address1;
-        read_address2_save <= read_address2;
-    end
     // fifo读
-    // 1、取指限制：注意需要保证fifo中至少有一条指令
-    always_comb begin
+    always_comb begin  // 取指限制：注意需要保证fifo中至少有一条指令
         if(delayslot_enable) begin
             read_data1      = delayslot_data;
             read_data2      = 32'd0;
@@ -144,46 +132,8 @@ module inst_fifo(
             read_address2   = address[read_pointer + 4'd1];
         end
     end
-    // 2、转成时序逻辑, 其中read_pointer和master_is_in_delayslot_o需要1个周期
-    // 故read_data共要2个周期，达成同步
-    // always_ff @(posedge clk)begin
-    // 3、下降沿读，去模拟组合逻辑，但是留给D阶段的只剩半个clk了（因为单独的组合逻辑会导致：FATAL_ERROR: Iteration limit 10000 is reached. Possible zero delay oscillation detected where simulation time can not advance. Please check your source code. Note that the iteration limit can be changed using switch -maxdeltaid.）
-    // always_ff @(negedge clk)begin 
-    //     if(delayslot_enable) begin
-    //         read_data1      <= delayslot_data;
-    //         read_data2      <= 32'd0;
-    //         read_address1   <= delayslot_addr;
-    //         read_address2   <= 32'd0;
-    //     end
-    //     else if(empty || fifo_rst) begin
-    //         read_data1      <= 32'd0;
-    //         read_data2      <= 32'd0;
-    //         read_address1   <= 32'd0;
-    //         read_address2   <= 32'd0;
-    //     end
-    //     else if(!F_ena) begin
-    //         read_data1      <= read_data1;
-    //         read_data2      <= read_data2;
-    //         read_address1   <= read_address1;
-    //         read_address2   <= read_address2;
-    //     end
-    //     else if(almost_empty) begin
-    //         // 只能取一条数据
-    //         read_data1      <= data[read_pointer];
-    //         read_data2      <= 32'd0;
-    //         read_address1   <= address[read_pointer];
-    //         read_address2   <= 32'd0;
-    //     end 
-    //     else begin
-    //         // 可以取两条数据
-    //         read_data1      <= data[read_pointer];
-    //         read_data2      <= data[read_pointer + 4'd1];
-    //         read_address1   <= address[read_pointer];
-    //         read_address2   <= address[read_pointer + 4'd1];
-    //     end
-    // end
 
-    // 写入数据更新
+    // fifo写
     always_ff @(posedge clk) begin : write_data 
         if(~rst & write_en1) begin
             data[write_pointer] <= write_data1;
@@ -215,7 +165,6 @@ module inst_fifo(
             read_pointer <= read_pointer + 4'd1;
         end
     end
-
 
     always_ff @(posedge clk) begin : update_counter
         if(fifo_rst)

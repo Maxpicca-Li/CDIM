@@ -30,10 +30,10 @@ module datapath (
     input  wire [31:0] mem_rdataM,
     
     //debug
-    (*make_debug = "true"*)output wire [31:0]  debug_wb_pc,      
-    (*make_debug = "true"*)output wire [3:0]   debug_wb_rf_wen,
-    (*make_debug = "true"*)output wire [4:0]   debug_wb_rf_wnum, 
-    (*make_debug = "true"*)output wire [31:0]  debug_wb_rf_wdata
+    output wire [31:0]  debug_wb_pc,      
+    output wire [3:0]   debug_wb_rf_wen,
+    output wire [4:0]   debug_wb_rf_wnum, 
+    output wire [31:0]  debug_wb_rf_wdata
 );
 
 // ====================================== 变量定义区 ======================================
@@ -209,8 +209,8 @@ wire            W_master_hilowrite;
 // 异常数据从上至下传递
 // _except = [7pc_exp, 6syscall, 5break, 4eret, 3undefined, 2overflow, 1adel, 0ades]
 assign M_except = (|M_excepttype);
-assign D_master_is_pc_except  = (D_master_pc[1:0] == 2'b00) ? 1'b0 : 1'b1;
-assign D_slave_is_pc_except  = (D_slave_pc[1:0] == 2'b00) ? 1'b0 : 1'b1;
+assign D_master_is_pc_except  = ~(|D_master_pc[1:0]) ? 1'b0 : 1'b1; // 2'b00
+assign D_slave_is_pc_except  = ~(|D_slave_pc[1:0]) ? 1'b0 : 1'b1;
 
 // 冒险处理
 hazard u_hazard(

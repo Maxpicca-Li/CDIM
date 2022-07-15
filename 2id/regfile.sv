@@ -30,37 +30,31 @@ module regfile(
 
     
     // slave流水线处于更高的优先级，因为slave更接近下一条指令，故先前推slave
-    assign rd1_a = (ra1_a == 5'b00000)     ? 32'h0000_0000 : 
-                    (wen2 && wa2 == ra1_a) ? wd2 :
-                    (wen1 && wa1 == ra1_a) ? wd1 :
+    assign rd1_a =  (~(|ra1_a))                  ? 32'h0000_0000 : 
+                    (wen2 && ~(|(wa2 ^ ra1_a))) ? wd2 :
+                    (wen1 && ~(|(wa1 ^ ra1_a))) ? wd1 :
                     rf[ra1_a];
-    assign rd1_b =  (ra1_b == 5'b00000)    ? 32'h0000_0000 : 
-                    (wen2 && wa2 == ra1_b) ? wd2 :
-                    (wen1 && wa1 == ra1_b) ? wd1 :
+    assign rd1_b =  (~(|ra1_b))                 ? 32'h0000_0000 : 
+                    (wen2 && ~(|(wa2 ^ ra1_b))) ? wd2 :
+                    (wen1 && ~(|(wa1 ^ ra1_b))) ? wd1 :
                     rf[ra1_b];
-    assign rd2_a =  (ra2_a == 5'b00000)    ? 32'h0000_0000 : 
-                    (wen2 && wa2 == ra2_a) ? wd2 :
-                    (wen1 && wa1 == ra2_a) ? wd1 :
+    assign rd2_a =  (~(|ra2_a))                 ? 32'h0000_0000 : 
+                    (wen2 && ~(|(wa2 ^ ra2_a))) ? wd2 :
+                    (wen1 && ~(|(wa1 ^ ra2_a))) ? wd1 :
                     rf[ra2_a];
-    assign rd2_b =  (ra2_b == 5'b00000)    ? 32'h0000_0000 : 
-                    (wen2 && wa2 == ra2_b) ? wd2 :
-                    (wen1 && wa1 == ra2_b) ? wd1 :
+    assign rd2_b =  (~(|ra2_b))                 ? 32'h0000_0000 : 
+                    (wen2 && ~(|(wa2 ^ ra2_b))) ? wd2 :
+                    (wen1 && ~(|(wa1 ^ ra2_b))) ? wd1 :
                     rf[ra2_b];
 
     always_ff @(posedge clk) begin : write_data     // sram_func
-        if(rst) begin
-            for(int i = 0; i < 31; i++)
-                rf[i] <= 32'h00000000; // rf[i] <= 32'hxxxxxxxx;
-        end
+        if(wen1 && wen2 && wa1 == wa2)
+            rf[wa2] <= wd2;
         else begin
-            if(wen1 && wen2 && wa1 == wa2)
+            if(wen1)
+                rf[wa1] <= wd1;
+            if(wen2)
                 rf[wa2] <= wd2;
-            else begin
-                if(wen1)
-                    rf[wa1] <= wd1;
-                if(wen2)
-                    rf[wa2] <= wd2;
-            end
         end
     end
 endmodule

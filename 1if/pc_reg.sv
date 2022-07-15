@@ -12,40 +12,37 @@ module pc_reg (
         input               branch_taken,
         input       [31:0]  branch_addr,
 
-        output      [31:0]  pc_next,
+        output logic[31:0]  pc_next,
         output      [31:0]  pc_curr
     );
-    
-    reg  [31:0] pc_reg;
-    logic [31:0] pc_next_wire;
-    
+
     // OUTPUT
     assign pc_curr = pc_reg;
-    assign pc_next = pc_next_wire;
 
     // 中间逻辑
+    reg  [31:0] pc_reg;
     always_ff @(posedge clk) begin
-        pc_reg <= pc_next_wire;
+        pc_reg <= pc_next;
     end
 
     always_comb begin : compute_pc_next
         if (rst) 
-            pc_next_wire = 32'hbfc00000;
+            pc_next = 32'hbfc00000;
         // else if (pc_en) begin
             else if (is_except) // 异常跳转
-                pc_next_wire = except_addr;
+                pc_next = except_addr;
             else if(branch_en && branch_taken) // 分支跳转
-                pc_next_wire = branch_addr;
+                pc_next = branch_addr;
             else if(fifo_full) // full保持
-                pc_next_wire = pc_curr;
+                pc_next = pc_curr;
             else if(inst_data_ok1 && inst_data_ok2)
-                pc_next_wire = pc_curr + 32'd8;
+                pc_next = pc_curr + 32'd8;
             else if(inst_data_ok1)
-                pc_next_wire = pc_curr + 32'd4;
+                pc_next = pc_curr + 32'd4;
             else
-                pc_next_wire = pc_curr;
+                pc_next = pc_curr;
         // end else begin
-        //     pc_next_wire = pc_curr;
+        //     pc_next = pc_curr;
         // end
     end
 
