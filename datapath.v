@@ -59,7 +59,7 @@ wire            D_flush;
 wire            E_flush;
 wire            M_flush;
 wire            W_flush;
-wire            E_div_stall;
+wire            E_alu_stall;
 // except
 wire [31:0]     M_bad_addr;
 wire            M_except;
@@ -225,7 +225,7 @@ hazard u_hazard(
     .M_master_memtoReg              ( M_master_memtoReg              ),
     .M_master_reg_waddr             ( M_master_reg_waddr             ),
     .E_branch_taken                 ( E_branch_taken                 ),
-    .E_div_stall                    ( E_div_stall                    ),
+    .E_alu_stall                    ( E_alu_stall                    ),
     .M_except                       ( M_except                       ),
     .F_ena                          ( F_ena                          ),
     .D_ena                          ( D_ena                          ),
@@ -574,7 +574,7 @@ alu_master u_alu_master(
     .b                     ( E_master_alu_srcb ),
     .cp0_data              ( cp0_data              ),
     .hilo                  ( hilo                  ),
-    .stall_div             ( E_div_stall             ),
+    .stall_alu             ( E_alu_stall             ),
     .y                     ( E_master_alu_res_a  ),
     .aluout_64             ( E_master_alu_out64),
     .overflow              ( E_master_overflow )
