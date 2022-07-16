@@ -17,14 +17,20 @@ module alu_master(
     
     wire div_ready;
     reg start_div,signed_div;
-    reg [63:0] temp_aluout_64;
+    reg  [31:0] save_div_a,save_div_b;
+    reg  [7 :0] save_div_type;
+    reg  [63:0] save_div_result;
+    reg  [63:0] temp_aluout_64;
     wire [31:0] multa,multb;
     wire [63:0] div_result;
+    
     //multiply module
     assign multa = (aluop == `ALUOP_MULT) && (a[31] == 1'b1) ? (~a + 1) : a;
     assign multb = (aluop == `ALUOP_MULT) && (b[31] == 1'b1) ? (~b + 1) : b;
     
-    assign aluout_64= (div_ready) ?  div_result : temp_aluout_64;
+    assign aluout_64= (aluop==`ALUOP_DIV || aluop==`ALUOP_DIVU) ? 
+                      (!div_ready && aluop==save_div_type ? save_div_result : div_result) : 
+                      temp_aluout_64;
 
     always_comb begin
         stall_div = 1'b0;
@@ -75,30 +81,34 @@ module alu_master(
             `ALUOP_MULT  : temp_aluout_64 = (a[31]^b[31]==1'b1)? ~(multa * multb) + 1 :  multa * multb; // TODO 乘法的优化
             `ALUOP_MULTU : temp_aluout_64 = a * b;
             `ALUOP_DIV   :begin
-                if(div_ready ==1'b0) begin
-                    start_div = `DivStart;
+                if(!div_ready && save_div_a==a && save_div_b==b && save_div_type==aluop) begin
+                    start_div = 1'b0;
+                    signed_div =1'b1;
+                    stall_div =1'b0;
+                end else if(div_ready ==1'b0) begin // 没准备好
+                    start_div = 1'b1;
                     signed_div =1'b1;
                     stall_div =1'b1;
-                end else if (div_ready == 1'b1) begin
-                    start_div = `DivStop;
+                end else begin // 准备好了
+                    start_div = 1'b0;
                     signed_div =1'b1;
                     stall_div =1'b0;
                 end 
             end
             `ALUOP_DIVU :begin
-                if(div_ready ==1'b0) begin
+                if(!div_ready && save_div_a==a && save_div_b==b && save_div_type==aluop) begin
+                    start_div = 1'b0;
+                    signed_div =1'b0;
+                    stall_div =1'b0; 
+                end else if(div_ready ==1'b0) begin // 没准备好
                     start_div = 1'b1;
                     signed_div =1'b0;
                     stall_div =1'b1;
-                end else if (div_ready == 1'b1) begin
+                end else begin // 准备好了
                     start_div = 1'b0;
                     signed_div =1'b0;
                     stall_div =1'b0;
-                end else begin
-                    start_div = 1'b0;
-                    signed_div =1'b0;
-                    stall_div =1'b0;
-                end
+                end 
             end
             //逻辑指令
             `ALUOP_AND   : y = a & b;
@@ -124,6 +134,26 @@ module alu_master(
         endcase
     end
     
+    always_ff @(posedge div_ready) begin
+        // if(rst) begin
+        //     save_div_a <= 0;
+        //     save_div_b <= 0;
+        //     save_div_type <= 0;
+        //     save_div_result <= 0;
+        // end else 
+        if(div_ready) begin
+            save_div_a <= a;
+            save_div_b <= b;
+            save_div_result <= div_result;
+            save_div_type <= aluop;
+        end else begin
+            save_div_a <= save_div_a;
+            save_div_b <= save_div_b;
+            save_div_result <= save_div_result;
+            save_div_type <= save_div_type;
+        end
+    end
+
     div mydiv(
         .clk(clk),
         .rst(rst),
