@@ -199,13 +199,13 @@ module d_cache_daxi (
     //读事务burst传输，计数当前传递的bank的编�?
     reg [OFFSET_WIDTH-3:0] cnt;  
     always @(posedge clk) begin
-        cnt <= rst | no_cache | read_finish ? 1'b0 :
+        cnt <= rst | no_cache | read_finish ? 0 :
                 data_back                   ? cnt + 1 : cnt;
     end
     //写事务burst传输，计数当前传递的bank的编�?
     reg [OFFSET_WIDTH-3:0] wcnt; 
     always @(posedge clk) begin
-        wcnt <= rst | no_cache | write_finish ? 1'b0 :
+        wcnt <= rst | no_cache | write_finish ? 0 :
                 data_go                       ? wcnt + 1 : wcnt;
     end
 
@@ -229,16 +229,16 @@ module d_cache_daxi (
         {(
             {TAG_WIDTH{evict_mask[0]}} & tag_way[0][TAG_WIDTH : 1]|
             {TAG_WIDTH{evict_mask[1]}} & tag_way[1][TAG_WIDTH : 1]
-        ), index} <<OFFSET_WIDTH;
+        ), index, {OFFSET_WIDTH{1'b0}}};
     assign awaddr = ~no_cache ? dirty_write_addr : data_addr;
     assign awlen = ~no_cache ? BLOCK_NUM-1 : 8'd0;
-    assign awsize = ~no_cache ? 4'b10 :
-                                data_wen==4'b1111 ? 4'b10:
-                                data_wen==4'b1100 || data_wen==4'b0011 ? 4'b01: 4'b00;
+    assign awsize = ~no_cache ? 3'b10 :
+                                data_wen==4'b1111 ? 3'b10:
+                                data_wen==4'b1100 || data_wen==4'b0011 ? 3'b01: 3'b00;
     assign awvalid = write_req & ~waddr_rcv;
     assign wdata = ~no_cache ? block_way[evict_way][wcnt] : data_wdata;
     assign wstrb = ~no_cache ? 4'b1111 : data_wen;
-    assign wlast = wcnt==awlen;
+    assign wlast = {5'd0,wcnt}==awlen;
     assign wvalid = waddr_rcv & ~wdata_rcv;
     assign bready = waddr_rcv;
 //LRU
