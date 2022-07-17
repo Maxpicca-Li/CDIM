@@ -61,29 +61,29 @@ module alu_master(
             `ALUOP_SUBU  : begin 
                 y = a - b;
             end
-            `ALUOP_SLT   : y = $signed(a) < $signed(b);
-            `ALUOP_SLTU  : y = a < b;
+            `ALUOP_SLT   : y = {31'd0,$signed(a) < $signed(b)};
+            `ALUOP_SLTU  : y = {31'd0,a < b};
             `ALUOP_SLTI  :  begin//y = a < b;
                 case(a[31])
                     1'b1: begin
                         if(b[31] == 1'b1) begin
-                            y = a < b;
+                            y = {31'd0,a < b};
                         end
                         else begin
-                            y = 1'b1;
+                            y = {31'd0,1'b1};
                         end
                     end
                     1'b0: begin
                         if(b[31] == 1'b1) begin
-                            y = 1'b0;
+                            y = 0;
                         end
                         else begin
-                            y = a < b;
+                            y = {31'd0,a < b};
                         end
                     end
                 endcase
             end
-            `ALUOP_SLTIU : y = a < b;
+            `ALUOP_SLTIU : y = {31'd0,a < b};
             `ALUOP_MULT  : begin
                 if (!mul_ready) begin
                     start_mul = 1'b1;

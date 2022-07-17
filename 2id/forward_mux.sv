@@ -19,7 +19,7 @@ module forwarding_mux(
 );
 
     always_comb begin : get_result
-        if(reg_addr != 32'd0) begin
+        if(|reg_addr) begin
             if(E_slave_reg_wen && E_slave_reg_waddr == reg_addr)
                 result_data = E_slave_reg_wdata;
             else if(E_master_reg_wen && E_master_reg_waddr == reg_addr)

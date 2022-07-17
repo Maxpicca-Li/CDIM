@@ -57,7 +57,7 @@ always @ (posedge clk) begin
                             // temp_op2 = opdata2_i;
                             sign2 <= 1'b0;
                         end
-                        dividend <= {`ZeroWord,`ZeroWord};
+                        dividend <= 0;
                         dividend[32:1] <= temp_op1;
                         divisor <= temp_op2;
                         // $display("除法开始");
@@ -68,7 +68,7 @@ always @ (posedge clk) begin
                 end          	
             end
             `DivByZero: begin
-                dividend <= {`ZeroWord,`ZeroWord};
+                dividend <= 0;
                 state <= `DivEnd;		 		
             end
             `DivOn: begin

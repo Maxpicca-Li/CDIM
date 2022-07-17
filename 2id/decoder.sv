@@ -123,7 +123,7 @@ module  decoder(
                             signsD = {`ALUOP_NOP  ,15'b000000000000000};
                         end
                         default: begin 
-                            signsD = 15'b000000001100000;
+                            signsD = {`ALUOP_NOP  ,15'b000000001100000};
                             undefined_inst = 1'b1;
                         end
                     endcase
@@ -238,11 +238,11 @@ module  decoder(
             `OP_XORI  : reg_waddr = rt;
             `OP_LUI   : reg_waddr = rt;
             // jump
-            `OP_JAL   : reg_waddr = 32'd31;
+            `OP_JAL   : reg_waddr = 5'd31;
             `OP_SPEC_B:     // BGEZ,BLTZ,BGEZAL,BLTZAL
                 case(rt)
-                    `RT_BGEZAL: reg_waddr = 32'd31;
-                    `RT_BLTZAL: reg_waddr = 32'd31;
+                    `RT_BGEZAL: reg_waddr = 5'd31;
+                    `RT_BLTZAL: reg_waddr = 5'd31;
                     default:reg_waddr = rd;
                 endcase
             `OP_SPECIAL_INST:

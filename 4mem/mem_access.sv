@@ -76,10 +76,10 @@ module mem_access (
                 end
                 else begin
                     case(mem_addr[1])
-                        2'b1:
-                            mem_rdata = {{24{data_sram_rdata[31]}},data_sram_rdata[31:16]};
-                        2'b0:
-                            mem_rdata = {{24{data_sram_rdata[15]}},data_sram_rdata[15:0]};
+                        1'b1:
+                            mem_rdata = {{16{data_sram_rdata[31]}},data_sram_rdata[31:16]};
+                        1'b0:
+                            mem_rdata = {{16{data_sram_rdata[15]}},data_sram_rdata[15:0]};
                     endcase
                 end
             end
@@ -90,10 +90,10 @@ module mem_access (
                 end
                 else begin
                     case(mem_addr[1])
-                        2'b1:
-                            mem_rdata = {{24{1'b0}},data_sram_rdata[31:16]};
-                        2'b0:
-                            mem_rdata = {{24{1'b0}},data_sram_rdata[15:0]};
+                        1'b1:
+                            mem_rdata = {{16{1'b0}},data_sram_rdata[31:16]};
+                        1'b0:
+                            mem_rdata = {{16{1'b0}},data_sram_rdata[15:0]};
                     endcase
                 end
             end

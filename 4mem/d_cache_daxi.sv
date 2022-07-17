@@ -244,12 +244,9 @@ module d_cache_daxi (
 //LRU
     wire write_LRU_en;
     assign write_LRU_en = ~no_cache & hit & ~stallM | ~no_cache & read_finish;
-    integer tt;
     always @(posedge clk) begin
         if(rst) begin
-            for(tt=0; tt<CACHE_LINE_NUM; tt=tt+1) begin
-                LRU_bit[tt] <= 0;
-            end
+            LRU_bit <= '{default:'0};
         end
         //更新LRU
         else begin
@@ -271,10 +268,7 @@ module d_cache_daxi (
     assign write_dirty_bit = read ? 1'b0 : 1'b1;
     always @(posedge clk) begin
         if(rst) begin
-            for(tt=0; tt<CACHE_LINE_NUM; tt=tt+1) begin
-                dirty_bits_way[0][tt] <= 0;
-                dirty_bits_way[1][tt] <= 0;
-            end
+            dirty_bits_way <= '{default:'0};
         end
         else begin
             if(write_dirty_bit_en) begin

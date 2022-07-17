@@ -150,9 +150,7 @@ module i_cache_daxi (
     integer tt;
     always @(posedge clk) begin
         if(rst) begin
-            for(tt=0; tt<CACHE_LINE_NUM; tt=tt+1) begin
-                LRU_bit[tt] <= 0;
-            end
+            LRU_bit <= '{default:'0};
         end
         else begin
             if(write_LRU_en) begin
