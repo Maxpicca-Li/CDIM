@@ -18,6 +18,7 @@ module i_cache_daxi (
     //arbitrater
     output wire [31:0] araddr,
     output wire [7:0] arlen,
+    output wire [2:0] arsize,
     output wire arvalid,
     input wire arready,
 
@@ -223,6 +224,7 @@ module i_cache_daxi (
 //AXI OUTPUT
     assign araddr = ~no_cache ? {tag, index, {OFFSET_WIDTH{1'b0}} } : pcF; //如果是可以cache的数据,就把8个字的起始地址传过去,否则只传一个字的地址
     assign arlen = ~no_cache ? BLOCK_NUM-1 : 8'd0;
+    assign arsize = 3'd2;
     assign arvalid = read_req & ~addr_rcv;
     assign rready = addr_rcv;
 endmodule

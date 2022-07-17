@@ -3,6 +3,7 @@ module arbitrater (
     //I CACHE
     input wire [31:0] i_araddr,
     input wire [7:0] i_arlen,
+    input wire [2:0] i_arsize,
     input wire i_arvalid,
     output wire i_arready,
 
@@ -14,6 +15,7 @@ module arbitrater (
     //D CACHE
     input wire [31:0] d_araddr,
     input wire [7:0] d_arlen,
+    input wire [2:0] d_arsize,
     input wire d_arvalid,
     output wire d_arready,
 
@@ -102,7 +104,7 @@ module arbitrater (
     assign arid = {3'b0, ar_sel};
     assign araddr = ar_sel ? d_araddr : i_araddr;
     assign arlen = ar_sel ? d_arlen : i_arlen;
-    assign arsize  = 3'd2;         //��һ����
+    assign arsize  = ar_sel ? d_arsize : i_arsize;
     assign arburst = 2'b01;         //Incrementing burst
     assign arlock  = 2'd0;
     assign arcache = 4'd0;

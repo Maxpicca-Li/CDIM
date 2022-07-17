@@ -27,6 +27,7 @@ module d_cache_daxi (
     input wire data_en,
     input wire [31:0] data_addr,
     output wire [31:0] data_rdata,
+    input wire [1:0] data_rlen,
     input wire [3:0] data_wen,
     input wire [31:0] data_wdata,
     output wire stall,
@@ -37,6 +38,7 @@ module d_cache_daxi (
     //arbitrater
     output wire [31:0] araddr,
     output wire [7:0] arlen,
+    output wire [2:0] arsize,
     output wire arvalid,
     input wire arready,
 
@@ -221,6 +223,7 @@ module d_cache_daxi (
     //read
     assign araddr = ~no_cache ? {tag,index,5'b0}: data_addr; //如果是可以cache的数据,就把8个字的起始地址传过去,否则只传一个字的地址
     assign arlen = ~no_cache ? BLOCK_NUM-1 : 8'd0;
+    assign arsize = ~no_cache ? 3'd2 : {1'b0,data_rlen};
     assign arvalid = read_req & ~raddr_rcv;
     assign rready = raddr_rcv;
     //write
