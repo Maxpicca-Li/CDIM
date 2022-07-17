@@ -12,7 +12,7 @@ module alu_slave(
     always_comb begin
         overflow = 1'b0;
         case (aluop)
-            // arith
+            //算术指令
             `ALUOP_ADD   : begin
                y = a + b; 
                overflow = (a[31] == b[31]) & (y[31] != a[31]);
@@ -27,36 +27,36 @@ module alu_slave(
             `ALUOP_SUBU  : begin 
                 y = a - b;
             end
-            `ALUOP_SLT   : y = $signed(a) < $signed(b);
-            `ALUOP_SLTU  : y = a < b;
+            `ALUOP_SLT   : y = {31'd0,$signed(a) < $signed(b)};
+            `ALUOP_SLTU  : y = {31'd0,a < b};
             `ALUOP_SLTI  :  begin//y = a < b;
                 case(a[31])
                     1'b1: begin
                         if(b[31] == 1'b1) begin
-                            y = a < b;
+                            y = {31'd0,a < b};
                         end
                         else begin
-                            y = 1'b1;
+                            y = {31'd0,1'b1};
                         end
                     end
                     1'b0: begin
                         if(b[31] == 1'b1) begin
-                            y = 1'b0;
+                            y = 0;
                         end
                         else begin
-                            y = a < b;
+                            y = {31'd0,a < b};
                         end
                     end
                 endcase
             end
-            `ALUOP_SLTIU : y = a < b;
-            // logic
+            `ALUOP_SLTIU : y = {31'd0,a < b};
+            //逻辑指令
             `ALUOP_AND   : y = a & b;
             `ALUOP_OR    : y = a | b;
             `ALUOP_NOR   : y = ~ (a | b);
             `ALUOP_XOR   : y = a ^ b;
             `ALUOP_LUI   : y ={b[15:0],16'b0};
-            // shift
+            // 移位指令
             `ALUOP_SLL   : y = b << a[4:0];
             `ALUOP_SLLV: y = b << a[4:0];
             `ALUOP_SRL: y = b >> a[4:0];
