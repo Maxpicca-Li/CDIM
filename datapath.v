@@ -782,14 +782,14 @@ assign debug_wb_rf_wen      = (rst) ? 4'b0000 : ((clk) ? {4{u_regfile.wen1}} : {
 assign debug_wb_rf_wnum     = (clk) ? u_regfile.wa1 : u_regfile.wa2;
 assign debug_wb_rf_wdata    = (clk) ? u_regfile.wd1 : u_regfile.wd2;
 // ascii
-wire [39:0] master_asciiD;
-wire [39:0] master_asciiE;
-wire [39:0] master_asciiM;
-wire [39:0] master_asciiW;
-wire [39:0] slave_asciiD ;
-wire [39:0] slave_asciiE ;
-wire [39:0] slave_asciiM ;
-wire [39:0] slave_asciiW ;
+wire [47:0] master_asciiD;
+wire [47:0] master_asciiE;
+wire [47:0] master_asciiM;
+wire [47:0] master_asciiW;
+wire [47:0] slave_asciiD ;
+wire [47:0] slave_asciiE ;
+wire [47:0] slave_asciiM ;
+wire [47:0] slave_asciiW ;
 instdec u_master_asciiD(D_master_inst,master_asciiD);
 instdec u_master_asciiE(E_master_inst,master_asciiE);
 instdec u_master_asciiM(M_master_inst,master_asciiM);

@@ -3,7 +3,7 @@
 
 module instdec(
     input wire [31:0] instr,
-    output reg [39:0] ascii
+    output reg [47:0] ascii
     );
 
     always @(*)
@@ -87,20 +87,19 @@ module instdec(
                 endcase
             end
             6'b010000: begin 
-                if(instr==`ERET) begin
+                if(instr==`EXE_ERET) begin
                     ascii="ERET";
                 end else begin 
                     case (instr[25:21])
                         5'b00100: ascii="MTC0";
                         5'b00000: ascii="MFC0";
+                        default: ascii = "COP0";
                     endcase
                 end
             end
             default: ascii= "N-R";
        endcase
-    if(instr==`ERET)
-        ascii= "ERET";
-    if(!instr)
+    if(instr == 32'd0)
         ascii= "NOP";
     end
 
