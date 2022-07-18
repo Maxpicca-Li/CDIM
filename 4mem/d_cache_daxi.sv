@@ -27,6 +27,7 @@ module d_cache_daxi (
     input wire data_en,
     input wire [31:0] data_addr,
     output wire [31:0] data_rdata,
+    input wire [1:0] data_rlen,
     input wire [3:0] data_wen,
     input wire [31:0] data_wdata,
     output wire stall,
@@ -37,6 +38,7 @@ module d_cache_daxi (
     //arbitrater
     output wire [31:0] araddr,
     output wire [7:0] arlen,
+    output wire [2:0] arsize,
     output wire arvalid,
     input wire arready,
 
@@ -199,13 +201,13 @@ module d_cache_daxi (
     //读事务burst传输，计数当前传递的bank的编�?
     reg [OFFSET_WIDTH-3:0] cnt;  
     always @(posedge clk) begin
-        cnt <= rst | no_cache | read_finish ? 1'b0 :
+        cnt <= rst | no_cache | read_finish ? 0 :
                 data_back                   ? cnt + 1 : cnt;
     end
     //写事务burst传输，计数当前传递的bank的编�?
     reg [OFFSET_WIDTH-3:0] wcnt; 
     always @(posedge clk) begin
-        wcnt <= rst | no_cache | write_finish ? 1'b0 :
+        wcnt <= rst | no_cache | write_finish ? 0 :
                 data_go                       ? wcnt + 1 : wcnt;
     end
 
@@ -221,6 +223,7 @@ module d_cache_daxi (
     //read
     assign araddr = ~no_cache ? {tag,index,5'b0}: data_addr; //如果是可以cache的数据,就把8个字的起始地址传过去,否则只传一个字的地址
     assign arlen = ~no_cache ? BLOCK_NUM-1 : 8'd0;
+    assign arsize = ~no_cache ? 3'd2 : {1'b0,data_rlen};
     assign arvalid = read_req & ~raddr_rcv;
     assign rready = raddr_rcv;
     //write
@@ -229,27 +232,24 @@ module d_cache_daxi (
         {(
             {TAG_WIDTH{evict_mask[0]}} & tag_way[0][TAG_WIDTH : 1]|
             {TAG_WIDTH{evict_mask[1]}} & tag_way[1][TAG_WIDTH : 1]
-        ), index} <<OFFSET_WIDTH;
+        ), index, {OFFSET_WIDTH{1'b0}}};
     assign awaddr = ~no_cache ? dirty_write_addr : data_addr;
     assign awlen = ~no_cache ? BLOCK_NUM-1 : 8'd0;
-    assign awsize = ~no_cache ? 4'b10 :
-                                data_wen==4'b1111 ? 4'b10:
-                                data_wen==4'b1100 || data_wen==4'b0011 ? 4'b01: 4'b00;
+    assign awsize = ~no_cache ? 3'b10 :
+                                data_wen==4'b1111 ? 3'b10:
+                                data_wen==4'b1100 || data_wen==4'b0011 ? 3'b01: 3'b00;
     assign awvalid = write_req & ~waddr_rcv;
     assign wdata = ~no_cache ? block_way[evict_way][wcnt] : data_wdata;
     assign wstrb = ~no_cache ? 4'b1111 : data_wen;
-    assign wlast = wcnt==awlen;
+    assign wlast = {5'd0,wcnt}==awlen;
     assign wvalid = waddr_rcv & ~wdata_rcv;
     assign bready = waddr_rcv;
 //LRU
     wire write_LRU_en;
     assign write_LRU_en = ~no_cache & hit & ~stallM | ~no_cache & read_finish;
-    integer tt;
     always @(posedge clk) begin
         if(rst) begin
-            for(tt=0; tt<CACHE_LINE_NUM; tt=tt+1) begin
-                LRU_bit[tt] <= 0;
-            end
+            LRU_bit <= '{default:'0};
         end
         //更新LRU
         else begin
@@ -271,10 +271,7 @@ module d_cache_daxi (
     assign write_dirty_bit = read ? 1'b0 : 1'b1;
     always @(posedge clk) begin
         if(rst) begin
-            for(tt=0; tt<CACHE_LINE_NUM; tt=tt+1) begin
-                dirty_bits_way[0][tt] <= 0;
-                dirty_bits_way[1][tt] <= 0;
-            end
+            dirty_bits_way <= '{default:'0};
         end
         else begin
             if(write_dirty_bit_en) begin

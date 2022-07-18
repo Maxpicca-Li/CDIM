@@ -42,7 +42,7 @@ module issue_ctrl (
             _en_slave = 1'b0;
         else begin
             if(D_master_reg_wen && (D_master_reg_waddr != 5'd0)) begin
-                if(D_slave_op == `OP_R_TYPE) begin 
+                if(D_slave_op == `OP_SPECIAL_INST) begin 
                     _en_slave = (D_slave_rs != D_master_reg_waddr) && (D_slave_rt != D_master_reg_waddr);
                 end
                 else begin

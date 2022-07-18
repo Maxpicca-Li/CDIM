@@ -9,6 +9,7 @@ module mem_access (
 
         input        [31:0] data_sram_rdata,
         output logic        data_sram_en,
+        output logic [ 1:0] data_sram_rlen, // nr_bytes to read. 0: 1, 1: 2, 2: 4
         output logic [ 3:0] data_sram_wen,
         output logic [31:0] data_sram_addr,
         output logic [31:0] data_sram_wdata,
@@ -33,9 +34,11 @@ module mem_access (
         data_sram_wen = 4'b0000;
         mem_rdata = 0;
         data_sram_wdata = 0;
+        data_sram_rlen = 0;
         case(opM)
             `OP_LW: begin
                 data_sram_wen = 4'b0000;
+                data_sram_rlen = 2'd2;
                 if(mem_addr[1:0] != 2'b00) begin
                     adel = 1'b1;
                 end
@@ -45,6 +48,7 @@ module mem_access (
             end
             `OP_LB: begin
                 data_sram_wen = 4'b0000;
+                data_sram_rlen = 2'd0;
                 case(mem_addr[1:0])
                     2'b11:
                         mem_rdata = {{24{data_sram_rdata[31]}},data_sram_rdata[31:24]};
@@ -58,6 +62,7 @@ module mem_access (
             end
             `OP_LBU: begin
                 data_sram_wen = 4'b0000;
+                data_sram_rlen = 2'd0;
                 case(mem_addr[1:0])
                     2'b11:
                         mem_rdata = {{24{1'b0}},data_sram_rdata[31:24]};
@@ -71,29 +76,31 @@ module mem_access (
             end
             `OP_LH: begin
                 data_sram_wen = 4'b0000;
+                data_sram_rlen = 2'd1;
                 if(mem_addr[0] != 1'b0) begin
                     adel = 1'b1;
                 end
                 else begin
                     case(mem_addr[1])
-                        2'b1:
-                            mem_rdata = {{24{data_sram_rdata[31]}},data_sram_rdata[31:16]};
-                        2'b0:
-                            mem_rdata = {{24{data_sram_rdata[15]}},data_sram_rdata[15:0]};
+                        1'b1:
+                            mem_rdata = {{16{data_sram_rdata[31]}},data_sram_rdata[31:16]};
+                        1'b0:
+                            mem_rdata = {{16{data_sram_rdata[15]}},data_sram_rdata[15:0]};
                     endcase
                 end
             end
             `OP_LHU: begin
                 data_sram_wen = 4'b0000;
+                data_sram_rlen = 2'd1;
                 if(mem_addr[0] != 1'b0) begin
                     adel = 1'b1;
                 end
                 else begin
                     case(mem_addr[1])
-                        2'b1:
-                            mem_rdata = {{24{1'b0}},data_sram_rdata[31:16]};
-                        2'b0:
-                            mem_rdata = {{24{1'b0}},data_sram_rdata[15:0]};
+                        1'b1:
+                            mem_rdata = {{16{1'b0}},data_sram_rdata[31:16]};
+                        1'b0:
+                            mem_rdata = {{16{1'b0}},data_sram_rdata[15:0]};
                     endcase
                 end
             end

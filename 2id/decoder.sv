@@ -78,7 +78,7 @@ module  decoder(
         end
         else begin
             case(op)
-                `OP_R_TYPE:
+                `OP_SPECIAL_INST:
                     case (funct)
                         // logic
                         `FUN_AND   : signsD = {`ALUOP_AND  ,15'b000000001100000};    //and
@@ -123,7 +123,7 @@ module  decoder(
                             signsD = {`ALUOP_NOP  ,15'b000000000000000};
                         end
                         default: begin 
-                            signsD = 15'b000000001100000;
+                            signsD = {`ALUOP_NOP  ,15'b000000001100000};
                             undefined_inst = 1'b1;
                         end
                     endcase
@@ -166,7 +166,7 @@ module  decoder(
                         end
                     endcase
                 // special
-                `OP_SPECIAL_INST:begin
+                `OP_COP0_INST:begin
                     spec_inst = 1'b1;
                     case (rs)
                         `RS_MFC0: signsD = {`ALUOP_MFC0 ,15'b000000001000000};
@@ -183,7 +183,7 @@ module  decoder(
     end
 
     always_comb begin
-        if(op == `OP_R_TYPE && (instr[5:2] == 4'b0100 || instr[5:2] == 4'b0110)) // 0110 div/mul  0100 MF/MT HI/LO
+        if(op == `OP_SPECIAL_INST && (instr[5:2] == 4'b0100 || instr[5:2] == 4'b0110)) // 0110 div/mul  0100 MF/MT HI/LO
             is_hilo_accessed = 1'b1;
         else
             is_hilo_accessed = 1'b0;
@@ -191,7 +191,7 @@ module  decoder(
 
     always_comb begin: generate_branch_type
         case(op)
-            `OP_R_TYPE : 
+            `OP_SPECIAL_INST : 
                 case(funct) 
                     `FUN_JR    : {branch_type,is_link_pc8} = {`BT_JREG, 1'b0};
                     `FUN_JALR  : {branch_type,is_link_pc8} = {`BT_JREG, 1'b1}; // JALR:GPR[rd]=pc+8;
@@ -238,14 +238,14 @@ module  decoder(
             `OP_XORI  : reg_waddr = rt;
             `OP_LUI   : reg_waddr = rt;
             // jump
-            `OP_JAL   : reg_waddr = 32'd31;
+            `OP_JAL   : reg_waddr = 5'd31;
             `OP_SPEC_B:     // BGEZ,BLTZ,BGEZAL,BLTZAL
                 case(rt)
-                    `RT_BGEZAL: reg_waddr = 32'd31;
-                    `RT_BLTZAL: reg_waddr = 32'd31;
+                    `RT_BGEZAL: reg_waddr = 5'd31;
+                    `RT_BLTZAL: reg_waddr = 5'd31;
                     default:reg_waddr = rd;
                 endcase
-            `OP_SPECIAL_INST:
+            `OP_COP0_INST:
                 if (rs==`RS_MFC0)  // GPR[rt] ← CP0[rd, sel]
                     reg_waddr = rt; 
                 else

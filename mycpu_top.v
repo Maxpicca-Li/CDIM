@@ -77,6 +77,7 @@ module mycpu_top (
     wire [31:0] data_addr   ;
     wire [31:0] data_addr_dp;
     wire [31:0] data_rdata  ;
+    wire [ 1:0] data_rlen   ;
     wire [3:0] data_wen     ;
     wire [31:0] data_wdata  ;
     wire d_cache_stall      ;
@@ -88,6 +89,7 @@ module mycpu_top (
     //i_cache - arbitrater
     wire [31:0] i_araddr    ;
     wire [7:0] i_arlen      ;
+    wire [2:0] i_arsize     ;
     wire i_arvalid          ;
     wire i_arready          ;
 
@@ -99,6 +101,7 @@ module mycpu_top (
     //d_cache - arbitrater
     wire [31:0] d_araddr    ;
     wire [7:0] d_arlen      ;
+    wire [2:0] d_arsize     ;
     wire d_arvalid          ;
     wire d_arready          ;
 
@@ -145,6 +148,7 @@ module mycpu_top (
         .mem_addrE         		( mem_addrE_dp     		),
         .mem_enM           		( data_en           		),
         .stallM            		( stallM            		),
+        .mem_rlenM              ( data_rlen                 ),
         .mem_wenM          		( data_wen          		),
         .mem_addrM         		( data_addr_dp         		),
         .mem_wdataM        		( data_wdata        		),
@@ -192,6 +196,7 @@ module mycpu_top (
         //arbitrater
         .araddr          (i_araddr ),
         .arlen           (i_arlen  ),
+        .arsize          (i_arsize ),
         .arvalid         (i_arvalid),
         .arready         (i_arready),
                     
@@ -211,6 +216,7 @@ module mycpu_top (
         .data_en(data_en),
         .data_addr(data_addr),
         .data_rdata(data_rdata),
+        .data_rlen(data_rlen),
         .data_wen(data_wen),
         .data_wdata(data_wdata),
         .stall(d_cache_stall),
@@ -222,6 +228,7 @@ module mycpu_top (
         //arbitrater
         .araddr          (d_araddr ),
         .arlen           (d_arlen  ),
+        .arsize          (d_arsize ),
         .arvalid         (d_arvalid),
         .arready         (d_arready),
 
@@ -252,6 +259,7 @@ module mycpu_top (
     //I CACHE
         .i_araddr          (i_araddr ),
         .i_arlen           (i_arlen  ),
+        .i_arsize          (i_arsize ),
         .i_arvalid         (i_arvalid),
         .i_arready         (i_arready),
                   
@@ -263,6 +271,7 @@ module mycpu_top (
     //D CACHE
         .d_araddr          (d_araddr ),
         .d_arlen           (d_arlen  ),
+        .d_arsize          (d_arsize ),
         .d_arvalid         (d_arvalid),
         .d_arready         (d_arready),
 

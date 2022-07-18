@@ -18,6 +18,7 @@ module i_cache_daxi (
     //arbitrater
     output wire [31:0] araddr,
     output wire [7:0] arlen,
+    output wire [2:0] arsize,
     output wire arvalid,
     input wire arready,
 
@@ -131,7 +132,7 @@ module i_cache_daxi (
 
     reg [OFFSET_WIDTH-3:0] cnt;  //burst传输，计数当前传递的bank的编�?
     always @(posedge clk) begin
-        cnt <= rst |read_finish|no_cache ? 1'b0 :
+        cnt <= rst |read_finish|no_cache ? 0 :
                data_back        ? cnt + 1 : cnt;
     end
     always @(posedge clk) begin
@@ -150,9 +151,7 @@ module i_cache_daxi (
     integer tt;
     always @(posedge clk) begin
         if(rst) begin
-            for(tt=0; tt<CACHE_LINE_NUM; tt=tt+1) begin
-                LRU_bit[tt] <= 0;
-            end
+            LRU_bit <= '{default:'0};
         end
         else begin
             if(write_LRU_en) begin
@@ -223,8 +222,9 @@ module i_cache_daxi (
     assign inst_rdata1 = hit & ~no_cache ? block_sel_way1[sel] : saved_rdata1;
     assign inst_rdata2 = hit & ~no_cache ? block_sel_way2[sel] : saved_rdata2;
 //AXI OUTPUT
-    assign araddr = ~no_cache ? {tag, index}<<OFFSET_WIDTH : pcF; //如果是可以cache的数据,就把8个字的起始地址传过去,否则只传一个字的地址
+    assign araddr = ~no_cache ? {tag, index, {OFFSET_WIDTH{1'b0}} } : pcF; //如果是可以cache的数据,就把8个字的起始地址传过去,否则只传一个字的地址
     assign arlen = ~no_cache ? BLOCK_NUM-1 : 8'd0;
+    assign arsize = 3'd2;
     assign arvalid = read_req & ~addr_rcv;
     assign rready = addr_rcv;
 endmodule

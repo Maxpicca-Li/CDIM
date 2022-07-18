@@ -32,7 +32,7 @@
 //specific inst macro definition
 
 `define EXE_NOP			6'b000000
-`define OP_R_TYPE       6'b000000
+`define OP_SPECIAL_INST 6'b000000
 //logic inst
 `define FUN_AND 		6'b100100
 `define FUN_OR 			6'b100101
@@ -116,7 +116,7 @@
 
 // 特权指令
 `define EXE_ERET 32'b01000010000000000000000000011000
-`define OP_SPECIAL_INST 6'b010000
+`define OP_COP0_INST 6'b010000
 `define RS_MTC0 5'b00100
 `define RS_MFC0 5'b00000
 `define EXE_TYPE_INT =  32'h00000001
