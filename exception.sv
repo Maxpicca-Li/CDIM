@@ -21,14 +21,14 @@ module exception(
 );
 
     wire [ 7:0] except; 
-    assign except              = (|master_except || (~(|slave_except))) ? master_except:slave_except;
-    assign except_inst_addr    = (|master_except || (~(|slave_except))) ? master_pc    :slave_pc    ;
-    assign except_in_delayslot = (|master_except || (~(|slave_except))) ? master_is_in_delayslot : slave_is_in_delayslot;
+    assign except              = (|master_except) ? master_except:slave_except;
+    assign except_inst_addr    = (|master_except) ? master_pc    :slave_pc    ;
+    assign except_in_delayslot = (|master_except) ? master_is_in_delayslot : slave_is_in_delayslot;
 
     always_comb begin: excepttype_define
         except_target = 32'hBFC00380;
         except_bad_addr = 0;
-        if(rst || master_pc == 0) begin
+        if(rst) begin
             excepttype = 32'b0;
         end else begin
             if(((cp0_cause[15:8] & cp0_status[15:8]) != 8'h00) &&  (cp0_status[1] == 1'b0) && (cp0_status[0] == 1'b1)) begin
