@@ -27,10 +27,10 @@ module alu_master(
     logic start_div;
     logic signed_div;
     logic div_ready;
-    logic [7 :0] save_div_type;
+    // logic [7 :0] save_div_type;
     logic [31:0] multa,multb;
-    logic [31:0] save_div_a,save_div_b;
-    logic [63:0] save_div_result;
+    // logic [31:0] save_div_a,save_div_b;
+    // logic [63:0] save_div_result;
     logic [63:0] div_result;
     logic [63:0] temp_aluout_64;
     
@@ -114,12 +114,14 @@ module alu_master(
                 end
             end
             `ALUOP_DIV   :begin
+                /*
                 if(!div_ready && save_div_a==a && save_div_b==b && save_div_type==aluop) begin
                     start_div = 1'b0;
                     signed_div =1'b1;
                     stall_div =1'b0;
                     temp_aluout_64 = save_div_result;
-                end else if(div_ready ==1'b0) begin // 没准备好
+                end else */
+                if(div_ready ==1'b0) begin // 没准备好
                     start_div = 1'b1;
                     signed_div =1'b1;
                     stall_div =1'b1;
@@ -131,12 +133,14 @@ module alu_master(
                 end 
             end
             `ALUOP_DIVU :begin
+                /*
                 if(!div_ready && save_div_a==a && save_div_b==b && save_div_type==aluop) begin
                     start_div = 1'b0;
                     signed_div =1'b0;
                     stall_div =1'b0; 
                     temp_aluout_64 = save_div_result;
-                end else if(div_ready ==1'b0) begin // 没准备好
+                end else */
+                if(div_ready ==1'b0) begin // 没准备好
                     start_div = 1'b1;
                     signed_div =1'b0;
                     stall_div =1'b1;
@@ -171,6 +175,7 @@ module alu_master(
         endcase
     end
     
+    /*
     always_ff @(posedge clk) begin
         if(div_ready) begin
             save_div_a <= a;
@@ -184,6 +189,7 @@ module alu_master(
             save_div_type <= save_div_type;
         end
     end
+    */
     
     mul mul_inst(
         .clk(clk),
