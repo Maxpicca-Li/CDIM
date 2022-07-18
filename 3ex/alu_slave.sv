@@ -2,11 +2,11 @@
 `include "defines.vh"
 
 module alu_slave(
-    input  wire [7:0]aluop,
-    input  wire [31:0]a,
-    input  wire [31:0]b,
-    output reg [31:0] y,
-    output reg overflow
+    input  logic [7:0]aluop,
+    input  logic [31:0]a,
+    input  logic [31:0]b,
+    output logic [31:0] y,
+    output logic overflow
     );
 
     always_comb begin

@@ -2,7 +2,7 @@
 
 module div(
     input wire clk,
-    input wire rst,ena,
+    input wire rst,
 
     input wire signed_div_i, 
     input wire start_i,

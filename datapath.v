@@ -272,7 +272,7 @@ inst_fifo u_inst_fifo(
     .clk                          ( clk                    ),
     .rst                          ( rst                    ),
     .fifo_rst                     ( rst || D_flush         ),
-    .F_ena                        ( F_ena                  ),
+    .D_ena                        ( D_ena                  ),
     .master_is_branch             ( (|D_master_branch_type)), // D阶段的branch
     .delay_rst                    (E_branch_taken && ~E_slave_ena), // next_master_is_in_delayslot
     
@@ -551,7 +551,7 @@ assign E_slave_alu_srcb  =  E_slave_alu_selb  ? E_slave_imm_value : E_slave_rt_v
 // 提前访存
 assign mem_read_enE = E_master_memRead;
 assign mem_write_enE = E_master_memWrite;
-assign mem_addrE = E_master_alu_srca + E_master_alu_srcb; // assign mem_addrE = (E_master_alu_sela ? {{27{1'b0}},E_master_shamt} : E_master_rs_value) + (E_master_alu_selb ? E_master_imm_value : E_master_rt_value);
+assign mem_addrE = E_master_rs_value + E_master_imm_value; // base(rs value) + offset(immediate value)
 
 branch_judge u_branch_judge(
     //ports

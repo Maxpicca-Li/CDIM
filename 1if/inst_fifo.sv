@@ -6,7 +6,7 @@ module inst_fifo(
         input                       rst,
         input                       fifo_rst,                 // fifo读写指针重置位
         input                       delay_rst,                // 下一条master指令是延迟槽指令，要存起来
-        input                       F_ena,
+        input                       D_ena,
         input                       master_is_branch,         // 延迟槽判断
         output logic                master_is_in_delayslot_o, // 延迟槽判断结果
 
@@ -135,11 +135,11 @@ module inst_fifo(
 
     // fifo写
     always_ff @(posedge clk) begin : write_data 
-        if(~rst & write_en1) begin
+        if(write_en1) begin
             data[write_pointer] <= write_data1;
             address[write_pointer] <= write_address1;
         end
-        if(~rst & write_en2) begin
+        if(write_en2) begin
             data[write_pointer + 4'd1] <= write_data2;
             address[write_pointer + 4'd1] <= write_address2;
         end
@@ -157,7 +157,7 @@ module inst_fifo(
     always_ff @(posedge clk) begin : update_read_pointer
         if(fifo_rst) begin
             read_pointer <= 4'd0;
-        end else if(empty || !F_ena) begin
+        end else if(empty || !D_ena) begin
             read_pointer <= read_pointer;
         end else if(read_en1 && read_en2) begin
             read_pointer <= read_pointer + 4'd2;
@@ -204,22 +204,22 @@ module inst_fifo(
     end
 
     // 统计
-    reg [64:0] slave_cnt;
-    reg [64:0] master_cnt;
-    always_ff @(posedge clk) begin
-        if(rst)
-            master_cnt <= 64'd0;
-        else if(read_en1 && (!empty || master_is_in_delayslot_o))
-            master_cnt <= master_cnt + 64'd1;
-    end
+    // reg [64:0] slave_cnt;
+    // reg [64:0] master_cnt;
+    // always_ff @(posedge clk) begin
+    //     if(rst)
+    //         master_cnt <= 64'd0;
+    //     else if(read_en1 && (!empty || master_is_in_delayslot_o))
+    //         master_cnt <= master_cnt + 64'd1;
+    // end
     
-    always_ff @(posedge clk) begin
-        if(rst)
-            slave_cnt <= 64'd0;
-        else if(read_en2 && (!empty && !master_is_branch && !almost_empty))
-            slave_cnt <= slave_cnt + 64'd1;
-    end
+    // always_ff @(posedge clk) begin
+    //     if(rst)
+    //         slave_cnt <= 64'd0;
+    //     else if(read_en2 && (!empty && !master_is_branch && !almost_empty))
+    //         slave_cnt <= slave_cnt + 64'd1;
+    // end
 
-    wire [63:0] total_cnt = master_cnt + slave_cnt;
+    // wire [64:0] total_cnt = master_cnt + slave_cnt;
 
 endmodule

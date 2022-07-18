@@ -2,17 +2,17 @@
 `include "defines.vh"
 
 module alu_master(
-    input  wire clk,rst,
-    input  wire [7:0]aluop,
-    input  wire [31:0]a,
-    input  wire [31:0]b,
-    input  wire [31:0]cp0_data,
-    input  wire  [63:0]hilo, // hilo source data
+    input  logic clk,rst,
+    input  logic [7:0]aluop,
+    input  logic [31:0]a,
+    input  logic [31:0]b,
+    input  logic [31:0]cp0_data,
+    input  logic [63:0]hilo, // hilo source data
 
-    output stall_alu,
-    output reg [31:0] y,
-    output wire [63:0]aluout_64,
-    output reg overflow
+    output logic stall_alu,
+    output logic [31:0] y,
+    output logic [63:0]aluout_64,
+    output logic overflow
     );
     
     logic stall_div;
@@ -24,22 +24,21 @@ module alu_master(
     logic [63:0] mul_result;
     logic mul_ready;
 
-    wire div_ready;
-    reg start_div,signed_div;
-    reg  [31:0] save_div_a,save_div_b;
-    reg  [7 :0] save_div_type;
-    reg  [63:0] save_div_result;
-    reg  [63:0] temp_aluout_64;
-    wire [31:0] multa,multb;
-    wire [63:0] div_result;
+    logic start_div;
+    logic signed_div;
+    logic div_ready;
+    logic [7 :0] save_div_type;
+    logic [31:0] multa,multb;
+    logic [31:0] save_div_a,save_div_b;
+    logic [63:0] save_div_result;
+    logic [63:0] div_result;
+    logic [63:0] temp_aluout_64;
     
     //multiply module
     assign multa = (aluop == `ALUOP_MULT) && (a[31] == 1'b1) ? (~a + 1) : a;
     assign multb = (aluop == `ALUOP_MULT) && (b[31] == 1'b1) ? (~b + 1) : b;
     
-    assign aluout_64= (aluop==`ALUOP_DIV || aluop==`ALUOP_DIVU) ? 
-                      (!div_ready && aluop==save_div_type ? save_div_result : div_result) : 
-                      temp_aluout_64;
+    assign aluout_64= temp_aluout_64;
 
     always_comb begin
         stall_mul = 1'b0;
@@ -117,6 +116,7 @@ module alu_master(
                     start_div = 1'b0;
                     signed_div =1'b1;
                     stall_div =1'b0;
+                    temp_aluout_64 = save_div_result;
                 end else if(div_ready ==1'b0) begin // 没准备好
                     start_div = 1'b1;
                     signed_div =1'b1;
@@ -125,6 +125,7 @@ module alu_master(
                     start_div = 1'b0;
                     signed_div =1'b1;
                     stall_div =1'b0;
+                    temp_aluout_64 = div_result;
                 end 
             end
             `ALUOP_DIVU :begin
@@ -132,6 +133,7 @@ module alu_master(
                     start_div = 1'b0;
                     signed_div =1'b0;
                     stall_div =1'b0; 
+                    temp_aluout_64 = save_div_result;
                 end else if(div_ready ==1'b0) begin // 没准备好
                     start_div = 1'b1;
                     signed_div =1'b0;
@@ -140,6 +142,7 @@ module alu_master(
                     start_div = 1'b0;
                     signed_div =1'b0;
                     stall_div =1'b0;
+                    temp_aluout_64 = div_result;
                 end 
             end
             //逻辑指令
@@ -166,7 +169,7 @@ module alu_master(
         endcase
     end
     
-    always_ff @(posedge div_ready) begin
+    always_ff @(posedge clk) begin
         if(div_ready) begin
             save_div_a <= a;
             save_div_b <= b;
@@ -194,7 +197,6 @@ module alu_master(
     div mydiv(
         .clk(clk),
         .rst(rst),
-        .ena(~stall_div),
         .signed_div_i(signed_div), 
         .opdata1_i(a),
         .opdata2_i(b),
