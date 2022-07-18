@@ -28,6 +28,7 @@ module  decoder(
     output logic                cp0write,
     output logic                is_hilo_accessed,
     output logic                hilowrite,
+    output logic                is_only_master,
     output logic                reg_wen,
     output logic				spec_inst,
     output logic				undefined_inst,  // 1 as received a unknown operation.
@@ -126,6 +127,10 @@ module  decoder(
                             signsD = {`ALUOP_NOP  ,15'b000000001100000};
                             undefined_inst = 1'b1;
                         end
+                    endcase
+                `OP_SPECIAL2_INST:
+                    case (funct)
+                        `FUN_MUL: signsD = {`ALUOP_MULT,15'b000000001100000};
                     endcase
                 // lsmen
                 `OP_LB    : signsD = {`ALUOP_ADDU ,15'b110000001010010};
@@ -251,6 +256,13 @@ module  decoder(
                 else
                     reg_waddr = rd; 
             default:reg_waddr = rd; 
+        endcase
+    end
+
+    always_comb begin : generate_is_only_master
+        case(op):
+            `OP_SPECIAL2_INST: is_only_master = 1; // TODO: 所有的SPECIAL2_INST都放在master，有例外吗？
+            default: is_only_master = 0;
         endcase
     end
 

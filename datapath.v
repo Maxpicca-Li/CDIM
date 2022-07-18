@@ -100,6 +100,7 @@ wire            D_master_break_inst      ,D_slave_break_inst      ;
 wire            D_master_syscall_inst    ,D_slave_syscall_inst    ;
 wire            D_master_eret_inst       ,D_slave_undefined_inst  ;
 wire            D_master_memRead         ,D_slave_memRead         ;
+wire            D_master_is_only_master  ,D_slave_is_only_master  ;
 wire            E_master_memWrite;
 wire            E_master_memRead ;
 // branch
@@ -324,6 +325,7 @@ decoder u_decoder_master(
     .cp0write                   ( D_master_cp0write                   ),
     .is_hilo_accessed           ( D_master_is_hilo_accessed           ),
     .hilowrite                  ( D_master_hilowrite                  ),
+    .is_only_master             ( D_master_is_only_master             ),
     .reg_wen                    ( D_master_reg_wen                    ),
     .spec_inst                  ( D_master_spec_inst                  ),
     .undefined_inst             ( D_master_undefined_inst             ),
@@ -355,8 +357,9 @@ decoder u_decoder_slave(
     .memRead                    ( D_slave_memRead                    ),
     .memtoReg                   ( D_slave_memtoReg                   ),
     .cp0write                   ( D_slave_cp0write                   ),
-    .is_hilo_accessed           ( D_slave_is_hilo_accessed      ),
+    .is_hilo_accessed           ( D_slave_is_hilo_accessed           ),
     .hilowrite                  ( D_slave_hilowrite                  ),
+    .is_only_master             ( D_slave_is_only_master            ),
     .reg_wen                    ( D_slave_reg_wen                    ),
     .spec_inst                  ( D_slave_spec_inst                  ),
     .undefined_inst             ( D_slave_undefined_inst             ),
@@ -439,6 +442,7 @@ issue_ctrl u_issue_ctrl(
     .D_slave_is_branch              ( (|D_slave_branch_type)   ),
     .D_slave_is_hilo_accessed       ( D_slave_is_hilo_accessed ),
     .D_slave_is_spec_inst           ( D_slave_spec_inst        ),
+    .D_slave_is_only_master         ( D_slave_is_only_master   ),
     .fifo_empty                     ( fifo_empty               ),
     .fifo_almost_empty              ( fifo_almost_empty        ),
     

@@ -99,6 +99,7 @@ module alu_master(
                     mul_sign = 1'b1;
                     stall_mul = 1'b0;
                     temp_aluout_64 = mul_result;
+                    y = mul_result[31:0];
                 end
             end
             `ALUOP_MULTU : begin
@@ -109,6 +110,7 @@ module alu_master(
                     start_mul = 1'b0;
                     stall_mul = 1'b0;
                     temp_aluout_64 = mul_result;
+                    y = mul_result[31:0];
                 end
             end
             `ALUOP_DIV   :begin

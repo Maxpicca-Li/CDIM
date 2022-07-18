@@ -33,6 +33,7 @@
 
 `define EXE_NOP			6'b000000
 `define OP_SPECIAL_INST 6'b000000
+`define OP_SPECIAL2_INST 6'b011100
 //logic inst
 `define FUN_AND 		6'b100100
 `define FUN_OR 			6'b100101
@@ -67,6 +68,9 @@
 `define FUN_MULTU       6'b011001
 `define FUN_DIV         6'b011010
 `define FUN_DIVU        6'b011011
+
+// special2 inst
+`define FUN_MUL         6'b000010
 
 `define OP_ADDI         6'b001000
 `define OP_ADDIU        6'b001001
