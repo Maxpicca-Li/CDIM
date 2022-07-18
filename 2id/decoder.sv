@@ -260,7 +260,7 @@ module  decoder(
     end
 
     always_comb begin : generate_is_only_master
-        case(op):
+        case(op)
             `OP_SPECIAL2_INST: is_only_master = 1; // TODO: 所有的SPECIAL2_INST都放在master，有例外吗？
             default: is_only_master = 0;
         endcase
