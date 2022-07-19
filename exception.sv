@@ -28,10 +28,10 @@ module exception(
     always_comb begin: excepttype_define
         except_target = 32'hBFC00380;
         except_bad_addr = 0;
-        if(rst || master_pc == 0) begin
+        if(rst) begin
             excepttype = 32'b0;
         end else begin
-            if(((cp0_cause[15:8] & cp0_status[15:8]) != 8'h00) &&  (cp0_status[1] == 1'b0) && (cp0_status[0] == 1'b1)) begin
+            if(((cp0_cause[15:8] & cp0_status[15:8]) != 8'h00) &&  (cp0_status[1] == 1'b0) && (cp0_status[0] == 1'b1) && (|master_pc)) begin
                 excepttype = 32'h00000001;
             end else if(except[1] == 1'b1) begin
                 // data load出错
