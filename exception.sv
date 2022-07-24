@@ -1,13 +1,15 @@
 `timescale 1ns / 1ps
+
+// _except = [8trap, 7pc_exp, 6syscall, 5break, 4eret, 3undefined, 2overflow, 1adel, 0ades]
 module exception(
     // 异常处理，master优先
     input              rst            ,
     input              master_is_in_delayslot,
-    input [ 7:0]       master_except  ,
+    input [`EXCEPT_BUS]       master_except  ,
     input [31:0]       master_pc      ,
     input [31:0]       master_daddr   ,
     input              slave_is_in_delayslot,
-    input [ 7:0]       slave_except   ,
+    input [`EXCEPT_BUS]       slave_except   ,
     input [31:0]       slave_pc       ,
     input [31:0]       cp0_status     ,
     input [31:0]       cp0_cause      ,
@@ -20,7 +22,7 @@ module exception(
     output logic [31:0] excepttype         
 );
 
-    wire [ 7:0] except; 
+    wire [`EXCEPT_BUS] except; 
     assign except              = (|master_except || (~(|slave_except))) ? master_except:slave_except;
     assign except_inst_addr    = (|master_except || (~(|slave_except))) ? master_pc    :slave_pc    ;
     assign except_in_delayslot = (|master_except || (~(|slave_except))) ? master_is_in_delayslot : slave_is_in_delayslot;

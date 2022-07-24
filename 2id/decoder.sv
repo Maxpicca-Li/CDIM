@@ -17,6 +17,7 @@ module  decoder(
     output logic [31:0]         sign_extend_imm_value,
     output logic                is_link_pc8,
     output logic [3:0]          branch_type,
+    output logic [3:0]          trap_type,
     output logic [4:0]          reg_waddr,
     output logic [7:0]	 		aluop, // ALU operation
     output logic                flush_all,
@@ -68,6 +69,7 @@ module  decoder(
         syscall_inst = 1'b0;
         break_inst = 1'b0;
         spec_inst = 1'b0;
+        trap_type = `TT_NOP;
         signsD = `CTRL_SIGN_NOP;
         case(op)
             `OP_SPECIAL_INST:begin
@@ -196,6 +198,24 @@ module  decoder(
                     end
                     `FUN_SYNC   :begin
                         ;// NOP ==> don't need to set value
+                    end
+                    `FUN_TEQ    :begin
+                        trap_type = `TT_TEQ;
+                    end
+                    `FUN_TNE    :begin
+                        trap_type = `TT_TNE;
+                    end
+                    `FUN_TGE    :begin
+                        trap_type = `TT_TGE;
+                    end
+                    `FUN_TGEU   :begin
+                        trap_type = `TT_TGEU;
+                    end
+                    `FUN_TLT    :begin
+                        trap_type = `TT_TLT;
+                    end
+                    `FUN_TLTU   :begin
+                        trap_type = `TT_TLTU;
                     end
                     default: begin 
                         signsD = `CTRL_SIGN_NOP;

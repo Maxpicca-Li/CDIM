@@ -35,6 +35,7 @@
 `define DataMemNumLog2 17
 `define ByteWidth 7:0
 `define RegBus 			31:0
+`define EXCEPT_BUS      8:0
 // `define RegWidth		32
 // `define DoubleRegWidth	64
 // `define DoubleRegBus	63:0
@@ -83,6 +84,13 @@
     //内陷指令
 `define FUN_SYSCALL     6'b001100
 `define FUN_BREAK       6'b001101
+    // trap compare
+`define FUN_TEQ         6'b110100
+`define FUN_TNE         6'b110110
+`define FUN_TGE         6'b110000
+`define FUN_TGEU        6'b110001
+`define FUN_TLT         6'b110010
+`define FUN_TLTU        6'b110011
     //同步指令
 `define FUN_SYNC            6'b001111
 
@@ -344,6 +352,15 @@
 `define BT_BLTZ_    4'b0110
 `define BT_J        4'b1000 
 `define BT_JREG     4'b1001
+
+// trap instrunction type
+`define TT_NOP      4'b0000
+`define TT_TEQ      4'b0001
+`define TT_TNE      4'b0010
+`define TT_TGE      4'b0011
+`define TT_TGEU     4'b0100
+`define TT_TLT      4'b0101
+`define TT_TLTU     4'b0110
 
 `define MEM_LOAD    2'b10
 `define MEM_STOR    2'b01

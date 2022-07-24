@@ -11,7 +11,7 @@ module mem_wb(
     input wire M_master_reg_wen, 
     input wire M_master_memtoReg, 
     input wire [4 :0]M_master_reg_waddr, 
-    input wire [7 :0]M_master_except, 
+    input wire [`EXCEPT_BUS]M_master_except, 
     input wire [31:0]M_master_inst, 
     input wire [31:0]M_master_pc, 
     input wire [31:0]M_master_alu_res, 
@@ -20,7 +20,7 @@ module mem_wb(
 
     input wire M_slave_reg_wen,
     input wire [4 :0]M_slave_reg_waddr,
-    input wire [7 :0]M_slave_except,
+    input wire [`EXCEPT_BUS]M_slave_except,
     input wire [31:0]M_slave_inst,
     input wire [31:0]M_slave_pc,
     input wire [31:0]M_slave_alu_res,
@@ -29,7 +29,7 @@ module mem_wb(
     output reg W_master_reg_wen, 
     output reg W_master_memtoReg, 
     output reg [4 :0]W_master_reg_waddr, 
-    output reg [7 :0]W_master_except, 
+    output reg [`EXCEPT_BUS]W_master_except, 
     output reg [31:0]W_master_inst, 
     output reg [31:0]W_master_pc, 
     output reg [31:0]W_master_alu_res, 
@@ -38,7 +38,7 @@ module mem_wb(
 
     output reg W_slave_reg_wen,
     output reg [4 :0]W_slave_reg_waddr,
-    output reg [7 :0]W_slave_except,
+    output reg [`EXCEPT_BUS]W_slave_except,
     output reg [31:0]W_slave_inst,
     output reg [31:0]W_slave_pc,
     output reg [31:0]W_slave_alu_res
