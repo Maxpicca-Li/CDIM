@@ -49,23 +49,18 @@ module  decoder(
     assign sign_extend_imm_value = (instr[29:28]==2'b11) ? {{16{1'b0}},instr[15:0]}:{{16{instr[15]}},instr[15:0]}; //op[3:2] for logic_imm type
 
     // signsD = {[22:15]]ALUOP,14memRead,13mem_en,12cp0write,11hilowrite,10bal,9jr,8jal,7alu_sela,6reg_wen,5regdst,4alu_selb,3branch,2memWrite,1memtoReg,0jump}
-    reg [22:0]signsD;
-    assign aluop     = signsD[22:15];
-    assign memRead   = signsD[14];
-    assign mem_en    = signsD[13];
-    assign cp0write  = signsD[12];
-    assign hilowrite = signsD[11];
-    // assign bal       = signsD[10];
-    // assign jr        = signsD[ 9];
-    // assign jal       = signsD[ 8];
-    assign alu_sela  = signsD[ 7];
-    assign reg_wen  = signsD[ 6];
-    // assign regdst    = signsD[ 5];
-    assign alu_selb  = signsD[ 4];
-    // assign branch    = signsD[ 3];
-    assign memWrite  = signsD[ 2];
-    assign memtoReg  = signsD[ 1];
-    assign jump      = signsD[ 0];        
+    ctrl_sign signsD;
+    assign aluop = signsD.aluop;
+    assign flush_all = signsD.flush_all;
+    assign reg_wen = signsD.reg_wen;
+    assign alu_sela = signsD.alu_sela;
+    assign alu_selb = signsD.alu_selb;
+    assign mem_en = signsD.mem_en;
+    assign memRead = signsD.memRead;
+    assign memWrite = signsD.memWrite;
+    assign memtoReg = signsD.memtoReg;
+    assign cp0write = signsD.cp0write;
+    assign hilowrite = signsD.hilowrite;
     assign eret_inst = (instr == 32'b01000010000000000000000000011000);
 
     always_comb begin : generate_control_signals
@@ -73,118 +68,288 @@ module  decoder(
         syscall_inst = 1'b0;
         break_inst = 1'b0;
         spec_inst = 1'b0;
-        signsD = {`ALUOP_NOP,15'b000000000000000};
-        if (instr==32'b0) begin
-            signsD = {`ALUOP_NOP,15'b000000000000000};
-        end
-        else begin
-            case(op)
-                `OP_SPECIAL_INST:
-                    case (funct)
-                        // logic
-                        `FUN_AND   : signsD = {`ALUOP_AND  ,15'b000000001100000};    //and
-                        `FUN_OR    : signsD = {`ALUOP_OR   ,15'b000000001100000};    //or
-                        `FUN_XOR   : signsD = {`ALUOP_XOR  ,15'b000000001100000};   //xor
-                        `FUN_NOR   : signsD = {`ALUOP_NOR  ,15'b000000001100000};   //nor
-                        // arith
-                        `FUN_SLT   : signsD = {`ALUOP_SLT  ,15'b000000001100000};   //slt
-                        `FUN_SLTU  : signsD = {`ALUOP_SLTU ,15'b000000001100000};   //sltu
-                        `FUN_ADD   : signsD = {`ALUOP_ADD  ,15'b000000001100000};   //add
-                        `FUN_ADDU  : signsD = {`ALUOP_ADDU ,15'b000000001100000};   //addu
-                        `FUN_SUB   : signsD = {`ALUOP_SUB  ,15'b000000001100000};   //sub
-                        `FUN_SUBU  : signsD = {`ALUOP_SUBU ,15'b000000001100000};   //subu
-                        `FUN_MULT  : signsD = {`ALUOP_MULT ,15'b000100001100000};   //mult
-                        `FUN_MULTU : signsD = {`ALUOP_MULTU,15'b000100001100000};  //multu
-                        `FUN_DIV   : signsD = {`ALUOP_DIV  ,15'b000100001100000};   //div
-                        `FUN_DIVU  : signsD = {`ALUOP_DIVU ,15'b000100001100000};   //divu
-                        // shift
-                        `FUN_SLL   : signsD = {`ALUOP_SLL  ,15'b000000011100000} ;
-                        `FUN_SLLV  : signsD = {`ALUOP_SLLV ,15'b000000001100000} ;
-                        `FUN_SRL   : signsD = {`ALUOP_SRL  ,15'b000000011100000} ;
-                        `FUN_SRLV  : signsD = {`ALUOP_SRLV ,15'b000000001100000} ;
-                        `FUN_SRA   : signsD = {`ALUOP_SRA  ,15'b000000011100000} ;
-                        `FUN_SRAV  : signsD = {`ALUOP_SRAV ,15'b000000001100000} ;
-                        // move
-                        `FUN_MFHI  : signsD = {`ALUOP_MFHI ,15'b000000001100000};
-                        `FUN_MFLO  : signsD = {`ALUOP_MFLO ,15'b000000001100000};
-                        `FUN_MTHI  : signsD = {`ALUOP_MTHI ,15'b000100000000000};
-                        `FUN_MTLO  : signsD = {`ALUOP_MTLO ,15'b000100000000000};
-                        // jump R
-                        `FUN_JR    : signsD = {`ALUOP_NOP  ,15'b000001000000001};
-                        `FUN_JALR  : signsD = {`ALUOP_NOP  ,15'b000001001100000}; // JALR:GPR[rd]=pc+8;
-                        // 内陷指令
-                        `FUN_SYSCALL:begin
-                            spec_inst = 1'b1;
-                            signsD = {`ALUOP_NOP  ,15'b000000000000000};
-                            syscall_inst =1'b1;
-                        end
-                        `FUN_BREAK  :begin
-                            break_inst = 1'b1;
-                            spec_inst = 1'b1;
-                            signsD = {`ALUOP_NOP  ,15'b000000000000000};
-                        end
-                        default: begin 
-                            signsD = {`ALUOP_NOP  ,15'b000000001100000};
-                            undefined_inst = 1'b1;
-                        end
-                    endcase
-                `OP_SPECIAL2_INST:
-                    case (funct)
-                        `FUN_MUL: signsD = {`ALUOP_MULT,15'b000000001100000};
-                    endcase
-                // lsmen
-                `OP_LB    : signsD = {`ALUOP_ADDU ,15'b110000001010010};
-                `OP_LBU   : signsD = {`ALUOP_ADDU ,15'b110000001010010};
-                `OP_LH    : signsD = {`ALUOP_ADDU ,15'b110000001010010};
-                `OP_LHU   : signsD = {`ALUOP_ADDU ,15'b110000001010010};
-                `OP_LW    : signsD = {`ALUOP_ADDU ,15'b110000001010010}; // lw
-                `OP_SB    : signsD = {`ALUOP_ADDU ,15'b010000000010100};
-                `OP_SH    : signsD = {`ALUOP_ADDU ,15'b010000000010100};
-                `OP_SW    : signsD = {`ALUOP_ADDU ,15'b010000000010100}; // sw
-                // arith imme
-                `OP_ADDI  : signsD = {`ALUOP_ADD  ,15'b000000001010000}; // addi
-                `OP_ADDIU : signsD = {`ALUOP_ADDU ,15'b000000001010000}; // addiu
-                `OP_SLTI  : signsD = {`ALUOP_SLT  ,15'b000000001010000};// slti
-                `OP_SLTIU : signsD = {`ALUOP_SLTU ,15'b000000001010000}; // sltiu
-                // logic imme
-                `OP_ANDI  : signsD = {`ALUOP_AND  ,15'b000000001010000}; // andi
-                `OP_ORI   : signsD = {`ALUOP_OR   ,15'b000000001010000}; // ori
-                `OP_XORI  : signsD = {`ALUOP_XOR  ,15'b000000001010000}; // xori
-                `OP_LUI   : signsD = {`ALUOP_LUI  ,15'b000000001010000}; // lui            
-                // jump
-                `OP_J     : signsD = {`ALUOP_NOP  ,15'b000000000000001}; // J     
-                `OP_JAL   : signsD = {`ALUOP_NOP  ,15'b000000101000000}; // JAL:GPR[31]=pc+8;
-                // branch
-                `OP_BEQ   : signsD = {`ALUOP_NOP  ,15'b000000000001000}; // BEQ
-                `OP_BNE   : signsD = {`ALUOP_NOP  ,15'b000000000001000}; // BNE
-                `OP_BGTZ  : signsD = {`ALUOP_NOP  ,15'b000000000001000}; // BGTZ
-                `OP_BLEZ  : signsD = {`ALUOP_NOP  ,15'b000000000001000}; // BLEZ  
-                `OP_SPEC_B:     // BGEZ,BLTZ,BGEZAL,BLTZAL
-                    case(rt)
-                        `RT_BGEZ : signsD  = {`ALUOP_NOP  ,15'b000000000001000};
-                        `RT_BLTZ : signsD  = {`ALUOP_NOP  ,15'b000000000001000};
-                        `RT_BGEZAL: signsD = {`ALUOP_NOP  ,15'b000010001001000}; // GPR[31] = PC + 8
-                        `RT_BLTZAL: signsD = {`ALUOP_NOP  ,15'b000010001001000}; // GPR[31] = PC + 8
-                        default: begin
-                            undefined_inst = 1'b1;
-                            signsD = {`ALUOP_NOP  ,15'b000000000000000};
-                        end
-                    endcase
-                // special
-                `OP_COP0_INST:begin
-                    spec_inst = 1'b1;
-                    case (rs)
-                        `RS_MFC0: signsD = {`ALUOP_MFC0 ,15'b000000001000000};
-                        `RS_MTC0: signsD = {`ALUOP_MTC0 ,15'b001000000000000};
-                        default : signsD = {`ALUOP_NOP  ,15'b000000000000000};
-                    endcase
-                end
-                default: begin
-                    undefined_inst = 1'b1;
-                    signsD = {`ALUOP_NOP  ,15'b000000000000000};
-                end
-            endcase
-        end
+        signsD = `CTRL_SIGN_NOP;
+        case(op)
+            `OP_SPECIAL_INST:begin
+                signsD.reg_wen = 1'b1;
+                case (funct)
+                    // logic
+                    `FUN_AND   : begin
+                        signsD.aluop = `ALUOP_ADD;
+                    end
+                    `FUN_OR    : begin
+                        signsD.aluop = `ALUOP_OR;
+                    end
+                    `FUN_XOR   : begin
+                        signsD.aluop = `ALUOP_XOR;
+                    end
+                    `FUN_NOR   : begin
+                        signsD.aluop = `ALUOP_NOR;
+                    end
+                    // arith
+                    `FUN_SLT   : begin
+                        signsD.aluop = `ALUOP_SLT;
+                    end
+                    `FUN_SLTU  : begin
+                        signsD.aluop = `ALUOP_SLTU;
+                    end
+                    `FUN_ADD   : begin
+                        signsD.aluop = `ALUOP_ADD;
+                    end
+                    `FUN_ADDU  : begin
+                        signsD.aluop = `ALUOP_ADDU;
+                    end
+                    `FUN_SUB   : begin
+                        signsD.aluop = `ALUOP_SUB;
+                    end
+                    `FUN_SUBU  : begin
+                        signsD.aluop = `ALUOP_SUBU;
+                    end
+                    `FUN_MULT  : begin
+                        signsD.aluop = `ALUOP_MULT;
+                        signsD.hilowrite = 1'b1;
+                        signsD.reg_wen = 1'b0;
+                    end
+                    `FUN_MULTU : begin
+                        signsD.aluop = `ALUOP_MULTU;
+                        signsD.hilowrite = 1'b1;
+                        signsD.reg_wen = 1'b0;
+                    end
+                    `FUN_DIV   : begin
+                        signsD.aluop = `ALUOP_DIV;
+                        signsD.hilowrite = 1'b1;
+                        signsD.reg_wen = 1'b0;
+                    end
+                    `FUN_DIVU  : begin
+                        signsD.aluop = `ALUOP_DIVU;
+                        signsD.hilowrite = 1'b1;
+                        signsD.reg_wen = 1'b0;
+                    end
+                    // shift
+                    `FUN_SLL   : begin
+                        signsD.aluop = `ALUOP_SLL;
+                        signsD.alu_sela = 1'b1;
+                    end
+                    `FUN_SLLV  : begin
+                        signsD.aluop = `ALUOP_SLLV;
+                    end
+                    `FUN_SRL   : begin
+                        signsD.aluop = `ALUOP_SRL;
+                        signsD.alu_sela = 1'b1;
+                    end
+                    `FUN_SRLV  : begin
+                        signsD.aluop = `ALUOP_SRLV;
+                    end
+                    `FUN_SRA   : begin
+                        signsD.aluop = `ALUOP_SRA;
+                        signsD.alu_sela = 1'b1;
+                    end
+                    `FUN_SRAV  : begin
+                        signsD.aluop = `ALUOP_SRAV;
+                    end
+                    // move
+                    `FUN_MFHI  : begin
+                        signsD.aluop = `ALUOP_MFHI;
+                    end
+                    `FUN_MFLO  : begin
+                        signsD.aluop = `ALUOP_MFLO;
+                    end
+                    `FUN_MTHI  : begin
+                        signsD.aluop = `ALUOP_MTHI;
+                        signsD.hilowrite = 1'b1;
+                    end
+                    `FUN_MTLO  : begin
+                        signsD.aluop = `ALUOP_MTLO;
+                        signsD.hilowrite = 1'b1;
+                    end
+                    // jump R
+                    `FUN_JR    : begin
+                        signsD.reg_wen = 1'b0;
+                    end
+                    `FUN_JALR  : begin // JALR:GPR[rd]=pc+8;
+                        signsD.aluop = `ALUOP_NOP;
+                    end
+                    // 内陷指令
+                    `FUN_SYSCALL:begin
+                        spec_inst = 1'b1;
+                        syscall_inst =1'b1;
+                    end
+                    `FUN_BREAK  :begin
+                        break_inst = 1'b1;
+                        spec_inst = 1'b1;
+                    end
+                    default: begin 
+                        signsD = `CTRL_SIGN_NOP;
+                        undefined_inst = 1'b1;
+                    end
+                endcase
+            end
+            `OP_SPECIAL2_INST:
+                case (funct)
+                    `FUN_MUL: begin
+                        signsD.aluop = `ALUOP_MULT;
+                        signsD.reg_wen = 1'b1;
+                    end
+                    `FUN_CLO: begin
+                        signsD.aluop = `ALUOP_CLO;
+                        signsD.reg_wen = 1'b1;
+                    end
+                    `FUN_CLO: begin
+                        signsD.aluop = `ALUOP_CLZ;
+                        signsD.reg_wen = 1'b1;
+                    end
+                endcase
+            // lsmen
+            `OP_LB    : begin
+                signsD.aluop = `ALUOP_ADDU;
+                signsD.memtoReg = 1'b1;
+                signsD.memRead = 1'b1;
+                signsD.mem_en = 1'b1;
+                signsD.reg_wen = 1'b1;
+                signsD.alu_selb = 1'b1;
+            end
+            `OP_LBU   : begin
+                signsD.aluop = `ALUOP_ADDU;
+                signsD.memtoReg = 1'b1;
+                signsD.memRead = 1'b1;
+                signsD.mem_en = 1'b1;
+                signsD.reg_wen = 1'b1;
+                signsD.alu_selb = 1'b1;
+            end
+            `OP_LH    : begin
+                signsD.aluop = `ALUOP_ADDU;
+                signsD.memtoReg = 1'b1;
+                signsD.memRead = 1'b1;
+                signsD.mem_en = 1'b1;
+                signsD.reg_wen = 1'b1;
+                signsD.alu_selb = 1'b1;
+            end
+            `OP_LHU   : begin
+                signsD.aluop = `ALUOP_ADDU;
+                signsD.memtoReg = 1'b1;
+                signsD.memRead = 1'b1;
+                signsD.mem_en = 1'b1;
+                signsD.reg_wen = 1'b1;
+                signsD.alu_selb = 1'b1;
+            end
+            `OP_LW    : begin
+                signsD.aluop = `ALUOP_ADDU;
+                signsD.memtoReg = 1'b1;
+                signsD.memRead = 1'b1;
+                signsD.mem_en = 1'b1;
+                signsD.reg_wen = 1'b1;
+                signsD.alu_selb = 1'b1;
+            end
+            `OP_SB    : begin
+                signsD.aluop = `ALUOP_ADDU;
+                signsD.memWrite = 1'b1;
+                signsD.mem_en = 1'b1;
+                signsD.alu_selb = 1'b1;
+            end
+            `OP_SH    : begin
+                signsD.aluop = `ALUOP_ADDU;
+                signsD.memWrite = 1'b1;
+                signsD.mem_en = 1'b1;
+                signsD.alu_selb = 1'b1;
+            end
+            `OP_SW    : begin
+                signsD.aluop = `ALUOP_ADDU;
+                signsD.memWrite = 1'b1;
+                signsD.mem_en = 1'b1;
+                signsD.alu_selb = 1'b1;
+            end
+            // arith imme
+            `OP_ADDI  : begin
+                signsD.aluop = `ALUOP_ADD;
+                signsD.reg_wen = 1'b1;
+                signsD.alu_selb = 1'b1;
+            end
+            `OP_ADDIU : begin
+                signsD.aluop = `ALUOP_ADDU;
+                signsD.reg_wen = 1'b1;
+                signsD.alu_selb = 1'b1;
+            end
+            `OP_SLTI  : begin
+                signsD.aluop = `ALUOP_SLT;
+                signsD.reg_wen = 1'b1;
+                signsD.alu_selb = 1'b1;
+            end
+            `OP_SLTIU : begin
+                signsD.aluop = `ALUOP_SLTU;
+                signsD.reg_wen = 1'b1;
+                signsD.alu_selb = 1'b1;
+            end
+            // logic imme
+            `OP_ANDI  : begin
+                signsD.aluop = `ALUOP_AND;
+                signsD.reg_wen = 1'b1;
+                signsD.alu_selb = 1'b1;
+            end
+            `OP_ORI   : begin
+                signsD.aluop = `ALUOP_OR;
+                signsD.reg_wen = 1'b1;
+                signsD.alu_selb = 1'b1;
+            end
+            `OP_XORI  : begin
+                signsD.aluop = `ALUOP_XOR;
+                signsD.reg_wen = 1'b1;
+                signsD.alu_selb = 1'b1;
+            end
+            `OP_LUI   : begin
+                signsD.aluop = `ALUOP_LUI;
+                signsD.reg_wen = 1'b1;
+                signsD.alu_selb = 1'b1;
+            end
+            // jump
+            `OP_J     : begin
+                signsD.aluop = `ALUOP_NOP;
+            end
+            `OP_JAL   : begin
+                signsD.aluop = `ALUOP_NOP;
+                signsD.reg_wen = 1'b1;
+            end
+            // branch
+            `OP_BEQ   : begin
+                signsD.aluop = `ALUOP_NOP;
+            end
+            `OP_BNE   : begin
+                signsD.aluop = `ALUOP_NOP;
+            end
+            `OP_BGTZ  : begin
+                signsD.aluop = `ALUOP_NOP;
+            end
+            `OP_BLEZ  : begin
+                signsD.aluop = `ALUOP_NOP;
+            end
+            `OP_SPEC_B:     // BGEZ,BLTZ,BGEZAL,BLTZAL
+                case(rt)
+                    // `RT_BGEZ
+                    // `RT_BLTZ
+                    `RT_BGEZAL: begin
+                        signsD.reg_wen = 1'b1;
+                    end
+                    `RT_BLTZAL: begin
+                        signsD.reg_wen = 1'b1;
+                    end
+                endcase
+            // special
+            `OP_COP0_INST:begin
+                spec_inst = 1'b1;
+                case (rs)
+                    `RS_MFC0: begin
+                        signsD.aluop = `ALUOP_MFC0;
+                        signsD.reg_wen = 1'b1;
+                    end
+                    `RS_MTC0: begin
+                        signsD.aluop = `ALUOP_MTC0;
+                        signsD.cp0write = 1'b1;
+                    end
+                endcase
+            end
+            default: begin
+                undefined_inst = 1'b1;
+            end
+        endcase
     end
 
     always_comb begin
@@ -260,7 +425,7 @@ module  decoder(
     end
 
     always_comb begin : generate_is_only_master
-        case(op):
+        case(op)
             `OP_SPECIAL2_INST: is_only_master = 1; // TODO: 所有的SPECIAL2_INST都放在master，有例外吗？
             default: is_only_master = 0;
         endcase

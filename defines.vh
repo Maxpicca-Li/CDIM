@@ -71,6 +71,7 @@
 
 // special2 inst
 `define FUN_MUL         6'b000010
+`define FUN_CLO         6'b100000
 
 `define OP_ADDI         6'b001000
 `define OP_ADDIU        6'b001001
@@ -241,6 +242,9 @@
    
 `define ALUOP_ERET 8'b01101011
 
+`define ALUOP_CLO    8'b01100001
+`define ALUOP_CLZ    8'b01100011
+
 `define ALUOP_NOP    8'b00000000
 
 //ALU Sel
@@ -401,3 +405,20 @@
 
 `define SIGN_EXTENDED   1'b0
 `define ZERO_EXTENDED   1'b1
+
+typedef struct packed {
+    logic [7:0] aluop;
+    logic flush_all; // 1: flush all but commit current inst
+    logic reg_wen;
+    logic alu_sela; // 0: reg value; 1: shamt
+    logic alu_selb; // 0: reg value; 1: imm
+    logic mem_en;
+    logic memRead;
+    logic memWrite;
+    logic memtoReg;
+    logic cp0write;
+    logic hilowrite;
+} ctrl_sign;
+
+//                    {aluop     ,fa  ,rwen,sela,selb,men ,mr  ,mw  ,mtr ,cp0w,hilo}
+`define CTRL_SIGN_NOP {`ALUOP_NOP,1'd0,1'd0,1'd0,1'd0,1'd0,1'd0,1'd0,1'd0,1'd0,1'd0}
