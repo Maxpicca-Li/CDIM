@@ -366,6 +366,11 @@
 `define TT_TLT      4'b0101
 `define TT_TLTU     4'b0110
 
+// condition move type
+`define CmovBus 1:0
+`define C_MOVN  01
+`define C_MOVZ  10
+
 `define MEM_LOAD    2'b10
 `define MEM_STOR    2'b01
 `define MEM_NOOP    2'b00
@@ -381,6 +386,7 @@
 
 typedef struct packed{
     logic [7:0] aluop;
+    logic [`CmovBus] cmov_type;
     logic flush_all; // 1: flush all but commit current inst
     logic reg_wen;
     logic alu_sela; // 0: reg value; 1: shamt
@@ -394,5 +400,5 @@ typedef struct packed{
     logic is_olny_in_master;
 } ctrl_sign;
 
-//                    {aluop     ,fa  ,rwen,sela,selb,men ,mr  ,mw  ,mtr ,cp0w,hlw ,ioim}
-`define CTRL_SIGN_NOP {`ALUOP_NOP,1'd0,1'd0,1'd0,1'd0,1'd0,1'd0,1'd0,1'd0,1'd0,1'd0,1'd0}
+//                    {aluop     ,fa  ,rwen,sela,selb,men ,mr  ,mw  ,mtr ,cp0w,hlw ,ioim,cmov}
+`define CTRL_SIGN_NOP {`ALUOP_NOP,1'd0,1'd0,1'd0,1'd0,1'd0,1'd0,1'd0,1'd0,1'd0,1'd0,1'd0,2'd0}

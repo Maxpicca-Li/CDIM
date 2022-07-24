@@ -132,6 +132,7 @@ wire            D_master_memtoReg        ,D_slave_memtoReg        ;
 wire            D_master_cp0write        ,D_slave_cp0write        ;
 wire            D_master_hilowrite       ,D_slave_hilowrite       ;
 wire            D_master_is_pc_except    ,D_slave_is_pc_except    ;
+wire [`CmovBus]     D_master_cmov_type       ,D_slave_cmov_type       ;
 
 // ===== E =====
 wire 	        E_master_exp_trap, E_slave_exp_trap;
@@ -322,6 +323,7 @@ decoder u_decoder_master(
     .is_link_pc8                ( D_master_is_link_pc8                ),
     .branch_type                ( D_master_branch_type                ),
     .trap_type                  ( D_master_trap_type                  ),
+    .cmov_type                  ( D_master_cmov_type                  ),
     .reg_waddr                  ( D_master_reg_waddr                  ),
     .aluop                      ( D_master_aluop                      ),
     .alu_sela                   ( D_master_alu_sela                   ),
@@ -356,6 +358,7 @@ decoder u_decoder_slave(
     .is_link_pc8                ( D_slave_is_link_pc8                ),
     .branch_type                ( D_slave_branch_type                ),
     .trap_type                  ( D_slave_trap_type                  ),
+    .cmov_type                  ( D_slave_cmov_type                  ),
     .reg_waddr                  ( D_slave_reg_waddr                  ),
     .aluop                      ( D_slave_aluop                      ),
     .is_olny_in_master          ( D_slave_is_only_in_master          ),
@@ -456,11 +459,11 @@ issue_ctrl u_issue_ctrl(
     .D_slave_en                     ( D_slave_ena                )
 );
 
-assign D_master_reg_wen =   D_master_funct==`FUN_MOVN ? (|D_master_rt_value):    // !=0
-                            D_master_funct==`FUN_MOVZ ? (!(|D_master_rt_value)): // ==0
+assign D_master_reg_wen =   D_master_cmov_type==`C_MOVN ? (|D_master_rt_value):    // !=0
+                            D_master_cmov_type==`C_MOVZ ? (!(|D_master_rt_value)): // ==0
                             D_master_reg_wen_a;
-assign D_slave_reg_wen  =   D_slave_funct==`FUN_MOVN ? (|D_slave_rt_value):    // !=0
-                            D_slave_funct==`FUN_MOVZ ? (!(|D_slave_rt_value)): // ==0
+assign D_slave_reg_wen  =   D_slave_cmov_type==`C_MOVN ? (|D_slave_rt_value):    // !=0
+                            D_slave_cmov_type==`C_MOVZ ? (!(|D_slave_rt_value)): // ==0
                             D_slave_reg_wen_a;
 // ====================================== Execute ======================================
 wire D2E_clear1,D2E_clear2;

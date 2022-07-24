@@ -22,6 +22,7 @@ module  decoder(
     output logic [7:0]	 		aluop, // ALU operation
     output logic                flush_all,
     output logic                is_olny_in_master,
+    output logic [`CmovBus]     cmov_type,
     output logic       			alu_sela,
     output logic       			alu_selb,
     output logic                mem_en,
@@ -62,6 +63,7 @@ module  decoder(
     assign cp0write = signsD.cp0write;
     assign hilowrite = signsD.hilowrite;
     assign is_olny_in_master = signsD.is_olny_in_master;
+    assign cmov_type = signsD.cmov_type;
     assign eret_inst = (instr == 32'b01000010000000000000000000011000);
 
     always_comb begin : generate_control_signals
@@ -229,9 +231,11 @@ module  decoder(
                     end
                     `FUN_MOVN: begin
                         signsD.aluop = `ALUOP_MOV;
+                        signsD.cmov_type = `C_MOVN;
                     end
                     `FUN_MOVZ: begin
                         signsD.aluop = `ALUOP_MOV;
+                        signsD.cmov_type = `C_MOVZ;
                     end
                     default: begin 
                         signsD = `CTRL_SIGN_NOP;
