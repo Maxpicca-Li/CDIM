@@ -121,7 +121,6 @@ wire [31:0]     D_master_rs_data         ,D_slave_rs_data         ;
 wire [31:0]     D_master_rt_data         ,D_slave_rt_data         ;
 wire [31:0]     D_master_rs_value        ,D_slave_rs_value        ;
 wire [31:0]     D_master_rt_value        ,D_slave_rt_value        ;
-wire            D_master_reg_wen_a       ,D_slave_reg_wen_a       ;
 wire            D_master_reg_wen         ,D_slave_reg_wen         ;
 wire [4:0]      D_master_reg_waddr       ,D_slave_reg_waddr       ;
 // mem
@@ -132,10 +131,10 @@ wire            D_master_memtoReg        ,D_slave_memtoReg        ;
 wire            D_master_cp0write        ,D_slave_cp0write        ;
 wire            D_master_hilowrite       ,D_slave_hilowrite       ;
 wire            D_master_is_pc_except    ,D_slave_is_pc_except    ;
-wire [`CmovBus]     D_master_cmov_type       ,D_slave_cmov_type       ;
+wire [`CmovBus] D_master_cmov_type       ,D_slave_cmov_type       ;
 
 // ===== E =====
-wire 	        E_master_exp_trap, E_slave_exp_trap;
+wire 	        E_master_exp_trap ,E_slave_exp_trap;
 wire [3:0]      E_master_trap_type,E_slave_trap_type;
 wire            E_slave_ena;
 wire [31:0]     E_master_inst     ,E_slave_inst    ;
@@ -153,7 +152,8 @@ wire            E_master_is_link_pc8    ;
 wire            E_master_mem_en         ;
 wire            E_master_hilowrite      ;
 wire [ 5:0]     E_master_op             ;  
-wire            E_master_memtoReg, E_slave_memtoReg;
+wire            E_master_memtoReg       , E_slave_memtoReg;
+wire            E_master_reg_wen_a      , E_slave_reg_wen_a;
 wire            E_master_reg_wen        , E_slave_reg_wen  ;
 wire [ 4:0]     E_master_reg_waddr      ;
 wire [ 4:0]     E_slave_shamt           ;
@@ -165,7 +165,8 @@ wire [31:0]     E_slave_pc              ;
 wire [ 4:0]     E_slave_reg_waddr       ;
 wire            E_slave_is_link_pc8     ;
 wire            E_master_is_in_delayslot,E_slave_is_in_delayslot;
-wire [`EXCEPT_BUS]     E_master_except, E_slave_except;
+wire [`EXCEPT_BUS]E_master_except       ,E_slave_except         ;
+wire [`CmovBus] E_master_cmov_type      ,E_slave_cmov_type      ;
 wire            E_master_cp0write, E_slave_cp0write ;
 wire [ 4:0]     E_master_rd             ;
 // alu
@@ -335,7 +336,7 @@ decoder u_decoder_master(
     .cp0write                   ( D_master_cp0write                   ),
     .hilowrite                  ( D_master_hilowrite                  ),
     .flush_all                  ( D_master_flush_all                  ),
-    .reg_wen                    ( D_master_reg_wen_a                  ),
+    .reg_wen                    ( D_master_reg_wen                    ),
     .spec_inst                  ( D_master_spec_inst                  ),
     .undefined_inst             ( D_master_undefined_inst             ),
     .break_inst                 ( D_master_break_inst           ),
@@ -370,7 +371,7 @@ decoder u_decoder_slave(
     .memtoReg                   ( D_slave_memtoReg                   ),
     .cp0write                   ( D_slave_cp0write                   ),
     .hilowrite                  ( D_slave_hilowrite                  ),
-    .reg_wen                    ( D_slave_reg_wen_a                  ),
+    .reg_wen                    ( D_slave_reg_wen                    ),
     .spec_inst                  ( D_slave_spec_inst                  ),
     .undefined_inst             ( D_slave_undefined_inst             ),
     .break_inst                 ( D_slave_break_inst            ),
@@ -459,12 +460,6 @@ issue_ctrl u_issue_ctrl(
     .D_slave_en                     ( D_slave_ena                )
 );
 
-assign D_master_reg_wen =   D_master_cmov_type==`C_MOVN ? (|D_master_rt_value):    // !=0
-                            D_master_cmov_type==`C_MOVZ ? (!(|D_master_rt_value)): // ==0
-                            D_master_reg_wen_a;
-assign D_slave_reg_wen  =   D_slave_cmov_type==`C_MOVN ? (|D_slave_rt_value):    // !=0
-                            D_slave_cmov_type==`C_MOVZ ? (!(|D_slave_rt_value)): // ==0
-                            D_slave_reg_wen_a;
 // ====================================== Execute ======================================
 wire D2E_clear1,D2E_clear2;
 // 在使能的情况下跳转清空才成立
@@ -504,6 +499,7 @@ id_ex u_id_ex(
 	.D_master_rt_value        		( D_master_rt_value        		),
 	.D_master_imm_value       		( D_master_imm_value       		),
     .D_master_trap_type             ( D_master_trap_type            ),
+    .D_master_cmov_type             ( D_master_cmov_type            ),
 	.D_slave_reg_wen          		( D_slave_reg_wen          		),
 	.D_slave_alu_sela         		( D_slave_alu_sela         		),
 	.D_slave_alu_selb         		( D_slave_alu_selb         		),
@@ -521,8 +517,9 @@ id_ex u_id_ex(
 	.D_slave_imm_value        		( D_slave_imm_value        		),
 	.D_slave_pc               		( D_slave_pc               		),
     .D_slave_trap_type              ( D_slave_trap_type             ),
+    .D_slave_cmov_type              ( D_slave_cmov_type             ),
 	.E_master_memtoReg        		( E_master_memtoReg        		),
-	.E_master_reg_wen         		( E_master_reg_wen         		),
+	.E_master_reg_wen         		( E_master_reg_wen_a       		),
 	.E_master_alu_sela        		( E_master_alu_sela        		),
 	.E_master_alu_selb        		( E_master_alu_selb        		),
 	.E_master_is_link_pc8     		( E_master_is_link_pc8     		),
@@ -546,8 +543,9 @@ id_ex u_id_ex(
 	.E_master_rt_value        		( E_master_rt_value        		),
 	.E_master_imm_value       		( E_master_imm_value       		),
     .E_master_trap_type             ( E_master_trap_type            ),
+    .E_master_cmov_type             ( E_master_cmov_type            ),
 	.E_slave_ena                    ( E_slave_ena            		),
-    .E_slave_reg_wen          		( E_slave_reg_wen          		),
+    .E_slave_reg_wen          		( E_slave_reg_wen_a        		),
 	.E_slave_alu_sela         		( E_slave_alu_sela         		),
 	.E_slave_alu_selb         		( E_slave_alu_selb         		),
 	.E_slave_is_link_pc8      		( E_slave_is_link_pc8      		),
@@ -563,7 +561,8 @@ id_ex u_id_ex(
 	.E_slave_rt_value         		( E_slave_rt_value         		),
 	.E_slave_imm_value        		( E_slave_imm_value        		),
 	.E_slave_pc               		( E_slave_pc               		),
-    .E_slave_trap_type              ( E_slave_trap_type             )
+    .E_slave_trap_type              ( E_slave_trap_type             ),
+    .E_slave_cmov_type              ( E_slave_cmov_type             )
 );
 
 // select_alusrc: 所有的pc要加8的，都在alu执行，进行电路复用
@@ -572,6 +571,13 @@ assign E_master_alu_srcb =  E_master_alu_selb ? E_master_imm_value : E_master_rt
 assign E_slave_alu_srca  =  E_slave_alu_sela  ? {{27{1'b0}},E_slave_shamt} : E_slave_rs_value ;                            
 assign E_slave_alu_srcb  =  E_slave_alu_selb  ? E_slave_imm_value : E_slave_rt_value ;
 
+// reg_wen
+assign E_master_reg_wen =   E_master_cmov_type==`C_MOVN ? (|E_master_rt_value):    // !=0
+                            E_master_cmov_type==`C_MOVZ ? (!(|E_master_rt_value)): // ==0
+                            E_master_reg_wen_a;
+assign E_slave_reg_wen  =   E_slave_cmov_type==`C_MOVN ? (|E_slave_rt_value):    // !=0
+                            E_slave_cmov_type==`C_MOVZ ? (!(|E_slave_rt_value)): // ==0
+                            E_slave_reg_wen_a;
 // 提前访存
 assign mem_read_enE = E_master_memRead;
 assign mem_write_enE = E_master_memWrite;

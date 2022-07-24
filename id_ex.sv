@@ -26,6 +26,7 @@ module id_ex(
     input wire [7 :0]D_master_aluop,
     input wire [5 :0]D_master_op,
     input wire [`EXCEPT_BUS]D_master_except,
+    input wire [`CmovBus]D_master_cmov_type,
     input wire [25:0]D_master_j_target,
     input wire [31:0]D_master_pc,
     input wire [31:0]D_master_inst,
@@ -45,6 +46,7 @@ module id_ex(
     input wire [4 :0]D_slave_reg_waddr,
     input wire [7 :0]D_slave_aluop,
     input wire [`EXCEPT_BUS]D_slave_except,
+    input wire [`CmovBus]D_slave_cmov_type,
     input wire [31:0]D_slave_inst,
     input wire [31:0]D_slave_rs_value,
     input wire [31:0]D_slave_rt_value,
@@ -70,6 +72,7 @@ module id_ex(
     output reg [7 :0]E_master_aluop,
     output reg [5 :0]E_master_op,
     output reg [`EXCEPT_BUS]E_master_except,
+    output reg [`CmovBus]E_master_cmov_type,
     output reg [25:0]E_master_j_target,
     output reg [31:0]E_master_pc,
     output reg [31:0]E_master_inst,
@@ -90,6 +93,7 @@ module id_ex(
     output reg [4 :0]E_slave_reg_waddr,
     output reg [7 :0]E_slave_aluop,
     output reg [`EXCEPT_BUS]E_slave_except,
+    output reg [`CmovBus]E_slave_cmov_type,
     output reg [31:0]E_slave_inst,
     output reg [31:0]E_slave_rs_value,
     output reg [31:0]E_slave_rt_value,
@@ -124,6 +128,7 @@ module id_ex(
             E_master_rt_value <= 0;
             E_master_imm_value <= 0;
             E_master_trap_type <= 0;
+            E_master_cmov_type <= 0;
         end
         else if (ena1) begin
             E_master_memtoReg <= D_master_memtoReg;
@@ -151,6 +156,7 @@ module id_ex(
             E_master_rt_value <= D_master_rt_value;
             E_master_imm_value <= D_master_imm_value;
             E_master_trap_type <= D_master_trap_type;
+            E_master_cmov_type <= D_master_cmov_type;
         end
     end
 
@@ -174,6 +180,7 @@ module id_ex(
             E_slave_pc <= 0;
             E_slave_ena <= 0;
             E_slave_trap_type <= 0;
+            E_slave_cmov_type <= 0;
         end
         else if (ena2) begin
             E_slave_reg_wen <= D_slave_reg_wen;
@@ -194,6 +201,7 @@ module id_ex(
             E_slave_pc <= D_slave_pc;
             E_slave_ena <= ena2;
             E_slave_trap_type <= D_slave_trap_type;
+            E_slave_cmov_type <= D_slave_cmov_type;
         end
     end
 
