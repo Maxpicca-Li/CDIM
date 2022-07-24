@@ -1,5 +1,5 @@
 `timescale 1ns/1ps
-`include "defines.vh"
+// `include "defines.vh"
 
 // 代码优化的事情，以后再说
 module  decoder(
@@ -75,7 +75,7 @@ module  decoder(
                 case (funct)
                     // logic
                     `FUN_AND   : begin
-                        signsD.aluop = `ALUOP_ADD;
+                        signsD.aluop = `ALUOP_AND;
                     end
                     `FUN_OR    : begin
                         signsD.aluop = `ALUOP_OR;
@@ -190,14 +190,14 @@ module  decoder(
                         signsD.aluop = `ALUOP_MULT;
                         signsD.reg_wen = 1'b1;
                     end
-                    `FUN_CLO: begin
-                        signsD.aluop = `ALUOP_CLO;
-                        signsD.reg_wen = 1'b1;
-                    end
-                    `FUN_CLO: begin
-                        signsD.aluop = `ALUOP_CLZ;
-                        signsD.reg_wen = 1'b1;
-                    end
+                    // `FUN_CLO: begin
+                    //     signsD.aluop = `ALUOP_CLO;
+                    //     signsD.reg_wen = 1'b1;
+                    // end
+                    // `FUN_CLO: begin
+                    //     signsD.aluop = `ALUOP_CLZ;
+                    //     signsD.reg_wen = 1'b1;
+                    // end
                 endcase
             // lsmen
             `OP_LB    : begin

@@ -1,5 +1,5 @@
 `timescale 1ns / 1ps
-`include "defines.vh"
+//`include "defines.vh"
 
 module alu_slave(
     input  logic [7:0]aluop,

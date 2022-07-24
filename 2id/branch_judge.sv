@@ -1,5 +1,5 @@
 `timescale 1ns / 1ps
-`include "defines.vh"
+//`include "defines.vh"
 
 // EX: judge, compute pc_branch_target
 module branch_judge(

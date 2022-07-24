@@ -406,7 +406,7 @@
 `define SIGN_EXTENDED   1'b0
 `define ZERO_EXTENDED   1'b1
 
-typedef struct packed {
+typedef struct packed{
     logic [7:0] aluop;
     logic flush_all; // 1: flush all but commit current inst
     logic reg_wen;

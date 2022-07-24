@@ -1,5 +1,5 @@
 `timescale 1ns / 1ps
-`include "defines.vh"
+// `include "defines.vh"
 
 module instdec(
     input  logic [31:0] instr,

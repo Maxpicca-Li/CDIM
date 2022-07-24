@@ -1,4 +1,4 @@
-`include "defines.vh"
+// `include "defines.vh"
 module mem_access (
         input [ 5:0] opM,
 

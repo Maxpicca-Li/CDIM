@@ -1,5 +1,5 @@
 `timescale 1ns / 1ps
-`include "defines.vh"
+// `include "defines.vh"
 
 module issue_ctrl (
     //master's status
