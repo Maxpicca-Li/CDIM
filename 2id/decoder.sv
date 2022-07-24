@@ -190,14 +190,14 @@ module  decoder(
                         signsD.aluop = `ALUOP_MULT;
                         signsD.reg_wen = 1'b1;
                     end
-                    // `FUN_CLO: begin
-                    //     signsD.aluop = `ALUOP_CLO;
-                    //     signsD.reg_wen = 1'b1;
-                    // end
-                    // `FUN_CLO: begin
-                    //     signsD.aluop = `ALUOP_CLZ;
-                    //     signsD.reg_wen = 1'b1;
-                    // end
+                    `FUN_CLO: begin
+                        signsD.aluop = `ALUOP_CLO;
+                        signsD.reg_wen = 1'b1;
+                    end
+                    `FUN_CLZ: begin
+                        signsD.aluop = `ALUOP_CLZ;
+                        signsD.reg_wen = 1'b1;
+                    end
                 endcase
             // lsmen
             `OP_LB    : begin

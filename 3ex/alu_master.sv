@@ -33,6 +33,8 @@ module alu_master(
     logic [63:0] save_div_result;
     logic [63:0] div_result;
     logic [63:0] temp_aluout_64;
+
+    integer i;
     
     //multiply module
     assign multa = (aluop == `ALUOP_MULT) && (a[31] == 1'b1) ? (~a + 1) : a;
@@ -89,6 +91,24 @@ module alu_master(
                 endcase
             end
             `ALUOP_SLTIU : y = {31'd0,a < b};
+            `ALUOP_CLO: begin
+                y = 32;
+                for(i=31;i>=0;i--) begin
+                    if(!a[i]) begin
+                        y = 31-i;
+                        break;
+                    end
+                end
+            end
+            `ALUOP_CLZ: begin
+                y = 32;
+                for(i=31;i>=0;i--) begin
+                    if(a[i]) begin
+                        y = 31-i;
+                        break;
+                    end
+                end
+            end
             `ALUOP_MULT  : begin
                 if (!mul_ready) begin
                     start_mul = 1'b1;
