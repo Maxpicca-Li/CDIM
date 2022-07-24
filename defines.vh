@@ -81,8 +81,10 @@
 `define FUN_JR          6'b001000
 `define FUN_JALR        6'b001001
     //内陷指令
-`define FUN_SYSCALL 6'b001100
-`define FUN_BREAK   6'b001101
+`define FUN_SYSCALL     6'b001100
+`define FUN_BREAK       6'b001101
+    //同步指令
+`define SYNC            6'b001111
 
 // ## special2 op
 `define OP_SPECIAL2_INST 6'b011100
@@ -100,7 +102,6 @@
 `define OP_BNE          6'b000101
 `define OP_BGTZ         6'b000111   //大于
 `define OP_BLEZ         6'b000110
-`define OP_SPEC_B       6'b000001
 `define OP_J            6'b000010
 `define OP_JAL          6'b000011
 `define OP_JR           6'b000000
@@ -115,6 +116,15 @@
 `define OP_SB           6'b101000
 `define OP_SH           6'b101001
 `define OP_SW           6'b101011
+
+// ## REGIMM
+`define OP_REGIMM       6'b000001
+    //rt
+`define RT_BLTZ         5'b00000
+`define RT_BGEZ         5'b00001
+`define RT_BLTZAL       5'b10000
+`define RT_BGEZAL       5'b10001
+`define RT_SYNCI        5'b11111
 
 // ## other op
 `define OP_ANDI		    6'b001100
@@ -193,12 +203,6 @@
 `define ALUOP_MSUBU     8'b01100101
 // ## default
 `define ALUOP_NOP       8'b00000000
-
-// # rt
-`define RT_BLTZ         5'b00000
-`define RT_BGEZ         5'b00001
-`define RT_BLTZAL       5'b10000
-`define RT_BGEZAL       5'b10001
 
 
 // # 特殊指令类型
@@ -366,7 +370,8 @@ typedef struct packed{
     logic memtoReg;
     logic cp0write;
     logic hilowrite;
+    logic is_olny_in_master;
 } ctrl_sign;
 
-//                    {aluop     ,fa  ,rwen,sela,selb,men ,mr  ,mw  ,mtr ,cp0w,hilo}
-`define CTRL_SIGN_NOP {`ALUOP_NOP,1'd0,1'd0,1'd0,1'd0,1'd0,1'd0,1'd0,1'd0,1'd0,1'd0}
+//                    {aluop     ,fa  ,rwen,sela,selb,men ,mr  ,mw  ,mtr ,cp0w,hlw ,ioim}
+`define CTRL_SIGN_NOP {`ALUOP_NOP,1'd0,1'd0,1'd0,1'd0,1'd0,1'd0,1'd0,1'd0,1'd0,1'd0,1'd0}

@@ -100,7 +100,8 @@ wire            D_master_break_inst      ,D_slave_break_inst      ;
 wire            D_master_syscall_inst    ,D_slave_syscall_inst    ;
 wire            D_master_eret_inst       ,D_slave_undefined_inst  ;
 wire            D_master_memRead         ,D_slave_memRead         ;
-wire            D_master_is_only_master  ,D_slave_is_only_master  ;
+wire            D_master_flush_all;
+wire            D_slave_is_only_in_master;
 wire            E_master_memWrite;
 wire            E_master_memRead ;
 // branch
@@ -228,6 +229,7 @@ hazard u_hazard(
     .M_master_reg_waddr             ( M_master_reg_waddr             ),
     .E_branch_taken                 ( E_branch_taken                 ),
     .E_alu_stall                    ( E_alu_stall                    ),
+    .D_flush_all                    ( D_master_flush_all             ),
     .M_except                       ( M_except                       ),
     .F_ena                          ( F_ena                          ),
     .D_ena                          ( D_ena                          ),
@@ -258,6 +260,8 @@ pc_reg u_pc_reg(
     .pc_en                     ( pc_en                 ), 
     .inst_data_ok1             ( inst_data_ok1 ),
     .inst_data_ok2             ( inst_data_ok2 ),
+    .flush_all                 ( D_master_flush_all    ),
+    .flush_all_addr            ( D_master_pc + 4       ), 
     .fifo_full                 ( fifo_full             ), // fifo_full pc不变
     .is_except                 ( M_except              ),
     .except_addr               ( M_pc_except_target    ),       
@@ -273,7 +277,7 @@ inst_fifo u_inst_fifo(
     //ports
     .clk                          ( clk                    ),
     .rst                          ( rst                    ),
-    .fifo_rst                     ( rst || D_flush         ),
+    .fifo_rst                     ( rst | D_flush | D_master_flush_all ),
     .D_ena                        ( D_ena                  ),
     .master_is_branch             ( (|D_master_branch_type)), // D阶段的branch
     .delay_rst                    (E_branch_taken && ~E_slave_ena), // next_master_is_in_delayslot
@@ -323,9 +327,8 @@ decoder u_decoder_master(
     .memRead                    ( D_master_memRead                    ),
     .memtoReg                   ( D_master_memtoReg                   ),
     .cp0write                   ( D_master_cp0write                   ),
-    .is_hilo_accessed           ( D_master_is_hilo_accessed           ),
     .hilowrite                  ( D_master_hilowrite                  ),
-    .is_only_master             ( D_master_is_only_master             ),
+    .flush_all                  ( D_master_flush_all                  ),
     .reg_wen                    ( D_master_reg_wen                    ),
     .spec_inst                  ( D_master_spec_inst                  ),
     .undefined_inst             ( D_master_undefined_inst             ),
@@ -357,9 +360,8 @@ decoder u_decoder_slave(
     .memRead                    ( D_slave_memRead                    ),
     .memtoReg                   ( D_slave_memtoReg                   ),
     .cp0write                   ( D_slave_cp0write                   ),
-    .is_hilo_accessed           ( D_slave_is_hilo_accessed           ),
     .hilowrite                  ( D_slave_hilowrite                  ),
-    .is_only_master             ( D_slave_is_only_master            ),
+    .is_only_in_master          ( D_slave_is_only_in_master          ),
     .reg_wen                    ( D_slave_reg_wen                    ),
     .spec_inst                  ( D_slave_spec_inst                  ),
     .undefined_inst             ( D_slave_undefined_inst             ),
@@ -442,7 +444,7 @@ issue_ctrl u_issue_ctrl(
     .D_slave_is_branch              ( (|D_slave_branch_type)   ),
     .D_slave_is_hilo_accessed       ( D_slave_is_hilo_accessed ),
     .D_slave_is_spec_inst           ( D_slave_spec_inst        ),
-    .D_slave_is_only_master         ( D_slave_is_only_master   ),
+    .D_slave_is_only_in_master      ( D_slave_is_only_in_master),
     .fifo_empty                     ( fifo_empty               ),
     .fifo_almost_empty              ( fifo_almost_empty        ),
     

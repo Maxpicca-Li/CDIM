@@ -19,6 +19,8 @@ module  decoder(
     output logic [3:0]          branch_type,
     output logic [4:0]          reg_waddr,
     output logic [7:0]	 		aluop, // ALU operation
+    output logic                flush_all,
+    output logic                is_olny_in_master,
     output logic       			alu_sela,
     output logic       			alu_selb,
     output logic                mem_en,
@@ -26,16 +28,13 @@ module  decoder(
     output logic                memRead,
     output logic                memtoReg,
     output logic                cp0write,
-    output logic                is_hilo_accessed,
     output logic                hilowrite,
-    output logic                is_only_master,
     output logic                reg_wen,
     output logic				spec_inst,
     output logic				undefined_inst,  // 1 as received a unknown operation.
     output logic                syscall_inst,
     output logic                break_inst,
     output logic                eret_inst
-
 );
 
     assign op = instr[31:26];
@@ -61,6 +60,7 @@ module  decoder(
     assign memtoReg = signsD.memtoReg;
     assign cp0write = signsD.cp0write;
     assign hilowrite = signsD.hilowrite;
+    assign is_olny_in_master = signsD.is_olny_in_master;
     assign eret_inst = (instr == 32'b01000010000000000000000000011000);
 
     always_comb begin : generate_control_signals
@@ -105,26 +105,6 @@ module  decoder(
                     `FUN_SUBU  : begin
                         signsD.aluop = `ALUOP_SUBU;
                     end
-                    `FUN_MULT  : begin
-                        signsD.aluop = `ALUOP_MULT;
-                        signsD.hilowrite = 1'b1;
-                        signsD.reg_wen = 1'b0;
-                    end
-                    `FUN_MULTU : begin
-                        signsD.aluop = `ALUOP_MULTU;
-                        signsD.hilowrite = 1'b1;
-                        signsD.reg_wen = 1'b0;
-                    end
-                    `FUN_DIV   : begin
-                        signsD.aluop = `ALUOP_DIV;
-                        signsD.hilowrite = 1'b1;
-                        signsD.reg_wen = 1'b0;
-                    end
-                    `FUN_DIVU  : begin
-                        signsD.aluop = `ALUOP_DIVU;
-                        signsD.hilowrite = 1'b1;
-                        signsD.reg_wen = 1'b0;
-                    end
                     // shift
                     `FUN_SLL   : begin
                         signsD.aluop = `ALUOP_SLL;
@@ -147,20 +127,49 @@ module  decoder(
                     `FUN_SRAV  : begin
                         signsD.aluop = `ALUOP_SRAV;
                     end
-                    // move
+                    // mul/div ==> hilo access
+                    `FUN_MULT  : begin
+                        signsD.aluop = `ALUOP_MULT;
+                        signsD.hilowrite = 1'b1;
+                        signsD.reg_wen = 1'b0;
+                        signsD.is_olny_in_master = 1'b1;
+                    end
+                    `FUN_MULTU : begin
+                        signsD.aluop = `ALUOP_MULTU;
+                        signsD.hilowrite = 1'b1;
+                        signsD.reg_wen = 1'b0;
+                        signsD.is_olny_in_master = 1'b1;
+                    end
+                    `FUN_DIV   : begin
+                        signsD.aluop = `ALUOP_DIV;
+                        signsD.hilowrite = 1'b1;
+                        signsD.reg_wen = 1'b0;
+                        signsD.is_olny_in_master = 1'b1;
+                    end
+                    `FUN_DIVU  : begin
+                        signsD.aluop = `ALUOP_DIVU;
+                        signsD.hilowrite = 1'b1;
+                        signsD.reg_wen = 1'b0;
+                        signsD.is_olny_in_master = 1'b1;
+                    end
+                    // move ==> hilo access
                     `FUN_MFHI  : begin
                         signsD.aluop = `ALUOP_MFHI;
+                        signsD.is_olny_in_master = 1'b1;
                     end
                     `FUN_MFLO  : begin
                         signsD.aluop = `ALUOP_MFLO;
+                        signsD.is_olny_in_master = 1'b1;
                     end
                     `FUN_MTHI  : begin
                         signsD.aluop = `ALUOP_MTHI;
                         signsD.hilowrite = 1'b1;
+                        signsD.is_olny_in_master = 1'b1;
                     end
                     `FUN_MTLO  : begin
                         signsD.aluop = `ALUOP_MTLO;
                         signsD.hilowrite = 1'b1;
+                        signsD.is_olny_in_master = 1'b1;
                     end
                     // jump R
                     `FUN_JR    : begin
@@ -185,6 +194,9 @@ module  decoder(
                     `FUN_ROTRV  :begin
                         signsD.aluop = `ALUOP_ROTR; // 和ROTR同理
                     end
+                    `FUN_SYNC   :begin
+                        // NOP
+                    end
                     default: begin 
                         signsD = `CTRL_SIGN_NOP;
                         undefined_inst = 1'b1;
@@ -192,6 +204,7 @@ module  decoder(
                 endcase
             end
             `OP_SPECIAL2_INST:
+                signsD.is_olny_in_master = 1'b1; // mul/div ==> hilo access
                 case (funct)
                     `FUN_MUL: begin
                         signsD.aluop = `ALUOP_MULT;
@@ -332,19 +345,10 @@ module  decoder(
                 signsD.reg_wen = 1'b1;
             end
             // branch
-            `OP_BEQ   : begin
-                signsD.aluop = `ALUOP_NOP;
+            `OP_BEQ, `OP_BNE, `OP_BGTZ, `OP_BLEZ: begin
+                // NOP
             end
-            `OP_BNE   : begin
-                signsD.aluop = `ALUOP_NOP;
-            end
-            `OP_BGTZ  : begin
-                signsD.aluop = `ALUOP_NOP;
-            end
-            `OP_BLEZ  : begin
-                signsD.aluop = `ALUOP_NOP;
-            end
-            `OP_SPEC_B:     // BGEZ,BLTZ,BGEZAL,BLTZAL
+            `OP_REGIMM:     // BGEZ,BLTZ,BGEZAL,BLTZAL
                 case(rt)
                     // `RT_BGEZ
                     // `RT_BLTZ
@@ -353,6 +357,10 @@ module  decoder(
                     end
                     `RT_BLTZAL: begin
                         signsD.reg_wen = 1'b1;
+                    end
+                    `RT_SYNCI: begin
+                        signsD.flush_all = 1'b1;
+                        signsD.is_olny_in_master = 1'b1;
                     end
                 endcase
             // special
@@ -444,13 +452,6 @@ module  decoder(
                 else
                     reg_waddr = rd; 
             default:reg_waddr = rd; 
-        endcase
-    end
-
-    always_comb begin : generate_is_only_master
-        case(op)
-            `OP_SPECIAL2_INST: is_only_master = 1; // TODO: 所有的SPECIAL2_INST都放在master，有例外吗？
-            default: is_only_master = 0;
         endcase
     end
 

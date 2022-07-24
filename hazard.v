@@ -11,6 +11,7 @@ module hazard (
     input wire [4:0] M_master_reg_waddr,
     input wire       E_branch_taken,
     input wire       E_alu_stall,
+    input wire       D_flush_all, // 暂时用不上这个信号
     
     //except
     input wire M_except,

@@ -5,6 +5,8 @@ module pc_reg (
         input               pc_en,
         input               inst_data_ok1,
         input               inst_data_ok2,
+        input               flush_all,
+        input               flush_all_addr,
         input               fifo_full,
         input               is_except,
         input       [31:0]  except_addr,
@@ -26,10 +28,12 @@ module pc_reg (
         if (rst) 
             pc_next = 32'hbfc00000;
         // else if (pc_en) begin
-            else if (is_except) // 异常跳转
+            else if (is_except) // 异常跳转 M
                 pc_next = except_addr;
-            else if(branch_en && branch_taken) // 分支跳转
+            else if(branch_en && branch_taken) // 分支跳转 E
                 pc_next = branch_addr;
+            else if (flush_all)
+                pc_next = flush_all_addr;
             else if(fifo_full) // full保持
                 pc_next = pc_curr;
             else if(inst_data_ok1 && inst_data_ok2)
