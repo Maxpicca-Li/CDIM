@@ -65,6 +65,8 @@ module alu_slave(
             `ALUOP_SRAV: y = $signed(b) >>> a[4:0];
             // 旋转指令
             `ALUOP_ROTR  : y = (b << (32 - a[4:0])) + (b >> a[4:0]);
+            // 数据移动指令
+            `ALUOP_MOV : y = a;
             default      : y = 32'b0;
         endcase
     end

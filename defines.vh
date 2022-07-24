@@ -92,7 +92,10 @@
 `define FUN_TLT         6'b110010
 `define FUN_TLTU        6'b110011
     //同步指令
-`define FUN_SYNC            6'b001111
+`define FUN_SYNC        6'b001111
+    // move
+`define FUN_MOVN        6'b001011
+`define FUN_MOVZ        6'b001010
 
 // ## special2 op
 `define OP_SPECIAL2_INST 6'b011100
@@ -200,6 +203,7 @@
 `define ALUOP_TLTU      8'b00110011
 `define ALUOP_TNE       8'b00110110
 `define ALUOP_ROTR      8'b00000101
+`define ALUOP_MOV       8'b00001010 // GPR[rd] <= GPR[rs]
 // ## special2
 `define ALUOP_TNEI      8'b01001001
 `define ALUOP_ERET      8'b01101011

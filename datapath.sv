@@ -121,6 +121,7 @@ wire [31:0]     D_master_rs_data         ,D_slave_rs_data         ;
 wire [31:0]     D_master_rt_data         ,D_slave_rt_data         ;
 wire [31:0]     D_master_rs_value        ,D_slave_rs_value        ;
 wire [31:0]     D_master_rt_value        ,D_slave_rt_value        ;
+wire            D_master_reg_wen_a       ,D_slave_reg_wen_a       ;
 wire            D_master_reg_wen         ,D_slave_reg_wen         ;
 wire [4:0]      D_master_reg_waddr       ,D_slave_reg_waddr       ;
 // mem
@@ -152,7 +153,7 @@ wire            E_master_mem_en         ;
 wire            E_master_hilowrite      ;
 wire [ 5:0]     E_master_op             ;  
 wire            E_master_memtoReg, E_slave_memtoReg;
-wire            E_master_reg_wen        ;
+wire            E_master_reg_wen        , E_slave_reg_wen  ;
 wire [ 4:0]     E_master_reg_waddr      ;
 wire [ 4:0]     E_slave_shamt           ;
 wire [31:0]     E_slave_rs_value        ;
@@ -160,7 +161,6 @@ wire [31:0]     E_slave_rt_value        ;
 wire [31:0]     E_slave_imm_value       ;
 wire [ 7:0]     E_slave_aluop           ;
 wire [31:0]     E_slave_pc              ;
-wire            E_slave_reg_wen         ;
 wire [ 4:0]     E_slave_reg_waddr       ;
 wire            E_slave_is_link_pc8     ;
 wire            E_master_is_in_delayslot,E_slave_is_in_delayslot;
@@ -333,7 +333,7 @@ decoder u_decoder_master(
     .cp0write                   ( D_master_cp0write                   ),
     .hilowrite                  ( D_master_hilowrite                  ),
     .flush_all                  ( D_master_flush_all                  ),
-    .reg_wen                    ( D_master_reg_wen                    ),
+    .reg_wen                    ( D_master_reg_wen_a                  ),
     .spec_inst                  ( D_master_spec_inst                  ),
     .undefined_inst             ( D_master_undefined_inst             ),
     .break_inst                 ( D_master_break_inst           ),
@@ -367,7 +367,7 @@ decoder u_decoder_slave(
     .memtoReg                   ( D_slave_memtoReg                   ),
     .cp0write                   ( D_slave_cp0write                   ),
     .hilowrite                  ( D_slave_hilowrite                  ),
-    .reg_wen                    ( D_slave_reg_wen                    ),
+    .reg_wen                    ( D_slave_reg_wen_a                  ),
     .spec_inst                  ( D_slave_spec_inst                  ),
     .undefined_inst             ( D_slave_undefined_inst             ),
     .break_inst                 ( D_slave_break_inst            ),
@@ -456,6 +456,12 @@ issue_ctrl u_issue_ctrl(
     .D_slave_en                     ( D_slave_ena                )
 );
 
+assign D_master_reg_wen =   D_master_funct==`FUN_MOVN ? (|D_master_rt_value):    // !=0
+                            D_master_funct==`FUN_MOVZ ? (!(|D_master_rt_value)): // ==0
+                            D_master_reg_wen_a;
+assign D_slave_reg_wen  =   D_slave_funct==`FUN_MOVN ? (|D_slave_rt_value):    // !=0
+                            D_slave_funct==`FUN_MOVZ ? (!(|D_slave_rt_value)): // ==0
+                            D_slave_reg_wen_a;
 // ====================================== Execute ======================================
 wire D2E_clear1,D2E_clear2;
 // 在使能的情况下跳转清空才成立

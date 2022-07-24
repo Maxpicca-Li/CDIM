@@ -165,11 +165,13 @@ module  decoder(
                     end
                     `FUN_MTHI  : begin
                         signsD.aluop = `ALUOP_MTHI;
+                        signsD.reg_wen = 1'b0;
                         signsD.hilowrite = 1'b1;
                         signsD.is_olny_in_master = 1'b1;
                     end
                     `FUN_MTLO  : begin
                         signsD.aluop = `ALUOP_MTLO;
+                        signsD.reg_wen = 1'b0;
                         signsD.hilowrite = 1'b1;
                         signsD.is_olny_in_master = 1'b1;
                     end
@@ -184,10 +186,12 @@ module  decoder(
                     `FUN_SYSCALL:begin
                         spec_inst = 1'b1;
                         syscall_inst =1'b1;
+                        signsD.reg_wen = 1'b0;
                     end
                     `FUN_BREAK  :begin
                         break_inst = 1'b1;
                         spec_inst = 1'b1;
+                        signsD.reg_wen = 1'b0;
                     end
                     `FUN_ROTR   :begin
                         signsD.aluop = `ALUOP_ROTR;
@@ -197,25 +201,37 @@ module  decoder(
                         signsD.aluop = `ALUOP_ROTR; // 和ROTR同理
                     end
                     `FUN_SYNC   :begin
-                        ;// NOP ==> don't need to set value
+                        signsD.reg_wen = 1'b0;// NOP ==> don't need to set value
                     end
                     `FUN_TEQ    :begin
                         trap_type = `TT_TEQ;
+                        signsD.reg_wen = 1'b0;
                     end
                     `FUN_TNE    :begin
                         trap_type = `TT_TNE;
+                        signsD.reg_wen = 1'b0;
                     end
                     `FUN_TGE    :begin
                         trap_type = `TT_TGE;
+                        signsD.reg_wen = 1'b0;
                     end
                     `FUN_TGEU   :begin
                         trap_type = `TT_TGEU;
+                        signsD.reg_wen = 1'b0;
                     end
                     `FUN_TLT    :begin
                         trap_type = `TT_TLT;
+                        signsD.reg_wen = 1'b0;
                     end
                     `FUN_TLTU   :begin
                         trap_type = `TT_TLTU;
+                        signsD.reg_wen = 1'b0;
+                    end
+                    `FUN_MOVN: begin
+                        signsD.aluop = `ALUOP_MOV;
+                    end
+                    `FUN_MOVZ: begin
+                        signsD.aluop = `ALUOP_MOV;
                     end
                     default: begin 
                         signsD = `CTRL_SIGN_NOP;
