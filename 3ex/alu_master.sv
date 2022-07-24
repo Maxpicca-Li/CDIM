@@ -146,6 +146,16 @@ module alu_master(
                     temp_aluout_64 = mul_result + hilo;  // 无算数异常
                 end
             end
+            `ALUOP_MADDU : begin
+                if (!mul_ready) begin
+                    start_mul = 1'b1;
+                    stall_mul = 1'b1;
+                end else if (mul_ready) begin
+                    start_mul = 1'b0;
+                    stall_mul = 1'b0;
+                    temp_aluout_64 = mul_result + hilo;
+                end
+            end
             `ALUOP_DIV   :begin
                 if(!div_ready && save_div_a==a && save_div_b==b && save_div_type==aluop) begin
                     start_div = 1'b0;
