@@ -178,6 +178,13 @@ module  decoder(
                         break_inst = 1'b1;
                         spec_inst = 1'b1;
                     end
+                    `FUN_ROTR   :begin
+                        signsD.aluop = `ALUOP_ROTR;
+                        signsD.alu_sela = 1'b1;
+                    end
+                    `FUN_ROTRV  :begin
+                        signsD.aluop = `ALUOP_ROTR; // 和ROTR同理
+                    end
                     default: begin 
                         signsD = `CTRL_SIGN_NOP;
                         undefined_inst = 1'b1;
@@ -197,6 +204,9 @@ module  decoder(
                     `FUN_CLZ: begin
                         signsD.aluop = `ALUOP_CLZ;
                         signsD.reg_wen = 1'b1;
+                    end
+                    `FUN_MADD:begin
+                        signsD.aluop = `ALUOP_MADD;
                     end
                 endcase
             // lsmen

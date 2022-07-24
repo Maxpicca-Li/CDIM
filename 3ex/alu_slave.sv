@@ -63,6 +63,8 @@ module alu_slave(
             `ALUOP_SRLV: y = b >> a[4:0];
             `ALUOP_SRA: y = $signed(b) >>> a[4:0];
             `ALUOP_SRAV: y = $signed(b) >>> a[4:0];
+            // 旋转指令
+            `ALUOP_ROTR  : y = {b[a[4:0]-1:0],b[31:a[4:0]]};
             default      : y = 32'b0;
         endcase
     end

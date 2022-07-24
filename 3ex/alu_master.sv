@@ -91,9 +91,10 @@ module alu_master(
                 endcase
             end
             `ALUOP_SLTIU : y = {31'd0,a < b};
+            `ALUOP_ROTR  : y = {b[a[4:0]-1:0],b[31:a[4:0]]};
             `ALUOP_CLO: begin
                 y = 32;
-                for(i=31;i>=0;i--) begin
+                for(i=31;i>=0;i--) begin // FIXME: 可以直接写for循环吗
                     if(!a[i]) begin
                         y = 31-i;
                         break;
@@ -131,6 +132,18 @@ module alu_master(
                     stall_mul = 1'b0;
                     temp_aluout_64 = mul_result;
                     y = mul_result[31:0];
+                end
+            end
+            `ALUOP_MADD  : begin
+                if (!mul_ready) begin
+                    start_mul = 1'b1;
+                    mul_sign = 1'b1;
+                    stall_mul = 1'b1;
+                end else if (mul_ready) begin
+                    start_mul = 1'b0;
+                    mul_sign = 1'b1;
+                    stall_mul = 1'b0;
+                    temp_aluout_64 = mul_result + hilo;  // 无算数异常
                 end
             end
             `ALUOP_DIV   :begin
