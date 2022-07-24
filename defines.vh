@@ -91,6 +91,9 @@
 `define FUN_CLO         6'b100001
 `define FUN_CLZ         6'b100000
 `define FUN_MADD        6'b000000
+`define FUN_MADDU       6'b000001
+`define FUN_MSUB        6'b000100
+`define FUN_MSUBU       6'b000101
 
 // ## branch op
 `define OP_BEQ          6'b000100
@@ -186,6 +189,8 @@
 `define ALUOP_CLZ       8'b01100011
 `define ALUOP_MADD      8'b01000000
 `define ALUOP_MADDU     8'b01000001
+`define ALUOP_MSUB      8'b01100100
+`define ALUOP_MSUBU     8'b01100101
 // ## default
 `define ALUOP_NOP       8'b00000000
 

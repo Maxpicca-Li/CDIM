@@ -213,6 +213,14 @@ module  decoder(
                         signsD.aluop = `ALUOP_MADDU;
                         signsD.hilowrite = 1'b1;
                     end
+                    `FUN_MSUB:begin
+                        signsD.aluop = `ALUOP_MSUB;
+                        signsD.hilowrite = 1'b1;
+                    end
+                    `FUN_MSUBU:begin
+                        signsD.aluop = `ALUOP_MSUBU;
+                        signsD.hilowrite = 1'b1;
+                    end
                 endcase
             // lsmen
             `OP_LB    : begin
