@@ -89,7 +89,7 @@ module id_ex(
     output reg [4 :0]E_slave_shamt,
     output reg [4 :0]E_slave_reg_waddr,
     output reg [7 :0]E_slave_aluop,
-    output reg [`EXCEPT_BUS]E_slave_except
+    output reg [`EXCEPT_BUS]E_slave_except,
     output reg [31:0]E_slave_inst,
     output reg [31:0]E_slave_rs_value,
     output reg [31:0]E_slave_rt_value,

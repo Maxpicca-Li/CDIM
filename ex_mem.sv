@@ -59,7 +59,7 @@ module ex_mem(
     output reg [31:0]M_slave_alu_res
 ); 
 
-    always @(posedge clk) begin
+    always_ff @(posedge clk) begin
         if(rst | clear1) begin
             M_master_mem_en <= 0;
             M_master_hilowrite <= 0;
@@ -96,7 +96,7 @@ module ex_mem(
         end
     end
 
-    always @(posedge clk) begin
+    always_ff @(posedge clk) begin
         if(rst | clear2) begin
             M_slave_reg_wen <= 0;
             M_slave_memtoReg <= 0;

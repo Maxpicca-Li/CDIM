@@ -15,12 +15,12 @@ module mem_access (
         output logic [31:0] data_sram_wdata,
 
         // 异常处理
-        input        [ 7:0] M_master_except_a,
-        output logic [ 7:0] M_master_except
+        input        [`EXCEPT_BUS] M_master_except_a,
+        output logic [`EXCEPT_BUS] M_master_except
     );
 
     logic  ades, adel;
-    assign M_master_except = {M_master_except_a[7:2],adel,ades};
+    assign M_master_except = {M_master_except_a[8:2],adel,ades};
 
     assign data_sram_en    = mem_en && ~(|M_master_except);
     assign data_sram_addr  = mem_addr;
