@@ -2,11 +2,11 @@
 `include "defines.vh"
 
 module instdec(
-    input wire [31:0] instr,
-    output reg [47:0] ascii
+    input  logic [31:0] instr,
+    output logic [47:0] ascii
     );
 
-    always @(*)
+    always_comb
     begin
         ascii="N-R";
         case(instr[31:26])

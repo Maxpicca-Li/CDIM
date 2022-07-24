@@ -15,7 +15,7 @@ module hilo_reg(
     reg [63:0] hilo_reg;
 
     // 写寄存器
-	always @(posedge clk) begin
+	always_ff @(posedge clk) begin
         if(rst) begin
             hilo_reg <= {`ZeroWord,`ZeroWord};
         end
