@@ -204,22 +204,22 @@ module inst_fifo(
     end
 
     // 统计
-    // reg [64:0] slave_cnt;
-    // reg [64:0] master_cnt;
-    // always_ff @(posedge clk) begin
-    //     if(rst)
-    //         master_cnt <= 0;
-    //     else if(read_en1 && (!empty || master_is_in_delayslot_o))
-    //         master_cnt <= master_cnt + 1;
-    // end
+    reg [64:0] slave_cnt;
+    reg [64:0] master_cnt;
+    always_ff @(posedge clk) begin
+        if(rst)
+            master_cnt <= 0;
+        else if(read_en1 && (!empty || master_is_in_delayslot_o))
+            master_cnt <= master_cnt + 1;
+    end
     
-    // always_ff @(posedge clk) begin
-    //     if(rst)
-    //         slave_cnt <= 0;
-    //     else if(read_en2 && (!empty && !master_is_branch && !almost_empty))
-    //         slave_cnt <= slave_cnt + 1;
-    // end
+    always_ff @(posedge clk) begin
+        if(rst)
+            slave_cnt <= 0;
+        else if(read_en2 && (!empty && !master_is_branch && !almost_empty))
+            slave_cnt <= slave_cnt + 1;
+    end
 
-    // wire [64:0] total_cnt = master_cnt + slave_cnt;
+    wire [64:0] total_cnt = master_cnt + slave_cnt;
 
 endmodule
