@@ -195,7 +195,7 @@ module  decoder(
                         signsD.aluop = `ALUOP_ROTR; // 和ROTR同理
                     end
                     `FUN_SYNC   :begin
-                        // NOP
+                        ;// NOP ==> don't need to set value
                     end
                     default: begin 
                         signsD = `CTRL_SIGN_NOP;
@@ -203,7 +203,7 @@ module  decoder(
                     end
                 endcase
             end
-            `OP_SPECIAL2_INST:
+            `OP_SPECIAL2_INST: begin
                 signsD.is_olny_in_master = 1'b1; // mul/div ==> hilo access
                 case (funct)
                     `FUN_MUL: begin
@@ -235,6 +235,7 @@ module  decoder(
                         signsD.hilowrite = 1'b1;
                     end
                 endcase
+            end
             // lsmen
             `OP_LB    : begin
                 signsD.aluop = `ALUOP_ADDU;
@@ -346,9 +347,9 @@ module  decoder(
             end
             // branch
             `OP_BEQ, `OP_BNE, `OP_BGTZ, `OP_BLEZ: begin
-                // NOP
+                ;// NOP ==> don't need to set value
             end
-            `OP_REGIMM:     // BGEZ,BLTZ,BGEZAL,BLTZAL
+            `OP_REGIMM: begin     // BGEZ,BLTZ,BGEZAL,BLTZAL
                 case(rt)
                     // `RT_BGEZ
                     // `RT_BLTZ
@@ -363,6 +364,7 @@ module  decoder(
                         signsD.is_olny_in_master = 1'b1;
                     end
                 endcase
+            end
             // special
             `OP_COP0_INST:begin
                 spec_inst = 1'b1;
@@ -383,13 +385,6 @@ module  decoder(
         endcase
     end
 
-    always_comb begin
-        if(op == `OP_SPECIAL_INST && (instr[5:2] == 4'b0100 || instr[5:2] == 4'b0110)) // 0110 div/mul  0100 MF/MT HI/LO
-            is_hilo_accessed = 1'b1;
-        else
-            is_hilo_accessed = 1'b0;
-    end
-
     always_comb begin: generate_branch_type
         case(op)
             `OP_SPECIAL_INST : 
@@ -406,7 +401,7 @@ module  decoder(
             `OP_BNE   : {branch_type, is_link_pc8} = {`BT_BNE,1'b0} ; // BNE
             `OP_BGTZ  : {branch_type, is_link_pc8} = {`BT_BGTZ,1'b0}; // BGTZ
             `OP_BLEZ  : {branch_type, is_link_pc8} = {`BT_BLEZ,1'b0}; // BLEZ  
-            `OP_SPEC_B:     // BGEZ,BLTZ,BGEZAL,BLTZAL
+            `OP_REGIMM: begin    // BGEZ,BLTZ,BGEZAL,BLTZAL
                 case(rt)
                     `RT_BGEZ  : {branch_type, is_link_pc8} = {`BT_BGEZ_, 1'b0};
                     `RT_BLTZ  : {branch_type, is_link_pc8} = {`BT_BLTZ_, 1'b0};
@@ -414,6 +409,7 @@ module  decoder(
                     `RT_BLTZAL: {branch_type, is_link_pc8} = {`BT_BLTZ_, 1'b1}; // GPR[31] = PC + 8
                     default   : {branch_type, is_link_pc8} = {`BT_NOP, 1'b0};
                 endcase
+            end
             default:{branch_type, is_link_pc8} = {`BT_NOP, 1'b0};
         endcase
     end
@@ -440,12 +436,13 @@ module  decoder(
             `OP_LUI   : reg_waddr = rt;
             // jump
             `OP_JAL   : reg_waddr = 5'd31;
-            `OP_SPEC_B:     // BGEZ,BLTZ,BGEZAL,BLTZAL
+            `OP_REGIMM: begin    // BGEZ,BLTZ,BGEZAL,BLTZAL
                 case(rt)
                     `RT_BGEZAL: reg_waddr = 5'd31;
                     `RT_BLTZAL: reg_waddr = 5'd31;
                     default:reg_waddr = rd;
                 endcase
+            end
             `OP_COP0_INST:
                 if (rs==`RS_MFC0)  // GPR[rt] ← CP0[rd, sel]
                     reg_waddr = rt; 

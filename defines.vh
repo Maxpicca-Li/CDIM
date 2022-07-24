@@ -84,7 +84,7 @@
 `define FUN_SYSCALL     6'b001100
 `define FUN_BREAK       6'b001101
     //同步指令
-`define SYNC            6'b001111
+`define FUN_SYNC            6'b001111
 
 // ## special2 op
 `define OP_SPECIAL2_INST 6'b011100
