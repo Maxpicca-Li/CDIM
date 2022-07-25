@@ -1,3 +1,4 @@
+`timescale 1ns/1ps
 module forward_top(
     input                   E_slave_reg_wen,
     input [ 4:0]            E_slave_reg_waddr,

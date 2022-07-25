@@ -1,4 +1,4 @@
-
+`timescale 1ns/1ps
 module decoder38 (
     // input wire [WIDTH-1 : 0] x,
     input wire [2 : 0] x,

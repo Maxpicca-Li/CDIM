@@ -1,3 +1,6 @@
+`timescale 1ns / 1ps
+
+
 module inst_diff(
     // datapath
     input inst_sram_en,

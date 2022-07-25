@@ -1,3 +1,5 @@
+`timescale 1ns / 1ps
+
 // 针对访问外设时wlen=1：类sram接口 转 类axi接口，修改自cpu_axi_interface
 module sram_like_to_axi (
     input wire clk, rst,

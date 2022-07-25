@@ -1,3 +1,4 @@
+`timescale 1ns/1ps
 module bridge_1x2 (
     input no_dcache,
     input         cpu_data_req     ,

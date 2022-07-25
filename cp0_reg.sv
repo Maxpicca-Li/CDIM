@@ -1,5 +1,5 @@
  `timescale 1ns / 1ps
-// `include "defines.vh"
+`include "defines.vh"
  
  module cp0_reg(
  	input  wire clk,

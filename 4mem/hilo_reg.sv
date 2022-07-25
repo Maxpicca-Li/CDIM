@@ -1,5 +1,4 @@
 `timescale 1ns / 1ps
-// `include "defines.vh"
 
 module hilo_reg(
         input wire clk,
@@ -17,7 +16,7 @@ module hilo_reg(
     // 写寄存器
 	always_ff @(posedge clk) begin
         if(rst) begin
-            hilo_reg <= {`ZeroWord,`ZeroWord};
+            hilo_reg <= 0;
         end
         else if (W_we) begin
             hilo_reg <= W_hilo;

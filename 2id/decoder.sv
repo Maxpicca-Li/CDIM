@@ -1,5 +1,5 @@
 `timescale 1ns/1ps
-// `include "defines.vh"
+`include "defines.vh"
 
 // 代码优化的事情，以后再说
 module  decoder(

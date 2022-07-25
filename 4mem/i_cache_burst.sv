@@ -1,3 +1,6 @@
+`timescale 1ns / 1ps
+
+
 // 类sram接口 转 类axi接口
 module i_cache_burst (
     input  clk, 

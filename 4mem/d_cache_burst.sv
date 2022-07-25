@@ -1,3 +1,4 @@
+`timescale 1ns/1ps
 // 类sram接口 转 类axi接口
 module d_cache_burst (
     input wire clk, rst, // except,no_cache,       // 这里不用实现 except 和 no_cache 两个接口

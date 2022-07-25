@@ -1,3 +1,4 @@
+`timescale 1ns/1ps
 module arbitrater (
     input wire clk, rst,
     //I CACHE

@@ -1,3 +1,4 @@
+`timescale 1ns/1ps
 module cache (
     input wire clk, rst,
     //mips core

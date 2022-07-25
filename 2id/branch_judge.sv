@@ -1,5 +1,5 @@
 `timescale 1ns / 1ps
-//`include "defines.vh"
+`include "defines.vh"
 
 module branch_judge(
         input [ 3:0]        branch_type,

@@ -1,3 +1,6 @@
+`timescale 1ns / 1ps
+
+
 module i_sram_to_sram_like (
     input wire clk, rst,
     //sram

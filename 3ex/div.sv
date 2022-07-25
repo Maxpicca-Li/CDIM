@@ -1,4 +1,4 @@
-// `include "defines.vh"
+`include "defines.vh"
 
 module div(
     input wire clk,

@@ -1,3 +1,6 @@
+`timescale 1ns / 1ps
+
+
 module mmu (
     input wire [31:0] inst_vaddr,
     input wire [31:0] inst_vaddr2,
