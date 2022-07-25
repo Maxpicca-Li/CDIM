@@ -1,5 +1,5 @@
 `timescale 1ns / 1ps
-
+`include "defines.vh"
 module trap_judge(
         input [ 3:0]        trap_type,
         input [31:0]        rs_value,rt_value,

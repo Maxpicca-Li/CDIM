@@ -1,3 +1,6 @@
+`ifndef DEF_COMMON
+`define DEF_COMMON
+
 // 单独封装instr定义
 // global macro definition
 `define RstEnable 		1'b1
@@ -402,3 +405,5 @@ typedef struct packed{
 
 //                    {aluop     ,fa  ,rwen,sela,selb,men ,mr  ,mw  ,mtr ,cp0w,hlw ,ioim,cmov}
 `define CTRL_SIGN_NOP {`ALUOP_NOP,1'd0,1'd0,1'd0,1'd0,1'd0,1'd0,1'd0,1'd0,1'd0,1'd0,1'd0,2'd0}
+
+`endif
