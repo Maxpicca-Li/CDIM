@@ -1,4 +1,5 @@
 `timescale 1ns / 1ps
+`include "defines.vh"
 module id_ex(
     input wire clk,
     input wire rst,
