@@ -592,6 +592,7 @@ assign E_slave_reg_wen  =   E_slave_cmov_type==`C_MOVN ? (|E_slave_rt_value):   
                             E_slave_cmov_type==`C_MOVZ ? (!(|E_slave_rt_value)): // ==0
                             E_slave_reg_wen_a;
 // 提前访存
+// FIXME: fix mem_read_enE and mem_write_enE should wait M ready.
 assign mem_read_enE = E_master_memRead;
 assign mem_write_enE = E_master_memWrite;
 assign mem_addrE = E_master_rs_value + E_master_imm_value; // base(rs value) + offset(immediate value)
