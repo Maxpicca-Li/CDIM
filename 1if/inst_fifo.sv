@@ -42,7 +42,7 @@ module inst_fifo(
     reg [3:0] data_count;
 
     // fifo状态
-    assign full     = &data_count[3:1]; // 1110(装不下两条指令了) 
+    assign full     = &data_count[3:1] || (write_pointer+1==read_pointer); // 1110(装不下两条指令了) 
     assign empty    = (data_count == 4'd0); //0000
     assign almost_empty = (data_count == 4'd1); //0001
 
