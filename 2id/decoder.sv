@@ -195,7 +195,7 @@ module  decoder(
                         spec_inst = 1'b1;
                         signsD.reg_wen = 1'b0;
                     end
-                    `FUN_ROTR   :begin
+                    `FUN_ROTR   :begin // FIXME: ROTR RS is different from SRL
                         signsD.aluop = `ALUOP_ROTR;
                         signsD.alu_sela = 1'b1;
                     end

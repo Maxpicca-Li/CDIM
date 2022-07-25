@@ -6,7 +6,7 @@ module pc_reg (
         input               inst_data_ok1,
         input               inst_data_ok2,
         input               flush_all,
-        input               flush_all_addr,
+        input       [31:0]  flush_all_addr,
         input               fifo_full,
         input               is_except,
         input       [31:0]  except_addr,
