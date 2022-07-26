@@ -21,6 +21,7 @@ module ex_mem(
     input wire [31:0]E_master_rt_value,
     input wire [31:0]E_master_alu_res,
     input wire [31:0]E_master_pc,
+    input wire [31:0]E_master_mem_addr,
     input wire [63:0]E_master_alu_out64,
 
     input wire E_slave_reg_wen,
@@ -47,6 +48,7 @@ module ex_mem(
     output reg [31:0]M_master_rt_value,
     output reg [31:0]M_master_alu_res,
     output reg [31:0]M_master_pc,
+    output reg [31:0]M_master_mem_addr,
     output reg [63:0]M_master_alu_out64,
     output reg M_slave_reg_wen,
     output reg M_slave_memtoReg,
@@ -76,6 +78,7 @@ module ex_mem(
             M_master_alu_res <= 0;
             M_master_pc <= 0;
             M_master_alu_out64 <= 0;
+            M_master_mem_addr <= 0;
         end
         else if (ena1) begin
             M_master_mem_en <= E_master_mem_en;
@@ -93,6 +96,7 @@ module ex_mem(
             M_master_alu_res <= E_master_alu_res;
             M_master_pc <= E_master_pc;
             M_master_alu_out64 <= E_master_alu_out64;
+            M_master_mem_addr <= E_master_mem_addr;
         end
     end
 

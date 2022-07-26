@@ -177,6 +177,7 @@ wire [31:0]     E_master_alu_srca,E_slave_alu_srca;
 wire [31:0]     E_master_alu_srcb,E_slave_alu_srcb;
 wire [31:0]     E_master_alu_res_a;
 wire [31:0]     E_master_alu_res ,E_slave_alu_res;
+wire [31:0]     E_master_mem_addr ;
 wire [63:0]     E_master_alu_out64;
 wire            E_master_overflow,E_slave_overflow;
 
@@ -194,6 +195,7 @@ wire            M_master_reg_wen  ,M_slave_reg_wen  ;
 wire [31:0]     M_master_alu_res  ,M_slave_alu_res  ;
 wire [63:0]     M_master_alu_out64;
 wire [31:0]     M_master_mem_rdata;
+wire [31:0]     M_master_mem_addr ;
 wire [ 4:0]     M_master_reg_waddr,M_slave_reg_waddr ;
 wire [`EXCEPT_BUS]     M_master_except_a;
 wire [`EXCEPT_BUS]     M_master_except, M_slave_except;
@@ -226,7 +228,6 @@ hazard u_hazard(
     //ports
     .i_stall                        ( i_stall                        ),
     .d_stall                        ( d_stall                        ),
-    .longest_stall                  ( longest_stall                  ),
     .D_master_rs                    ( D_master_rs                    ),
     .D_master_rt                    ( D_master_rt                    ),
     .E_master_memtoReg              ( E_master_memtoReg              ),
@@ -591,11 +592,11 @@ assign E_master_reg_wen =   E_master_cmov_type==`C_MOVN ? (|E_master_rt_value): 
 assign E_slave_reg_wen  =   E_slave_cmov_type==`C_MOVN ? (|E_slave_rt_value):    // !=0
                             E_slave_cmov_type==`C_MOVZ ? (!(|E_slave_rt_value)): // ==0
                             E_slave_reg_wen_a;
-// 提前访存
-// FIXME: fix mem_read_enE and mem_write_enE should wait M ready.
-assign mem_read_enE = E_master_memRead;
-assign mem_write_enE = E_master_memWrite;
-assign mem_addrE = E_master_rs_value + E_master_imm_value; // base(rs value) + offset(immediate value)
+// mem_addr && 提前访存
+assign E_master_mem_addr = E_master_rs_value + E_master_imm_value; // base(rs value) + offset(immediate value)
+assign mem_read_enE = E_master_memRead & !M_flush & M_ena & E_master_mem_addr != 32'hbfaffff0;
+assign mem_write_enE = E_master_memWrite & !M_flush & M_ena & E_master_mem_addr != 32'hbfaffff0;
+assign mem_addrE = E_master_mem_addr;
 
 trap_judge u_trap_judge_master(
 	//ports
@@ -664,6 +665,7 @@ ex_mem u_ex_mem(
 	.E_master_alu_res         		( E_master_alu_res         		),
 	.E_master_pc              		( E_master_pc              		),
 	.E_master_alu_out64       		( E_master_alu_out64       		),
+    .E_master_mem_addr              ( E_master_mem_addr             ),
 	.E_slave_reg_wen          		( E_slave_reg_wen          		),
 	.E_slave_memtoReg         		( E_slave_memtoReg         		),
 	.E_slave_cp0write         		( E_slave_cp0write         		),
@@ -688,6 +690,7 @@ ex_mem u_ex_mem(
 	.M_master_alu_res         		( M_master_alu_res         		),
 	.M_master_pc              		( M_master_pc              		),
 	.M_master_alu_out64       		( M_master_alu_out64       		),
+    .M_master_mem_addr              ( M_master_mem_addr             ),
 	.M_slave_reg_wen          		( M_slave_reg_wen          		),
 	.M_slave_memtoReg         		( M_slave_memtoReg         		),
 	.M_slave_cp0write         		( M_slave_cp0write         		),
@@ -705,7 +708,7 @@ mem_access u_mem_access(
     .opM                    ( M_master_op           ),
     .mem_en                 ( M_master_mem_en       ),
     .mem_wdata              ( M_master_rt_value     ),
-    .mem_addr               ( M_master_alu_res      ),
+    .mem_addr               ( M_master_mem_addr     ),
     .mem_rdata              ( M_master_mem_rdata    ),
     .data_sram_en           ( mem_enM          ),
     .data_sram_rdata        ( mem_rdataM       ),

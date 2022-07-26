@@ -2,7 +2,6 @@
 module hazard (
     input wire       i_stall,
     input wire       d_stall,
-    output wire      longest_stall,
     input wire [4:0] D_master_rs,
     input wire [4:0] D_master_rt,
     input wire       E_master_memtoReg,
