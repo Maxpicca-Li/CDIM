@@ -132,15 +132,14 @@ wire            D_master_cp0write        ,D_slave_cp0write        ;
 wire            D_master_hilowrite       ,D_slave_hilowrite       ;
 wire            D_master_is_pc_except    ,D_slave_is_pc_except    ;
 wire [`CmovBus] D_master_cmov_type       ,D_slave_cmov_type       ;
-// branch
-wire            D_branch_taken;
-wire [31:0]     D_pc_branch_target;
 
 // ===== E =====
 wire 	        E_master_exp_trap ,E_slave_exp_trap;
 wire [3:0]      E_master_trap_type,E_slave_trap_type;
 wire            E_slave_ena;
 wire [31:0]     E_master_inst     ,E_slave_inst    ;
+wire            E_branch_taken;
+wire [31:0]     E_pc_branch_target;
 wire [ 3:0]     E_master_branch_type;
 wire [ 4:0]     E_master_shamt          ;
 wire [31:0]     E_master_rs_value       ;
@@ -168,7 +167,7 @@ wire            E_slave_is_link_pc8     ;
 wire            E_master_is_in_delayslot,E_slave_is_in_delayslot;
 wire [`EXCEPT_BUS]E_master_except       ,E_slave_except         ;
 wire [`CmovBus] E_master_cmov_type      ,E_slave_cmov_type      ;
-wire            E_master_cp0write       ,E_slave_cp0write       ;
+wire            E_master_cp0write, E_slave_cp0write ;
 wire [ 4:0]     E_master_rd             ;
 // alu
 wire            E_master_alu_sela,E_slave_alu_sela;
@@ -234,7 +233,7 @@ hazard u_hazard(
     .E_master_reg_waddr             ( E_master_reg_waddr             ),
     .M_master_memtoReg              ( M_master_memtoReg              ),
     .M_master_reg_waddr             ( M_master_reg_waddr             ),
-    .D_branch_taken                 ( D_branch_taken                 ),
+    .E_branch_taken                 ( E_branch_taken                 ),
     .E_alu_stall                    ( E_alu_stall                    ),
     .D_flush_all                    ( D_master_flush_all             ),
     .M_except                       ( M_except                       ),
@@ -273,8 +272,8 @@ pc_reg u_pc_reg(
     .is_except                 ( M_except              ),
     .except_addr               ( M_pc_except_target    ),       
     .branch_en                 ( E_ena                 ),
-    .branch_taken              ( D_branch_taken        ),
-    .branch_addr               ( D_pc_branch_target    ),
+    .branch_taken              ( E_branch_taken        ),
+    .branch_addr               ( E_pc_branch_target    ),
     
     .pc_next                   ( F_pc_next             ),
     .pc_curr                   ( F_pc                  )
@@ -284,9 +283,10 @@ inst_fifo u_inst_fifo(
     //ports
     .clk                          ( clk                    ),
     .rst                          ( rst                    ),
-    .fifo_rst                     ( rst | M_except | (D_branch_taken & D_ena) | D_master_flush_all),
+    .fifo_rst                     ( rst | D_flush | D_master_flush_all ),
+    .D_ena                        ( D_ena                  ),
     .master_is_branch             ( (|D_master_branch_type)), // D阶段的branch
-    .delay_rst                    (D_branch_taken && ~D_slave_ena & D_ena), // next_master_is_in_delayslot
+    .delay_rst                    (E_branch_taken && ~E_slave_ena), // next_master_is_in_delayslot
     
     .read_en1                     ( D_ena                  ),
     .read_en2                     ( D_slave_ena              ), // D阶段的发射结果
@@ -461,19 +461,6 @@ issue_ctrl u_issue_ctrl(
     .D_slave_en                     ( D_slave_ena                )
 );
 
-branch_judge u_branch_judge(
-    //ports
-    .branch_ena                    ( D_ena                            ),
-    .branch_type                   ( D_master_branch_type             ),
-    .offset                        ( {D_master_imm_value[29:0],2'b00} ),
-    .j_target                      ( D_master_j_target                ),
-    .rs_value                      ( D_master_rs_value                ),
-    .rt_value                      ( D_master_rt_value                ),
-    .pc_plus4                      ( D_master_pc + 32'd4              ),
-    .branch_taken                  ( D_branch_taken                   ),
-    .pc_branch_address             ( D_pc_branch_target               )
-);
-
 // ====================================== Execute ======================================
 wire D2E_clear1,D2E_clear2;
 // 在使能的情况下跳转清空才成立
@@ -597,6 +584,18 @@ assign E_master_mem_addr = E_master_rs_value + E_master_imm_value; // base(rs va
 assign mem_read_enE = E_master_memRead & !M_flush & M_ena & E_master_mem_addr != 32'hbfaffff0;
 assign mem_write_enE = E_master_memWrite & !M_flush & M_ena & E_master_mem_addr != 32'hbfaffff0;
 assign mem_addrE = E_master_mem_addr;
+
+branch_judge u_branch_judge(
+    //ports
+    .branch_type                   ( E_master_branch_type                   ),
+    .offset                        ( {E_master_imm_value[29:0],2'b00}  ),
+    .j_target                      ( E_master_j_target                      ),
+    .rs_value                      ( E_master_rs_value                       ),
+    .rt_value                      ( E_master_rt_value                       ),
+    .pc_plus4                      ( E_master_pc + 32'd4                      ),
+    .branch_taken                  ( E_branch_taken                  ),
+    .pc_branch_address             ( E_pc_branch_target             )
+);
 
 trap_judge u_trap_judge_master(
 	//ports

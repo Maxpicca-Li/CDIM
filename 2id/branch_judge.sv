@@ -2,7 +2,6 @@
 `include "defines.vh"
 
 module branch_judge(
-        input               branch_ena,
         input [ 3:0]        branch_type,
         input [31:0]        offset,
         input [25:0]        j_target,
@@ -15,11 +14,7 @@ module branch_judge(
     );
 
     always_comb begin :branch_compute
-        if (!branch_ena) begin
-            branch_taken = 1'b0;
-            pc_branch_address = 32'hxxxxxxxx;
-        end
-        else if(branch_type == `BT_BEQ && rs_value==rt_value) begin
+        if(branch_type == `BT_BEQ && rs_value==rt_value) begin
             branch_taken = 1'b1;
             pc_branch_address = pc_plus4 + offset;
         end
