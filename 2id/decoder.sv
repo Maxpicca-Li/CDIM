@@ -41,6 +41,7 @@ module  decoder(
 
     assign op = instr[31:26];
     assign rs = instr[25:21];
+    assign rs1 = instr[21];
     assign rt = instr[20:16];
     assign rd = instr[15:11];
     assign shamt = instr[10:6];
@@ -118,8 +119,17 @@ module  decoder(
                         signsD.aluop = `ALUOP_SLLV;
                     end
                     `FUN_SRL   : begin
-                        signsD.aluop = `ALUOP_SRL;
-                        signsD.alu_sela = 1'b1;
+                        if(rs1) begin  // `FUN_ROTR: ROTR RS is different from SRL
+                            signsD.aluop = `ALUOP_ROTR;
+                            signsD.alu_sela = 1'b1;
+                        end
+                        else begin
+                            signsD.aluop = `ALUOP_SRL;
+                            signsD.alu_sela = 1'b1;
+                        end
+                    end
+                    `FUN_ROTRV  :begin
+                        signsD.aluop = `ALUOP_ROTR; // 和ROTR同理
                     end
                     `FUN_SRLV  : begin
                         signsD.aluop = `ALUOP_SRLV;
@@ -194,13 +204,6 @@ module  decoder(
                         break_inst = 1'b1;
                         spec_inst = 1'b1;
                         signsD.reg_wen = 1'b0;
-                    end
-                    `FUN_ROTR   :begin // FIXME: ROTR RS is different from SRL
-                        signsD.aluop = `ALUOP_ROTR;
-                        signsD.alu_sela = 1'b1;
-                    end
-                    `FUN_ROTRV  :begin
-                        signsD.aluop = `ALUOP_ROTR; // 和ROTR同理
                     end
                     `FUN_SYNC   :begin
                         signsD.reg_wen = 1'b0;// NOP ==> don't need to set value
