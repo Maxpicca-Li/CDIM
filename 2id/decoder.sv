@@ -41,7 +41,6 @@ module  decoder(
 
     assign op = instr[31:26];
     assign rs = instr[25:21];
-    assign rs1 = instr[21];
     assign rt = instr[20:16];
     assign rd = instr[15:11];
     assign shamt = instr[10:6];
@@ -119,20 +118,11 @@ module  decoder(
                         signsD.aluop = `ALUOP_SLLV;
                     end
                     `FUN_SRL   : begin
-                        if(rs1) begin  // `FUN_ROTR: ROTR RS is different from SRL
-                            signsD.aluop = `ALUOP_ROTR;
-                            signsD.alu_sela = 1'b1;
-                        end
-                        else begin
-                            signsD.aluop = `ALUOP_SRL;
-                            signsD.alu_sela = 1'b1;
-                        end
-                    end
-                    `FUN_ROTRV  :begin
-                        signsD.aluop = `ALUOP_ROTR; // 和ROTR同理
+                        signsD.alu_sela = 1'b1;
+                        signsD.aluop = instr[21]?`ALUOP_ROTR:`ALUOP_SRL; // ROTR RS1 is different from SRL
                     end
                     `FUN_SRLV  : begin
-                        signsD.aluop = `ALUOP_SRLV;
+                        signsD.aluop = instr[6]?`ALUOP_ROTR:`ALUOP_SRLV; // ROTRV sa1 is different from SRLV
                     end
                     `FUN_SRA   : begin
                         signsD.aluop = `ALUOP_SRA;
