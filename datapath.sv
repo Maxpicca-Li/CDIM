@@ -726,11 +726,8 @@ hilo_reg u_hilo_reg(
     //ports
     .clk                ( clk                ),
     .rst                ( rst                ),
-    .M_we               ( M_master_hilowrite & M_ena & ~M_except),
-    .W_we               ( W_master_hilowrite & W_ena ), // W_flush没有单独因为M_except而置1
-    .M_hilo             ( M_master_alu_out64 ),
-    .W_hilo             ( W_master_alu_out64 ),
-      
+    .wen                ( E_master_hilowrite & M_ena & ~M_flush), // 保证E_master_hilowrite能成功送到M
+    .hilo_i             ( E_master_alu_out64 ),  
     .hilo_o             ( hilo               )
 );
 

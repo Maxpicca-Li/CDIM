@@ -3,11 +3,8 @@
 module hilo_reg(
         input wire clk,
         input wire rst,
-        input wire M_we,
-        input wire W_we,
-        input wire [63:0] M_hilo,
-		input wire [63:0] W_hilo,
-
+        input wire wen,
+        input wire [63:0] hilo_i,
         output wire[63:0] hilo_o // hilo当前的值
     );
 
@@ -18,8 +15,8 @@ module hilo_reg(
         if(rst) begin
             hilo_reg <= 0;
         end
-        else if (W_we) begin
-            hilo_reg <= W_hilo;
+        else if (wen) begin
+            hilo_reg <= hilo_i;
         end
         else begin
             hilo_reg <= hilo_reg;
@@ -28,8 +25,6 @@ module hilo_reg(
 
 	// 读寄存器：前MUL后MF*这种需要在MUL的M阶段，返回给MF*的E阶段数据
     // M阶段数据前推
-	assign hilo_o = M_we ? M_hilo : 
-					W_we ? W_hilo :
-					hilo_reg;
+	assign hilo_o = hilo_reg;
 
 endmodule
