@@ -7,7 +7,6 @@ module pc_reg (
         input               inst_data_ok2,
         input               flush_all,
         input       [31:0]  flush_all_addr,
-        input               fifo_full,
         input               is_except,
         input       [31:0]  except_addr,
         input               branch_en,
@@ -34,8 +33,6 @@ module pc_reg (
                 pc_next = branch_addr;
             else if (flush_all)
                 pc_next = flush_all_addr;
-            else if(fifo_full) // full保持
-                pc_next = pc_curr;
             else if(inst_data_ok1 && inst_data_ok2)
                 pc_next = pc_curr + 32'd8;
             else if(inst_data_ok1)

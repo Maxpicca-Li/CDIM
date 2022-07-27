@@ -39,15 +39,13 @@ module datapath (
 
 // ====================================== 变量定义区 ======================================
 wire clear;
-wire en;
+wire ena;
 assign clear = 1'b0;
 assign ena = 1'b1;
 
 // =====其他信号=====
-// fifo
-wire            fifo_empty;
-wire            fifo_almost_empty;
-wire            fifo_full;
+// if_id
+wire            occupy;
 // 流水线控制信号
 wire            F_ena;
 wire            D_ena;
@@ -69,6 +67,7 @@ wire [31:0]     M_except_inst_addr;
 wire            M_except_in_delayslot;
 wire [31:0]     M_pc_except_target;
 // cp0
+wire            cp0_timer_int;
 wire [31:0]     cp0_data;
 wire [31:0]     cp0_count;
 wire [31:0]     cp0_compare;
@@ -77,7 +76,7 @@ wire [31:0]     cp0_cause;
 wire [31:0]     cp0_epc;
 wire [31:0]     cp0_config;
 wire [31:0]     cp0_prid;
-wire [31:0]     badvaddr;
+wire [31:0]     cp0_badvaddr;
 // hilo
 wire [63:0]     hilo;
 
@@ -98,7 +97,8 @@ wire            D_master_is_hilo_accessed,D_slave_is_hilo_accessed;
 wire            D_master_spec_inst       ,D_slave_spec_inst       ;
 wire            D_master_break_inst      ,D_slave_break_inst      ;
 wire            D_master_syscall_inst    ,D_slave_syscall_inst    ;
-wire            D_master_eret_inst       ,D_slave_undefined_inst  ;
+wire            D_master_eret_inst       ,D_slave_eret_inst       ;
+wire            D_master_undefined_inst  ,D_slave_undefined_inst  ;
 wire            D_master_memRead         ,D_slave_memRead         ;
 wire            D_master_flush_all;
 wire            D_slave_is_only_in_master;
@@ -253,11 +253,11 @@ hazard u_hazard(
 assign F_pc_except = (|F_pc[1:0]); // 必须是2'b00
 // FIXME: 注意，这里如果是i_stall导致的F_ena=0，inst_sram_en仍然使能(不太确定这个逻辑)
 // assign inst_sram_en =  !(rst | M_except | F_pc_except | fifo_full);  // assign inst_sram_en =  !(rst | M_except | F_pc_except | fifo_full);  // fifo_full 不取指
-assign inst_sram_en =  !(rst | M_except | fifo_full);
+assign inst_sram_en =  !(rst | M_except | occupy);
 assign stallF = ~F_ena;
 assign stallM = ~M_ena;
 wire pc_en;
-assign pc_en = F_ena | M_except; // 异常的优先级最高，必须使能
+assign pc_en = !occupy | M_except; // 异常的优先级最高，必须使能
 
 pc_reg u_pc_reg(
     //ports
@@ -268,7 +268,6 @@ pc_reg u_pc_reg(
     .inst_data_ok2             ( inst_data_ok2 ),
     .flush_all                 ( D_master_flush_all    ),
     .flush_all_addr            ( D_master_pc + 4       ), 
-    .fifo_full                 ( fifo_full             ), // fifo_full pc不变
     .is_except                 ( M_except              ),
     .except_addr               ( M_pc_except_target    ),       
     .branch_en                 ( E_ena                 ),
@@ -279,35 +278,28 @@ pc_reg u_pc_reg(
     .pc_curr                   ( F_pc                  )
 );
 
-inst_fifo u_inst_fifo(
-    //ports
-    .clk                          ( clk                    ),
-    .rst                          ( rst                    ),
-    .fifo_rst                     ( rst | D_flush | D_master_flush_all ),
-    .D_ena                        ( D_ena                  ),
-    .master_is_branch             ( (|D_master_branch_type)), // D阶段的branch
-    .delay_rst                    (E_branch_taken && ~E_slave_ena), // next_master_is_in_delayslot
-    
-    .read_en1                     ( D_ena                  ),
-    .read_en2                     ( D_slave_ena              ), // D阶段的发射结果
-    .read_address1                ( D_master_pc            ),
-    .read_address2                ( D_slave_pc             ),
-    .read_data1                   ( D_master_inst          ),
-    .read_data2                   ( D_slave_inst           ),
-    
-    .write_en1                    ( inst_data_ok1),
-    .write_en2                    ( inst_data_ok2),
-    .write_address1               ( F_pc                   ),
-    .write_address2               ( F_pc + 32'd4           ),
-    .write_data1                  ( inst_rdata1            ),
-    .write_data2                  ( inst_rdata2            ),
-    
-    .master_is_in_delayslot_o     (D_master_is_in_delayslot),
-    .empty                        ( fifo_empty             ),
-    .almost_empty                 ( fifo_almost_empty      ),
-    .full                         ( fifo_full              )
+if_id u_if_id(
+	//ports
+	.clk                      		( clk                      		),
+	.rst                      		( rst                      		),
+	.flush                          ( D_flush | D_master_flush_all  ),
+    .delay_rst                		( E_branch_taken && ~E_slave_ena),
+	.master_is_branch         		( (|D_master_branch_type) 		),
+	.master_is_in_delayslot_o 		( D_master_is_in_delayslot 		),
+	.occupy                   		( occupy                   		),
+	.D_ena1                   		( D_ena                   		),
+	.D_en2                    		( D_slave_ena              		),
+	.D_data1                  		( D_master_inst            		),
+	.D_data2                  		( D_slave_inst             		),
+	.D_addr1                  		( D_master_pc              		),
+	.D_addr2                  		( D_slave_pc              		),
+	.F_inst_ok1               		( inst_data_ok1            		),
+	.F_inst_ok2               		( inst_data_ok2            		),
+	.F_addr1                  		( F_pc                  		),
+	.F_addr2                  		( F_pc + 32'd4             		),
+	.F_data1                  		( inst_rdata1             		),
+	.F_data2                  		( inst_rdata2              		)
 );
-
 
 // ====================================== Decode ======================================
 decoder u_decoder_master(
@@ -454,8 +446,7 @@ issue_ctrl u_issue_ctrl(
     .D_slave_is_branch              ( (|D_slave_branch_type)   ),
     .D_slave_is_spec_inst           ( D_slave_spec_inst        ),
     .D_slave_is_only_in_master      ( D_slave_is_only_in_master),
-    .fifo_empty                     ( fifo_empty               ),
-    .fifo_almost_empty              ( fifo_almost_empty        ),
+    .occupy                         ( occupy                   ),
     
     .D_slave_is_in_delayslot        ( D_slave_is_in_delayslot  ),
     .D_slave_en                     ( D_slave_ena                )
@@ -774,7 +765,7 @@ cp0_reg u_cp0_reg(
     .epc_o                  ( cp0_epc                    ),
     .config_o               ( cp0_config                 ),
     .prid_o                 ( cp0_prid                   ),
-    .badvaddr_o             ( badvaddr                   ),
+    .badvaddr_o             ( cp0_badvaddr               ),
     .timer_int_o            ( cp0_timer_int              )
 );
 

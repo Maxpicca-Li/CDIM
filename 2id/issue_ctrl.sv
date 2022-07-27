@@ -21,9 +21,7 @@ module issue_ctrl (
     input           D_slave_is_branch,
     input           D_slave_is_spec_inst,
     input           D_slave_is_only_in_master,
-    //FIFO's status
-    input           fifo_empty,
-    input           fifo_almost_empty,
+    input           occupy,
 
     output logic    D_slave_is_in_delayslot,
     output logic    D_slave_en
@@ -32,9 +30,8 @@ module issue_ctrl (
     
     logic load_stall;
     logic _en_slave;
-    wire fifo_crtl = ~(fifo_empty || fifo_almost_empty); // fifo 限制
 
-    assign D_slave_en              = _en_slave && fifo_crtl && (!load_stall); 
+    assign D_slave_en              = _en_slave && (!occupy) && (!load_stall); 
     assign D_slave_is_in_delayslot = D_master_is_branch & D_slave_en;
 
     always_comb begin : define_slave_en
