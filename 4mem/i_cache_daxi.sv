@@ -217,8 +217,8 @@ module i_cache_daxi (
 
 //DATAPATH OUTPUT
     assign stall = ~(state==IDLE || (state==HitJudge) && ~miss && ~no_cache);
-    assign inst_data_ok1 = state==HitJudge & hit & ~no_cache & ~stallF ? 1'b1 : read_finish_save;              // 控制信号，需要受限制
-    assign inst_data_ok2 = (state==HitJudge & hit & ~no_cache & ~stallF ? 1'b1: read_finish_save) & available; // 控制信号，需要受限制
+    assign inst_data_ok1 = state==HitJudge & hit & ~no_cache ? 1'b1 : read_finish_save;              // 控制信号，需要受限制
+    assign inst_data_ok2 = (state==HitJudge & hit & ~no_cache ? 1'b1: read_finish_save) & available; // 控制信号，需要受限制
     assign inst_rdata1 = hit & ~no_cache ? block_sel_way1[sel] : saved_rdata1;
     assign inst_rdata2 = hit & ~no_cache ? block_sel_way2[sel] : saved_rdata2;
 //AXI OUTPUT
