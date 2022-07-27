@@ -205,7 +205,7 @@ wire [ 4:0]     M_master_rd       ;
 
 // ===== W =====
 wire [31:0]     W_master_inst     ,W_slave_inst    ;
-wire            W_master_memtoReg;
+wire            W_master_memtoReg ,W_slave_memtoReg;
 wire [31:0]     W_master_pc       ,W_slave_pc      ;
 wire [31:0]     W_master_mem_rdata;
 wire [31:0]     W_master_alu_res  ,W_slave_alu_res  ;
@@ -388,52 +388,52 @@ regfile u_regfile(
     .rst               ( rst               ),
     
     .ra1_a             ( D_master_rs             ),
-    .rd1_a             ( D_master_rs_data ),
+    .rd1_a             ( D_master_rs_value ),
     .ra1_b             ( D_master_rt             ),
-    .rd1_b             ( D_master_rt_data             ),
+    .rd1_b             ( D_master_rt_value             ),
     .wen1              ( W_master_reg_wen & W_ena & ~(|W_master_except)), // 跟踪异常，该指令出现异常，则不
     .wa1               ( W_master_reg_waddr ),
     .wd1               ( W_master_reg_wdata ),
     
     .ra2_a             ( D_slave_rs             ),
-    .rd2_a             ( D_slave_rs_data             ),
+    .rd2_a             ( D_slave_rs_value             ),
     .ra2_b             ( D_slave_rt             ),
-    .rd2_b             ( D_slave_rt_data             ),
+    .rd2_b             ( D_slave_rt_value             ),
     .wen2              ( W_slave_reg_wen & W_ena & ~(|W_slave_except)),
     .wa2               ( W_slave_reg_waddr               ),
     .wd2               ( W_slave_reg_wdata               )
 );
 
-// 只前推计算结果，访存数据通过stall解决
-forward_top u_forward_top(
-    //ports
-    .E_slave_reg_wen                ( E_slave_reg_wen  & (!E_slave_memtoReg) ),
-    .E_slave_reg_waddr              ( E_slave_reg_waddr              ),
-    .E_slave_reg_wdata              ( E_slave_alu_res                ),
-    .E_master_reg_wen               ( E_master_reg_wen & (!E_master_memtoReg)),
-    .E_master_reg_waddr             ( E_master_reg_waddr             ),
-    .E_master_reg_wdata             ( E_master_alu_res               ),
+// // 只前推计算结果，访存数据通过stall解决
+// forward_top u_forward_top(
+//     //ports
+//     .E_slave_reg_wen                ( E_slave_reg_wen  & (!E_slave_memtoReg) ),
+//     .E_slave_reg_waddr              ( E_slave_reg_waddr              ),
+//     .E_slave_reg_wdata              ( E_slave_alu_res                ),
+//     .E_master_reg_wen               ( E_master_reg_wen & (!E_master_memtoReg)),
+//     .E_master_reg_waddr             ( E_master_reg_waddr             ),
+//     .E_master_reg_wdata             ( E_master_alu_res               ),
     
-    .M_slave_reg_wen                ( M_slave_reg_wen & (!M_slave_memtoReg)),
-    .M_slave_reg_waddr              ( M_slave_reg_waddr              ),
-    .M_slave_reg_wdata              ( M_slave_alu_res                ),
-    .M_master_reg_wen               ( M_master_reg_wen & (!M_master_memtoReg)),
-    .M_master_reg_waddr             ( M_master_reg_waddr             ),
-    .M_master_reg_wdata             ( M_master_alu_res               ),
+//     .M_slave_reg_wen                ( M_slave_reg_wen & (!M_slave_memtoReg)),
+//     .M_slave_reg_waddr              ( M_slave_reg_waddr              ),
+//     .M_slave_reg_wdata              ( M_slave_alu_res                ),
+//     .M_master_reg_wen               ( M_master_reg_wen & (!M_master_memtoReg)),
+//     .M_master_reg_waddr             ( M_master_reg_waddr             ),
+//     .M_master_reg_wdata             ( M_master_alu_res               ),
     
-    .D_master_rs                    ( D_master_rs                    ),
-    .D_master_rs_data               ( D_master_rs_data               ),
-    .D_master_rs_value              ( D_master_rs_value              ),
-    .D_master_rt                    ( D_master_rt                    ),
-    .D_master_rt_data               ( D_master_rt_data               ),
-    .D_master_rt_value              ( D_master_rt_value              ),
-    .D_slave_rs                     ( D_slave_rs                     ),
-    .D_slave_rs_data                ( D_slave_rs_data                ),
-    .D_slave_rs_value               ( D_slave_rs_value               ),
-    .D_slave_rt                     ( D_slave_rt                     ),
-    .D_slave_rt_data                ( D_slave_rt_data                ),
-    .D_slave_rt_value               ( D_slave_rt_value               )
-);
+//     .D_master_rs                    ( D_master_rs                    ),
+//     .D_master_rs_data               ( D_master_rs_data               ),
+//     .D_master_rs_value              ( D_master_rs_value              ),
+//     .D_master_rt                    ( D_master_rt                    ),
+//     .D_master_rt_data               ( D_master_rt_data               ),
+//     .D_master_rt_value              ( D_master_rt_value              ),
+//     .D_slave_rs                     ( D_slave_rs                     ),
+//     .D_slave_rs_data                ( D_slave_rs_data                ),
+//     .D_slave_rs_value               ( D_slave_rs_value               ),
+//     .D_slave_rt                     ( D_slave_rt                     ),
+//     .D_slave_rt_data                ( D_slave_rt_data                ),
+//     .D_slave_rt_value               ( D_slave_rt_value               )
+// );
 
 // FIXME: 主线访存，一定要控制单发吗？如果满足不冲突条件，可以双发否？
 issue_ctrl u_issue_ctrl(
@@ -576,10 +576,41 @@ id_ex u_id_ex(
 );
 
 // lw 数据前推
-assign E_master_rs_value = (W_master_memtoReg && ~(|(W_master_reg_waddr ^ E_master_rs))) ? W_master_mem_rdata : E_master_rs_value_a;
-assign E_master_rt_value = (W_master_memtoReg && ~(|(W_master_reg_waddr ^ E_master_rt))) ? W_master_mem_rdata : E_master_rt_value_a;
-assign E_slave_rs_value  = (W_master_memtoReg && ~(|(W_master_reg_waddr ^ E_slave_rs ))) ? W_master_mem_rdata : E_slave_rs_value_a ;
-assign E_slave_rt_value  = (W_master_memtoReg && ~(|(W_master_reg_waddr ^ E_slave_rt ))) ? W_master_mem_rdata : E_slave_rt_value_a ;
+// assign E_master_rs_value = (W_master_memtoReg && ~(|(W_master_reg_waddr ^ E_master_rs))) ? W_master_mem_rdata : E_master_rs_value_a;
+// assign E_master_rt_value = (W_master_memtoReg && ~(|(W_master_reg_waddr ^ E_master_rt))) ? W_master_mem_rdata : E_master_rt_value_a;
+// assign E_slave_rs_value  = (W_master_memtoReg && ~(|(W_master_reg_waddr ^ E_slave_rs ))) ? W_master_mem_rdata : E_slave_rs_value_a ;
+// assign E_slave_rt_value  = (W_master_memtoReg && ~(|(W_master_reg_waddr ^ E_slave_rt ))) ? W_master_mem_rdata : E_slave_rt_value_a ;
+
+forwardE_top u_forwardE_top(
+	//ports
+	.M_slave_alu_wen     		( M_slave_reg_wen & (!M_slave_memtoReg)),
+	.M_slave_alu_waddr   		( M_slave_reg_waddr   		),
+	.M_slave_alu_wdata   		( M_slave_alu_res   		),
+	.M_master_alu_wen    		( M_master_reg_wen & (!M_master_memtoReg)),
+	.M_master_alu_waddr  		( M_master_reg_waddr  		),
+	.M_master_alu_wdata  		( M_master_alu_res  		),
+	.W_slave_alu_wen     		( W_slave_reg_wen & (!W_slave_memtoReg)),
+	.W_slave_alu_waddr   		( W_slave_reg_waddr   		),
+	.W_slave_alu_wdata   		( W_slave_alu_res   		),
+	.W_master_alu_wen    		( W_master_reg_wen & (!W_master_memtoReg)),
+	.W_master_alu_waddr  		( W_master_reg_waddr  		),
+	.W_master_alu_wdata  		( W_master_alu_res  		),
+	.W_master_memtoReg   		( W_master_memtoReg   		),
+	.W_master_mem_waddr  		( W_master_reg_waddr  		),
+	.W_master_mem_rdata  		( W_master_mem_rdata  		),
+	.E_master_rs         		( E_master_rs         		),
+	.E_master_rs_value_a 		( E_master_rs_value_a 		),
+	.E_master_rs_value   		( E_master_rs_value   		),
+	.E_master_rt         		( E_master_rt         		),
+	.E_master_rt_value_a 		( E_master_rt_value_a 		),
+	.E_master_rt_value   		( E_master_rt_value   		),
+	.E_slave_rs          		( E_slave_rs          		),
+	.E_slave_rs_value_a  		( E_slave_rs_value_a  		),
+	.E_slave_rs_value    		( E_slave_rs_value    		),
+	.E_slave_rt          		( E_slave_rt          		),
+	.E_slave_rt_value_a  		( E_slave_rt_value_a  		),
+	.E_slave_rt_value    		( E_slave_rt_value    		)
+);
 
 // select_alusrc: 所有的pc要加8的，都在alu执行，进行电路复用
 assign E_master_alu_srca =  E_master_alu_sela ? {{27{1'b0}},E_master_shamt} : E_master_rs_value;
@@ -813,6 +844,7 @@ mem_wb u_mem_wb(
 	.M_master_mem_rdata 		( M_master_mem_rdata 		),
 	.M_master_alu_out64 		( M_master_alu_out64 		),
 	.M_slave_reg_wen    		( M_slave_reg_wen    		),
+    .M_slave_memtoReg           ( M_slave_memtoReg          ),
 	.M_slave_reg_waddr  		( M_slave_reg_waddr  		),
 	.M_slave_except     		( M_slave_except     		),
 	.M_slave_inst       		( M_slave_inst       		),
@@ -829,6 +861,7 @@ mem_wb u_mem_wb(
 	.W_master_mem_rdata 		( W_master_mem_rdata 		),
 	.W_master_alu_out64 		( W_master_alu_out64 		),
 	.W_slave_reg_wen    		( W_slave_reg_wen    		),
+    .W_slave_memtoReg           ( W_slave_memtoReg          ),
 	.W_slave_reg_waddr  		( W_slave_reg_waddr  		),
 	.W_slave_except     		( W_slave_except     		),
 	.W_slave_inst       		( W_slave_inst       		),
