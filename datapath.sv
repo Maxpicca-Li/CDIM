@@ -204,7 +204,7 @@ wire [ 4:0]     M_master_rd       ;
 
 // ===== W =====
 wire [31:0]     W_master_inst     ,W_slave_inst    ;
-wire            W_master_memtoReg;
+wire            W_master_memtoReg ,W_slave_memtoReg;
 wire [31:0]     W_master_pc       ,W_slave_pc      ;
 wire [31:0]     W_master_mem_rdata;
 wire [31:0]     W_master_alu_res  ,W_slave_alu_res  ;
@@ -253,11 +253,11 @@ hazard u_hazard(
 assign F_pc_except = (|F_pc[1:0]); // 必须是2'b00
 // FIXME: 注意，这里如果是i_stall导致的F_ena=0，inst_sram_en仍然使能(不太确定这个逻辑)
 // assign inst_sram_en =  !(rst | M_except | F_pc_except | fifo_full);  // assign inst_sram_en =  !(rst | M_except | F_pc_except | fifo_full);  // fifo_full 不取指
-assign inst_sram_en =  !(rst | M_except | occupy);
+assign inst_sram_en =  !(rst | M_except);
 assign stallF = ~F_ena;
 assign stallM = ~M_ena;
 wire pc_en;
-assign pc_en = !occupy | M_except; // 异常的优先级最高，必须使能
+assign pc_en = F_en; // 异常的优先级最高，必须使能
 
 pc_reg u_pc_reg(
     //ports
@@ -268,6 +268,7 @@ pc_reg u_pc_reg(
     .inst_data_ok2             ( inst_data_ok2 ),
     .flush_all                 ( D_master_flush_all    ),
     .flush_all_addr            ( D_master_pc + 4       ), 
+    .occupy                    ( occupy                ),
     .is_except                 ( M_except              ),
     .except_addr               ( M_pc_except_target    ),       
     .branch_en                 ( E_ena                 ),
@@ -282,7 +283,7 @@ if_id u_if_id(
 	//ports
 	.clk                      		( clk                      		),
 	.rst                      		( rst                      		),
-	.flush                          ( D_flush | D_master_flush_all  ),
+	.flush_rst                      ( D_flush | D_master_flush_all  ),
     .delay_rst                		( E_branch_taken && ~E_slave_ena),
 	.master_is_branch         		( (|D_master_branch_type) 		),
 	.master_is_in_delayslot_o 		( D_master_is_in_delayslot 		),

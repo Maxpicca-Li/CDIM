@@ -31,7 +31,7 @@ module issue_ctrl (
     logic load_stall;
     logic _en_slave;
 
-    assign D_slave_en              = _en_slave && (!occupy) && (!load_stall); 
+    assign D_slave_en              = _en_slave && (!load_stall); 
     assign D_slave_is_in_delayslot = D_master_is_branch & D_slave_en;
 
     always_comb begin : define_slave_en

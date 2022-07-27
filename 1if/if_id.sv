@@ -3,7 +3,7 @@
 module if_id(
     input  logic                clk,
     input  logic                rst,
-    input  logic                flush,
+    input  logic                flush_rst,
     input  logic                delay_rst,                // 下一条master指令是延迟槽指令，要存起来
     input  logic                master_is_branch,         // 延迟槽判断
     output logic                master_is_in_delayslot_o, // 延迟槽判断结果
@@ -67,6 +67,11 @@ module if_id(
             occupy_data <= D_data2;
             occupy_addr <= D_addr2;
         end 
+        else if (!occupy && {F_inst_ok1, F_inst_ok2, D_ena1, D_en2}==4'b0010) begin
+            occupy      <= 1'b1;
+            occupy_data <= D_data2;
+            occupy_addr <= D_addr2;
+        end
         else if (occupy && D_ena1) begin
             occupy      <= 0;
             occupy_data <= 0;
@@ -74,8 +79,8 @@ module if_id(
         end
         else if(!D_ena1) begin
             occupy      <= occupy;
-            occupy_data <= D_data2;
-            occupy_addr <= D_addr2;
+            occupy_data <= occupy_data;
+            occupy_addr <= occupy_addr;
         end
         else begin
             occupy      <= 0;
@@ -85,30 +90,47 @@ module if_id(
     end
 
     // if_id
+    // 出来接一个组合逻辑
     always_comb begin
-        if(rst | flush) begin
-            D_data1   <= 0;
-            D_data2   <= 0;
-            D_addr1   <= 0;
-            D_addr2   <= 0;
-            D_inst_ok1<= 0;
-            D_inst_ok2<= 0;
+        if(rst) begin
+            D_data1    = 0;
+            D_data2    = 0;
+            D_addr1    = 0;
+            D_addr2    = 0;
+            D_inst_ok1 = 0;
+            D_inst_ok2 = 0;
         end
         else if(delayslot_enable) begin
-            D_data1   <= delayslot_data;
-            D_data2   <= 0;
-            D_addr1   <= delayslot_addr;
-            D_addr2   <= 0;
-            D_inst_ok1<= 1;
-            D_inst_ok2<= 0;
+            D_data1    = delayslot_data;
+            D_data2    = 0;
+            D_addr1    = delayslot_addr;
+            D_addr2    = 0;
+            D_inst_ok1 = 1;
+            D_inst_ok2 = 0;
         end
         else if(occupy) begin
-            D_data1   <= occupy_data;
-            D_data2   <= 0;
-            D_addr1   <= occupy_addr;
-            D_addr2   <= 0;
-            D_inst_ok1<= 1;
-            D_inst_ok2<= 0;
+            D_data1    = occupy_data;
+            D_data2    = F_data1;
+            D_addr1    = occupy_addr;
+            D_addr2    = F_addr1;
+            D_inst_ok1 = 1;
+            D_inst_ok2 = 1;
+        end
+        else if(delay_rst) begin
+            D_data1    = F_data1;
+            D_data2    = 0;
+            D_addr1    = F_addr1;
+            D_addr2    = 0;
+            D_inst_ok1 = 1;
+            D_inst_ok2 = 0;
+        end
+        else if(flush_rst) begin
+            D_data1    = 0;
+            D_data2    = 0;
+            D_addr1    = 0;
+            D_addr2    = 0;
+            D_inst_ok1 = 0;
+            D_inst_ok2 = 0;
         end
         else if(F_inst_ok1 & F_inst_ok2) begin
             D_data1   <= F_data1;
