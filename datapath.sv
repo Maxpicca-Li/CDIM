@@ -134,8 +134,9 @@ wire            D_master_is_pc_except    ,D_slave_is_pc_except    ;
 wire [`CmovBus] D_master_cmov_type       ,D_slave_cmov_type       ;
 
 // ===== E =====
+wire [4 :0]     E_master_rs,E_master_rt,E_slave_rs,E_slave_rt;
 wire 	        E_master_exp_trap ,E_slave_exp_trap;
-wire [3:0]      E_master_trap_type,E_slave_trap_type;
+wire [3 :0]     E_master_trap_type,E_slave_trap_type;
 wire            E_slave_ena;
 wire [31:0]     E_master_inst     ,E_slave_inst    ;
 wire            E_branch_taken;
@@ -463,10 +464,10 @@ issue_ctrl u_issue_ctrl(
 
 // ====================================== Execute ======================================
 wire D2E_clear1,D2E_clear2;
+wire [31:0] E_master_rs_value_a,E_master_rt_value_a,E_slave_rs_value_a,E_slave_rt_value_a;
 // 在使能的情况下跳转清空才成立
 assign D2E_clear1 = M_except | (!D_master_is_in_delayslot & E_flush & E_ena) | (!D_ena & E_ena);
 assign D2E_clear2 = M_except | (E_flush & D_slave_ena) || (E_ena & !D_slave_ena);
-
 id_ex u_id_ex(
 	//ports
 	.clk                      		( clk                      		),
@@ -501,6 +502,8 @@ id_ex u_id_ex(
 	.D_master_imm_value       		( D_master_imm_value       		),
     .D_master_trap_type             ( D_master_trap_type            ),
     .D_master_cmov_type             ( D_master_cmov_type            ),
+    .D_master_rs                    ( D_master_rs                   ),
+    .D_master_rt                    ( D_master_rt                   ),
 	.D_slave_reg_wen          		( D_slave_reg_wen          		),
 	.D_slave_alu_sela         		( D_slave_alu_sela         		),
 	.D_slave_alu_selb         		( D_slave_alu_selb         		),
@@ -519,6 +522,8 @@ id_ex u_id_ex(
 	.D_slave_pc               		( D_slave_pc               		),
     .D_slave_trap_type              ( D_slave_trap_type             ),
     .D_slave_cmov_type              ( D_slave_cmov_type             ),
+    .D_slave_rs                     ( D_slave_rs                    ),
+    .D_slave_rt                     ( D_slave_rt                    ),
 	.E_master_memtoReg        		( E_master_memtoReg        		),
 	.E_master_reg_wen         		( E_master_reg_wen_a       		),
 	.E_master_alu_sela        		( E_master_alu_sela        		),
@@ -540,11 +545,13 @@ id_ex u_id_ex(
 	.E_master_j_target        		( E_master_j_target        		),
 	.E_master_pc              		( E_master_pc              		),
 	.E_master_inst            		( E_master_inst            		),
-	.E_master_rs_value        		( E_master_rs_value        		),
-	.E_master_rt_value        		( E_master_rt_value        		),
+	.E_master_rs_value        		( E_master_rs_value_a      		),
+	.E_master_rt_value        		( E_master_rt_value_a      		),
 	.E_master_imm_value       		( E_master_imm_value       		),
     .E_master_trap_type             ( E_master_trap_type            ),
     .E_master_cmov_type             ( E_master_cmov_type            ),
+    .E_master_rs                    ( E_master_rs                   ),
+    .E_master_rt                    ( E_master_rt                   ),
 	.E_slave_ena                    ( E_slave_ena            		),
     .E_slave_reg_wen          		( E_slave_reg_wen_a        		),
 	.E_slave_alu_sela         		( E_slave_alu_sela         		),
@@ -558,13 +565,21 @@ id_ex u_id_ex(
 	.E_slave_aluop            		( E_slave_aluop            		),
 	.E_slave_except           		( E_slave_except           		),
 	.E_slave_inst             		( E_slave_inst             		),
-	.E_slave_rs_value         		( E_slave_rs_value         		),
-	.E_slave_rt_value         		( E_slave_rt_value         		),
+	.E_slave_rs_value         		( E_slave_rs_value_a       		),
+	.E_slave_rt_value         		( E_slave_rt_value_a       		),
+    .E_slave_rs                     ( E_slave_rs                    ),
+    .E_slave_rt                     ( E_slave_rt                    ),
 	.E_slave_imm_value        		( E_slave_imm_value        		),
 	.E_slave_pc               		( E_slave_pc               		),
     .E_slave_trap_type              ( E_slave_trap_type             ),
     .E_slave_cmov_type              ( E_slave_cmov_type             )
 );
+
+// lw 数据前推
+assign E_master_rs_value = (W_master_memtoReg && ~(|(W_master_reg_waddr ^ E_master_rs))) ? W_master_mem_rdata : E_master_rs_value_a;
+assign E_master_rt_value = (W_master_memtoReg && ~(|(W_master_reg_waddr ^ E_master_rt))) ? W_master_mem_rdata : E_master_rt_value_a;
+assign E_slave_rs_value  = (W_master_memtoReg && ~(|(W_master_reg_waddr ^ E_slave_rs ))) ? W_master_mem_rdata : E_slave_rs_value_a ;
+assign E_slave_rt_value  = (W_master_memtoReg && ~(|(W_master_reg_waddr ^ E_slave_rt ))) ? W_master_mem_rdata : E_slave_rt_value_a ;
 
 // select_alusrc: 所有的pc要加8的，都在alu执行，进行电路复用
 assign E_master_alu_srca =  E_master_alu_sela ? {{27{1'b0}},E_master_shamt} : E_master_rs_value;

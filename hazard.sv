@@ -39,8 +39,8 @@ module hazard (
     这种情况感觉不用stall lbu（会导致3个周期的延迟）
     */
     // FIXME: 这里没有考虑 D_slave_rs 和 D_slave_rt 
-    assign lwstall = (E_master_memtoReg & (D_master_rs == E_master_reg_waddr | D_master_rt == E_master_reg_waddr)) || 
-                     (M_master_memtoReg & (D_master_rs == M_master_reg_waddr | D_master_rt == M_master_reg_waddr));
+    assign lwstall = (E_master_memtoReg & (D_master_rs == E_master_reg_waddr | D_master_rt == E_master_reg_waddr))/* || 
+                     (M_master_memtoReg & (D_master_rs == M_master_reg_waddr | D_master_rt == M_master_reg_waddr))*/;
     assign longest_stall = E_alu_stall | i_stall | d_stall;
     
     assign F_ena = ~i_stall; // 存在fifo情况下，d_stall不影响取指

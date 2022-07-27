@@ -23,6 +23,8 @@ module id_ex(
     input wire [3 :0]D_master_trap_type,
     input wire [4 :0]D_master_shamt,
     input wire [4 :0]D_master_reg_waddr,
+    input wire [4 :0]D_master_rs,
+    input wire [4 :0]D_master_rt,
     input wire [4 :0]D_master_rd,
     input wire [7 :0]D_master_aluop,
     input wire [5 :0]D_master_op,
@@ -43,6 +45,8 @@ module id_ex(
     input wire D_slave_cp0write,
     input wire D_slave_is_in_delayslot,
     input wire [3 :0]D_slave_trap_type,
+    input wire [4 :0]D_slave_rs,
+    input wire [4 :0]D_slave_rt,
     input wire [4 :0]D_slave_shamt,
     input wire [4 :0]D_slave_reg_waddr,
     input wire [7 :0]D_slave_aluop,
@@ -69,6 +73,8 @@ module id_ex(
     output reg [3 :0]E_master_trap_type,
     output reg [4 :0]E_master_shamt,
     output reg [4 :0]E_master_reg_waddr,
+    output reg [4 :0]E_master_rs,
+    output reg [4 :0]E_master_rt,
     output reg [4 :0]E_master_rd,
     output reg [7 :0]E_master_aluop,
     output reg [5 :0]E_master_op,
@@ -91,6 +97,8 @@ module id_ex(
     output reg E_slave_is_in_delayslot,
     output reg [3 :0]E_slave_trap_type,
     output reg [4 :0]E_slave_shamt,
+    output reg [4 :0]E_slave_rs,
+    output reg [4 :0]E_slave_rt,
     output reg [4 :0]E_slave_reg_waddr,
     output reg [7 :0]E_slave_aluop,
     output reg [`EXCEPT_BUS]E_slave_except,
@@ -119,6 +127,8 @@ module id_ex(
             E_master_shamt <= 0;
             E_master_reg_waddr <= 0;
             E_master_rd <= 0;
+            E_master_rs <= 0;
+            E_master_rt <= 0;
             E_master_aluop <= 0;
             E_master_op <= 0;
             E_master_except <= 0;
@@ -146,6 +156,8 @@ module id_ex(
             E_master_branch_type <= D_master_branch_type;
             E_master_shamt <= D_master_shamt;
             E_master_reg_waddr <= D_master_reg_waddr;
+            E_master_rs <= D_master_rs;
+            E_master_rt <= D_master_rt;
             E_master_rd <= D_master_rd;
             E_master_aluop <= D_master_aluop;
             E_master_op <= D_master_op;
@@ -171,6 +183,8 @@ module id_ex(
             E_slave_cp0write <= 0;
             E_slave_is_in_delayslot <= 0;
             E_slave_shamt <= 0;
+            E_slave_rs <= 0;
+            E_slave_rt <= 0;
             E_slave_reg_waddr <= 0;
             E_slave_aluop <= 0;
             E_slave_except <= 0;
@@ -192,6 +206,8 @@ module id_ex(
             E_slave_cp0write <= D_slave_cp0write;
             E_slave_is_in_delayslot <= D_slave_is_in_delayslot;
             E_slave_shamt <= D_slave_shamt;
+            E_slave_rs <= D_slave_rs;
+            E_slave_rt <= D_slave_rt;
             E_slave_reg_waddr <= D_slave_reg_waddr;
             E_slave_aluop <= D_slave_aluop;
             E_slave_except <= D_slave_except;
