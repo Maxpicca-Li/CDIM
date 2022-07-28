@@ -22,7 +22,7 @@ module mem_access (
     logic  ades, adel;
     assign M_master_except = {M_master_except_a[7:2],adel,ades};
 
-    assign data_sram_en    = mem_en && ~(|M_master_except);
+    assign data_sram_en    = mem_en && ~(|M_master_except); //&& mem_addr != 32'hbfaffff0;
     assign data_sram_addr  = mem_addr;
     // assign data_sram_addr = (mem_addr[31:28] == 4'hB) ? {4'h1, mem_addr[27:0]} :
     //                          (mem_addr[31:28] == 4'h8) ? {4'h0, mem_addr[27:0]} :

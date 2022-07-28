@@ -10,6 +10,7 @@ module mmu (
     output wire [31:0] inst_paddr2,
 
     output wire no_cache_d,
+    output wire no_cache_dE,
     output wire no_cache_i
 );
 
@@ -30,6 +31,8 @@ module mmu (
                 data_vaddr2;
     
     assign no_cache_d = (data_vaddr[31:29] == 3'b101) //kseg1
+                        ? 1'b1 : 1'b0;
+    assign no_cache_dE = (data_vaddr2[31:29] == 3'b101) //kseg1
                         ? 1'b1 : 1'b0;
     
     assign no_cache_i = 1'b0;

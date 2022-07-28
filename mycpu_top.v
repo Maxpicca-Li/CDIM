@@ -57,6 +57,7 @@ module mycpu_top (
 
     //d_tlb - d_cache
     wire no_cache_d         ;   //数据
+    wire no_cache_dE        ;  
     wire no_cache_i         ;   //指令
 
     //datapath - cache
@@ -173,6 +174,7 @@ module mycpu_top (
         .data_paddr(data_addr),
         .data_paddr2(mem_addrE),
         .no_cache_d(no_cache_d),
+        .no_cache_dE(no_cache_dE),
         .no_cache_i(no_cache_i)
     );
   
@@ -206,10 +208,11 @@ module mycpu_top (
         .rready          (i_rready)
     );
 
-    d_cache_daxi u_d_cache_daxi(
+    d_arbitrater u_d_arbitrater(
         .clk(clk), .rst(rst),
 
         //TLB
+        .no_cache_E(no_cache_dE),
         .no_cache(no_cache_d),
 
         //datapath
