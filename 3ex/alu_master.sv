@@ -6,8 +6,6 @@ module alu_master(
     input  logic [7:0]aluop,
     input  logic [31:0]a,
     input  logic [31:0]b,
-    input  logic [31:0]cp0_data,
-    input  logic [63:0]hilo, // hilo source data
 
     output logic stall_alu,
     output logic [31:0] y,
@@ -119,11 +117,6 @@ module alu_master(
             `ALUOP_SRA: y = $signed(b) >>> a[4:0];
             `ALUOP_SRAV: y = $signed(b) >>> a[4:0];
             // 数据移动指令
-            `ALUOP_MTHI: temp_aluout_64 = {a,hilo[31:0]};
-            `ALUOP_MTLO: temp_aluout_64 = {hilo[63:32],a};
-            `ALUOP_MFHI: y = hilo[63:32];
-            `ALUOP_MFLO: y = hilo[31:0];
-            `ALUOP_MFC0: y = cp0_data;
             `ALUOP_MOV : y = a;
             // 旋转指令
             `ALUOP_ROTR  : y = (b << (32 - a[4:0])) + (b >> a[4:0]);
@@ -147,7 +140,7 @@ module alu_master(
                 end
             end
             // 乘除法指令
-            `ALUOP_MULT  : begin
+            `ALUOP_MULT, `ALUOP_MADD, `ALUOP_MSUB  : begin
                 if (!mul_ready) begin
                     start_mul = 1'b1;
                     mul_sign = 1'b1;
@@ -160,7 +153,7 @@ module alu_master(
                     y = mul_result[31:0];
                 end
             end
-            `ALUOP_MULTU : begin
+            `ALUOP_MULTU, `ALUOP_MADDU, `ALUOP_MSUBU : begin
                 if (!mul_ready) begin
                     start_mul = 1'b1;
                     stall_mul = 1'b1;
@@ -169,50 +162,6 @@ module alu_master(
                     stall_mul = 1'b0;
                     temp_aluout_64 = mul_result;
                     y = mul_result[31:0];
-                end
-            end
-            `ALUOP_MADD  : begin
-                if (!mul_ready) begin
-                    start_mul = 1'b1;
-                    mul_sign = 1'b1;
-                    stall_mul = 1'b1;
-                end else if (mul_ready) begin
-                    start_mul = 1'b0;
-                    mul_sign = 1'b1;
-                    stall_mul = 1'b0;
-                    temp_aluout_64 = hilo + mul_result;  // 无算数异常
-                end
-            end
-            `ALUOP_MSUB  : begin
-                if (!mul_ready) begin
-                    start_mul = 1'b1;
-                    mul_sign = 1'b1;
-                    stall_mul = 1'b1;
-                end else if (mul_ready) begin
-                    start_mul = 1'b0;
-                    mul_sign = 1'b1;
-                    stall_mul = 1'b0;
-                    temp_aluout_64 = hilo - mul_result;  // 无算数异常
-                end
-            end
-            `ALUOP_MADDU : begin
-                if (!mul_ready) begin
-                    start_mul = 1'b1;
-                    stall_mul = 1'b1;
-                end else if (mul_ready) begin
-                    start_mul = 1'b0;
-                    stall_mul = 1'b0;
-                    temp_aluout_64 = hilo + mul_result;
-                end
-            end
-            `ALUOP_MSUBU : begin
-                if (!mul_ready) begin
-                    start_mul = 1'b1;
-                    stall_mul = 1'b1;
-                end else if (mul_ready) begin
-                    start_mul = 1'b0;
-                    stall_mul = 1'b0;
-                    temp_aluout_64 = hilo - mul_result;
                 end
             end
             `ALUOP_DIV   :begin

@@ -182,6 +182,7 @@ wire [63:0]     E_master_alu_out64;
 wire            E_master_overflow,E_slave_overflow;
 
 // ===== M =====
+wire [7 :0]     M_master_aluop    ,M_slave_aluop   ;
 wire [31:0]     M_master_inst     ,M_slave_inst    ;
 wire            M_master_hilowrite;
 wire            M_master_is_link_pc8;
@@ -667,8 +668,6 @@ alu_master u_alu_master(
     .aluop                 ( E_master_aluop    ),
     .a                     ( E_master_alu_srca ),
     .b                     ( E_master_alu_srcb ),
-    .cp0_data              ( cp0_data              ),
-    .hilo                  ( hilo                  ),
     .stall_alu             ( E_alu_stall             ),
     .y                     ( E_master_alu_res_a  ),
     .aluout_64             ( E_master_alu_out64),
@@ -687,6 +686,7 @@ alu_slave u_alu_slave(
 assign E_master_alu_res = E_master_is_link_pc8 ? (E_master_pc + 32'd8) : E_master_alu_res_a;
 
 // ====================================== Memory ======================================
+wire [31:0] M_master_alu_res_tmp, M_slave_alu_res_tmp;
 ex_mem u_ex_mem(
 	//ports
 	.clk                      		( clk                      		),
@@ -702,6 +702,7 @@ ex_mem u_ex_mem(
 	.E_master_cp0write        		( E_master_cp0write        		),
 	.E_master_is_in_delayslot 		( E_master_is_in_delayslot 		),
 	.E_master_reg_waddr       		( E_master_reg_waddr       		),
+    .E_master_aluop                 ( E_master_aluop                ),
 	.E_master_rd              		( E_master_rd              		),
 	.E_master_op              		( E_master_op              		),
 	.E_master_except_a        		( {E_master_exp_trap, E_master_except[7:3],E_master_overflow,E_master_except[1:0]}        		),
@@ -716,6 +717,7 @@ ex_mem u_ex_mem(
 	.E_slave_cp0write         		( E_slave_cp0write         		),
 	.E_slave_is_in_delayslot  		( E_slave_is_in_delayslot  		),
 	.E_slave_reg_waddr        		( E_slave_reg_waddr        		),
+    .E_slave_aluop                  ( E_slave_aluop                 ),
 	.E_slave_except           		( {E_slave_exp_trap, E_slave_except[7:3],E_slave_overflow,E_slave_except[1:0]}           		),
 	.E_slave_pc               		( E_slave_pc               		),
 	.E_slave_inst             		( E_slave_inst             		),
@@ -727,12 +729,13 @@ ex_mem u_ex_mem(
 	.M_master_cp0write        		( M_master_cp0write        		),
 	.M_master_is_in_delayslot 		( M_master_is_in_delayslot 		),
 	.M_master_reg_waddr       		( M_master_reg_waddr       		),
+    .M_master_aluop                 ( M_master_aluop                ),
 	.M_master_rd              		( M_master_rd              		),
 	.M_master_op              		( M_master_op              		),
 	.M_master_except_a        		( M_master_except_a        		),
 	.M_master_inst            		( M_master_inst            		),
 	.M_master_rt_value        		( M_master_rt_value        		),
-	.M_master_alu_res         		( M_master_alu_res         		),
+	.M_master_alu_res         		( M_master_alu_res_tmp    		),
 	.M_master_pc              		( M_master_pc              		),
 	.M_master_alu_out64       		( M_master_alu_out64       		),
     .M_master_mem_addr              ( M_master_mem_addr             ),
@@ -741,12 +744,12 @@ ex_mem u_ex_mem(
 	.M_slave_cp0write         		( M_slave_cp0write         		),
 	.M_slave_is_in_delayslot  		( M_slave_is_in_delayslot  		),
 	.M_slave_reg_waddr        		( M_slave_reg_waddr        		),
+    .M_slave_aluop                  ( M_slave_aluop                 ),
 	.M_slave_except           		( M_slave_except           		),
 	.M_slave_pc               		( M_slave_pc               		),
 	.M_slave_inst             		( M_slave_inst             		),
-	.M_slave_alu_res          		( M_slave_alu_res          		)
+	.M_slave_alu_res          		( M_slave_alu_res_tmp      		)
 );
-
 
 mem_access u_mem_access(
     //ports
@@ -766,15 +769,35 @@ mem_access u_mem_access(
     .M_master_except        ( M_master_except       )
 );
 
+alu_res_selectM u_alu_res_selectM_master(
+	//ports
+	.aluop       		( M_master_aluop       		),
+	.cp0_data    		( cp0_data    		        ),
+	.alu_res_tmp 		( M_master_alu_res_tmp 		),
+	.hilo        		( hilo        		        ),
+	.alu_res     		( M_master_alu_res     		)
+);
 
-// hilo到M阶段处理，W阶段写完
+
+alu_res_selectM u_alu_res_selectM_slave(
+	//ports
+	.aluop       		( M_slave_aluop       		),
+	.cp0_data    		( cp0_data    		        ),
+	.alu_res_tmp 		( M_slave_alu_res_tmp 		),
+	.hilo        		( hilo        		        ),
+	.alu_res     		( M_slave_alu_res       	)
+);
+
+// E阶段写，M阶段出结果
 hilo_reg u_hilo_reg(
-    //ports
-    .clk                ( clk                ),
-    .rst                ( rst                ),
-    .wen                ( E_master_hilowrite & M_ena & ~M_flush), // 保证E_master_hilowrite能成功送到M
-    .hilo_i             ( E_master_alu_out64 ),  
-    .hilo_o             ( hilo               )
+	//ports
+	.clk      		( clk      		    ),
+	.rst      		( rst      		    ),
+	.wen            ( E_master_hilowrite & M_ena & ~M_flush), // 保证E_master_hilowrite能成功送到M
+	.aluop    		( E_master_aluop    ),
+	.rs_value 		( E_master_rs_value ),
+	.hilo_i   		( E_master_alu_out64),
+	.hilo_o   		( hilo   		    )
 );
 
 // master的异常优先级更高，故异常处理阶段先选择master异常
@@ -783,7 +806,7 @@ exception u_exp(
     .rst            ( rst            ),
     .master_except  ( M_master_except),
     .master_pc      ( M_master_pc    ),
-    .master_daddr   ( M_master_alu_res ), // 虚地址
+    .master_daddr   ( M_master_mem_addr), // 虚地址
     .slave_except   ( M_slave_except ),
     .slave_pc       ( M_slave_pc     ),
     .cp0_status     ( cp0_status      ),
@@ -799,13 +822,14 @@ exception u_exp(
     .excepttype         ( M_excepttype   )
 );
 
+// FIXME: CP0改成E写，M出结果，1.减少前推；2.减少因为例外导致的刷新数
 cp0_reg u_cp0_reg(
     //ports
     .clk                    ( clk                        ),
     .rst                    ( rst                        ),
     .we_i                   ( M_master_cp0write  & M_ena ),  // 只有master访问cp0_reg
     .waddr_i                ( M_master_rd                ),  // M阶段写入CP0  // MTCP0 CP0[rd, sel] ← GPR[rt] 
-    .raddr_i                ( E_master_rd                ),  // E阶段读取CP0，这两步可以避免数据冒险处理 // MFCP0 GPR[rt] ← CP0[rd, sel] 写寄存器
+    .raddr_i                ( M_master_rd                ),  // E阶段读取CP0，这两步可以避免数据冒险处理 // MFCP0 GPR[rt] ← CP0[rd, sel] 写寄存器
     .data_i                 ( M_master_rt_value          ),
     .int_i                  ( ext_int                    ),
     .excepttype_i           ( M_excepttype               ),

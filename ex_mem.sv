@@ -16,6 +16,7 @@ module ex_mem(
     input wire [4 :0]E_master_reg_waddr,
     input wire [4 :0]E_master_rd,
     input wire [5 :0]E_master_op,
+    input wire [7 :0]E_master_aluop,
     input wire [`EXCEPT_BUS]E_master_except_a,
     input wire [31:0]E_master_inst,
     input wire [31:0]E_master_rt_value,
@@ -29,6 +30,7 @@ module ex_mem(
     input wire E_slave_cp0write,
     input wire E_slave_is_in_delayslot,
     input wire [4 :0]E_slave_reg_waddr,
+    input wire [7 :0]E_slave_aluop,
     input wire [`EXCEPT_BUS]E_slave_except,
     input wire [31:0]E_slave_pc,
     input wire [31:0]E_slave_inst,
@@ -43,6 +45,7 @@ module ex_mem(
     output reg [4 :0]M_master_reg_waddr,
     output reg [4 :0]M_master_rd,
     output reg [5 :0]M_master_op,
+    output reg [7 :0]M_master_aluop,
     output reg [`EXCEPT_BUS]M_master_except_a,
     output reg [31:0]M_master_inst,
     output reg [31:0]M_master_rt_value,
@@ -55,6 +58,7 @@ module ex_mem(
     output reg M_slave_cp0write,
     output reg M_slave_is_in_delayslot,
     output reg [4 :0]M_slave_reg_waddr,
+    output reg [7 :0]M_slave_aluop,
     output reg [`EXCEPT_BUS]M_slave_except,
     output reg [31:0]M_slave_pc,
     output reg [31:0]M_slave_inst,
@@ -79,6 +83,7 @@ module ex_mem(
             M_master_pc <= 0;
             M_master_alu_out64 <= 0;
             M_master_mem_addr <= 0;
+            M_master_aluop <= 0;
         end
         else if (ena1) begin
             M_master_mem_en <= E_master_mem_en;
@@ -97,6 +102,7 @@ module ex_mem(
             M_master_pc <= E_master_pc;
             M_master_alu_out64 <= E_master_alu_out64;
             M_master_mem_addr <= E_master_mem_addr;
+            M_master_aluop <= E_master_aluop;
         end
     end
 
@@ -111,6 +117,7 @@ module ex_mem(
             M_slave_pc <= 0;
             M_slave_inst <= 0;
             M_slave_alu_res <= 0;
+            M_slave_aluop <= 0;
         end
         else if (ena2) begin
             M_slave_reg_wen <= E_slave_reg_wen;
@@ -122,6 +129,7 @@ module ex_mem(
             M_slave_pc <= E_slave_pc;
             M_slave_inst <= E_slave_inst;
             M_slave_alu_res <= E_slave_alu_res;
+            M_slave_aluop <= E_slave_aluop;
         end
     end
 
