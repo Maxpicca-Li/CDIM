@@ -1,23 +1,5 @@
 `timescale 1ns / 1ps
-//////////////////////////////////////////////////////////////////////////////////
-// Company: 
-// Engineer: 
-// 
-// Create Date: 2022/07/26 17:20:25
-// Design Name: 
-// Module Name: d_arbitrater
-// Project Name: 
-// Target Devices: 
-// Tool Versions: 
-// Description: 
-// 
-// Dependencies: 
-// 
-// Revision:
-// Revision 0.01 - File Created
-// Additional Comments:
-// 
-//////////////////////////////////////////////////////////////////////////////////
+
 module d_arbitrater (
     input wire clk, rst,
     //tlb
@@ -49,7 +31,7 @@ module d_arbitrater (
 
     //write
     output reg [31:0] awaddr,
-    output reg [7:0] awlen,
+    output wire [7:0] awlen,
     output reg [2:0] awsize,
     output wire awvalid,
     input wire awready,
@@ -67,8 +49,9 @@ module d_arbitrater (
 
     wire [31:0]  cache_araddr   , cache_awaddr, cfg_araddr, cfg_awaddr;
     wire [31:0]  cache_rdata    , cfg_rdata   ;
-    wire [7 :0]  cache_arlen    , cache_awlen , cfg_arlen  , cfg_awlen    ;
-    wire [2 :0]  cache_arsize   , cache_awsize, cfg_arsize , cfg_awsize   ;
+    wire [7 :0]  cache_arlen    , cache_awlen , cfg_arlen  ;//cfg_awlen    ;
+    //wire [2 :0]  cache_arsize   , cache_awsize, cfg_arsize , cfg_awsize   ;
+    wire [2 :0]  cache_arsize   , cfg_arsize  ;
     wire         cache_awvalid  , cfg_awvalid , cfg_arvalid, cache_arvalid;
     wire [3 :0]  cache_wstrb    , cfg_wstrb   ;
     wire         cache_bready   , cfg_bready  , cfg_rready , cache_rready ;
@@ -109,7 +92,7 @@ module d_arbitrater (
 
         .awaddr          (cache_awaddr ),
         .awlen           (cache_awlen  ),
-        .awsize          (cache_awsize ),
+        //.awsize          (cache_awsize ),
         .awvalid         (cache_awvalid),
         .awready         (awready),
 
@@ -157,8 +140,8 @@ module d_arbitrater (
         .rready          (cfg_rready),
 
         .awaddr          (cfg_awaddr ),
-        .awlen           (awlen      ),
-        .awsize          (cfg_awsize ),
+        //.awlen           (cfg_awlen  ),
+        //.awsize          (cfg_awsize ),
         .awvalid         (cfg_awvalid),
         .awready         (awready),
 
@@ -172,36 +155,34 @@ module d_arbitrater (
         .bready          (cfg_bready),
         .cfg_writting    (cfg_writting)
     );
+    // Read
     assign data_rdata = no_cache ? cfg_rdata : cache_rdata;
     assign stall      = cache_stall | cfg_stall;
-    assign araddr     = no_cache ? cfg_araddr: cache_araddr;
+    assign araddr     = no_cache ? cfg_araddr : cache_araddr;
     assign arlen      = no_cache ? cfg_arlen : cache_arlen ;
     assign arsize     = no_cache ? cfg_arsize: cache_arsize;
-    assign arvalid    = no_cache ? cfg_arvalid:cache_arvalid;
-    assign rready     = no_cache ? cfg_rready: cache_rready;
+    assign arvalid    = cfg_arvalid|cache_arvalid;
+    assign rready     = cfg_rready | cache_rready;
+
+    // Write
     assign awvalid    = cfg_awvalid | cache_awvalid;
-   // assign wdata      = no_cache ? cfg_wdata : cache_wdata ;
-    //assign wstrb      = no_cache ? cfg_wstrb : cache_wstrb ;
-    //assign wlast      = no_cache ? cfg_wlast : cache_wlast ;
     assign wlast      = cfg_wlast | cache_wlast;
-    //assign   wlast      = data_en & ~no_cache ? cache_wlast : 1'b1;
     assign wvalid     = cfg_wvalid | cache_wvalid;
     assign bready     = cfg_bready | cache_bready;
-    
+    assign awlen      = cache_awlen;
+    //assign wdata      = no_cache ? data_wdata : cache_wdata;
     always @(posedge clk) begin
         if(data_en) begin
         if(no_cache) begin
             awaddr <= data_addr;
             awsize <= data_wen==4'b1111 ? 3'b10:
                        data_wen==4'b1100 || data_wen==4'b0011 ? 3'b01: 3'b00;
-            awlen  <= 8'd0;
             wdata  <= data_wdata;
             wstrb  <= data_wen;
         end
         else begin
             awaddr <= cache_awaddr;
-            awsize <= cache_awsize;
-            awlen  <= cache_awlen;
+            awsize <= 3'b10;
             wdata  <= cache_wdata;
             wstrb  <= cache_wstrb;
         end

@@ -1,26 +1,6 @@
 
 
 `timescale 1ns / 1ps
-//////////////////////////////////////////////////////////////////////////////////
-// Company: 
-// Engineer: 
-// 
-// Create Date: 2021/12/15 11:31:38
-// Design Name: 
-// Module Name: d_cache
-// Project Name: 
-// Target Devices: 
-// Tool Versions: 
-// Description: 
-// 
-// Dependencies: 
-// 
-// Revision:
-// Revision 0.01 - File Created
-// Additional Comments:
-// 
-//////////////////////////////////////////////////////////////////////////////////
-
 module d_cache_daxi (
     input wire clk, rst,
     //tlb
@@ -54,7 +34,7 @@ module d_cache_daxi (
     //write
     output wire [31:0] awaddr,
     output wire [7:0] awlen,
-    output wire [2:0] awsize,
+    //output wire [2:0] awsize,
     output wire awvalid,
     input wire awready,
     
@@ -162,13 +142,6 @@ module d_cache_daxi (
                                        IDLE;
                 MissHandle  : state <= ~read_req & ~write_req & ~cfg_writting ? IDLE : state;
                 WaitCfg     : state <= cfg_writting ? WaitCfg : MissHandle;
-                // IDLE        : state <= (mem_read_enE | mem_write_enE) & ~stallM & data_en_E ? HitJudge : IDLE;  
-                // HitJudge    : state <= data_en & miss               ? MissHandle :
-                //                        mem_read_enE | mem_write_enE ? HitJudge :
-                //                        IDLE;
-                // MissHandle  : state <= ~read_req & ~write_req & ~cfg_writting ? IDLE : state;
-                //MissHandle  : state <= read_finish | write_finish  ? IDLE : state;
-                // NoCache     : state <= read & read_finish | write & write_finish ? IDLE : NoCache;
             endcase
         end
     end
@@ -244,8 +217,8 @@ module d_cache_daxi (
             {TAG_WIDTH{evict_mask[1]}} & tag_way[1][TAG_WIDTH : 1]
         ), index, {OFFSET_WIDTH{1'b0}}};
     assign awaddr = dirty_write_addr;
-    assign awlen = BLOCK_NUM-1;
-    assign awsize = 3'b10 ;
+    assign awlen = write_req ? BLOCK_NUM-1 : 8'd0;
+    //assign awsize = 3'b10 ;
     assign awvalid = write_req & ~waddr_rcv;
     assign wdata = block_way[evict_way][wcnt];
     assign wstrb = 4'b1111;

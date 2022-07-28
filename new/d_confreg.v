@@ -1,24 +1,4 @@
 `timescale 1ns / 1ps
-//////////////////////////////////////////////////////////////////////////////////
-// Company: 
-// Engineer: 
-// 
-// Create Date: 2022/07/26 17:39:00
-// Design Name: 
-// Module Name: d_confreg
-// Project Name: 
-// Target Devices: 
-// Tool Versions: 
-// Description: 
-// 
-// Dependencies: 
-// 
-// Revision:
-// Revision 0.01 - File Created
-// Additional Comments:
-// 
-//////////////////////////////////////////////////////////////////////////////////
-
 
 module d_confreg(
     input wire clk, rst,
@@ -51,8 +31,6 @@ module d_confreg(
 
     //write
     output wire [31:0] awaddr,
-    input wire [7:0] awlen,
-    output wire [2:0] awsize,
     output wire awvalid,
     input wire awready,
     
@@ -80,9 +58,6 @@ module d_confreg(
     wire read_finish;   //读事务完毕
     wire write_finish;  //写事务完毕
     reg [31:0] saved_rdata;
-    wire collisionE;
-    reg collisionM;
-    reg [31:0] data_wdata_r;
     
     reg [2:0] wcnt;
     //reg [7:0] awlen_test;
@@ -107,7 +82,7 @@ module d_confreg(
     end
     always @(posedge clk) begin
         read_req <=  (rst) ?  1'b0 :
-                    (state==Judge) & data_en & read & ~read_req & ~collisionE? 1'b1 :
+                    (state==Judge) & data_en & read & ~read_req ? 1'b1 :
                     read_finish      ? 1'b0 : read_req;
         
         write_req <= (rst) ?  1'b0 : 
@@ -130,13 +105,6 @@ module d_confreg(
     assign arvalid = read_req & ~raddr_rcv;
     assign awvalid = write_req & ~waddr_rcv;
     
-
-    assign collisionE = mem_read_enE & write & (mem_addrE == data_addr);
-    always@(posedge clk) begin
-        data_wdata_r <= rst ? 0 : data_wdata;
-        collisionM <= rst ? 0 : collisionE;
-    end
-
     always @(posedge clk) begin
         saved_rdata <= no_cache & read_finish ? rdata : saved_rdata;
     end
@@ -148,12 +116,12 @@ module d_confreg(
     assign wvalid = waddr_rcv & ~wdata_rcv;
     assign bready = waddr_rcv;
 
-    assign data_rdata = collisionM ? data_wdata_r : saved_rdata;
+    assign data_rdata = saved_rdata;
 
     assign araddr = data_addr;
     assign rready = raddr_rcv;
 
-     assign wlast = write_req & ~write_finish;
+    assign wlast = write_req & ~write_finish;
     //assign awlen = 8'd0;
     assign arlen = 8'd0;
     assign arsize = {1'b0,data_rlen};
@@ -162,8 +130,6 @@ module d_confreg(
     assign awaddr = data_addr;
     assign wdata  = data_wdata;
     assign wstrb  = data_wen;
-    assign awsize = data_wen==4'b1111 ? 3'b10:
-            data_wen==4'b1100 || data_wen==4'b0011 ? 3'b01: 3'b00;
     always @(posedge clk) begin
         wcnt <= rst | no_cache | write_finish ? 0:
                 data_go        ? wcnt + 1 : wcnt;
