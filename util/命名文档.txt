@@ -1,0 +1,27 @@
+datapath.v: D 阶段增加 saD = instrD[10:6] 用于移位指令
+            E 阶段增加 saE 用于移位指令
+            E 阶段增加 rd1_saE 用于表达rd1E和saE的选择接结果
+            input alusrcAE 用于选择rd1_saE
+            E 阶段增加 instrE 用于判断字节偏移
+            M 阶段增加 instrM 用于判断字节偏移
+            M 阶段增加 finaldataM 用于存储最后从数据存储器中获得的值
+            M 阶段增加 writedataM 用于存储最后写入数据存储器中的值
+
+
+
+
+datapath.v:     数据转移指令部分
+            开始的 变量定义区 赋值增加 wire[31:0]HI,LO 增加两个特殊寄存器hi和lo
+            (设定hi和lo两个特殊寄存器，存在于  E执行阶段   像R-type指令一样向后传) 
+            wire [31:0]HI,LO;     // 定义hi和lo寄存器最新的值。
+            wire [31:0]hi_i,lo_i; // 输入的的HI，LO寄存器的值。
+            wire [31:0]hilo_dataE,hilo_dataM,hilo_dataW; // 要写到HILO特殊寄存器的数值。
+            wire HI_IN,LO_IN;     // E阶段判断要将值写入HI还是LO。
+            wire HI_OUT,LO_OUT;   // E阶段判断要取出HI还是LO的值。
+            wire [31:0]hi_E,lo_E; // E执行阶段要写入HI，LO寄存器的值
+            wire [31:0]hi_M,lo_M; // M访存阶段要写入HI，LO寄存器的值。
+            wire [31:0]hi_W,lo_W; // W回写阶段要写入HI，LO寄存器的值
+            wire wehilo_E,wehilo_M,wehilo_W; //处于访存和回写阶段的指令是否要写入HI，LO寄存器
+            最后的写回通用寄存器还没写，在最后的W阶段传回regfile的wd3处加一个多路选择器就行。
+            wire hilo_in_signal;  //hilo输入mux2片选信号
+            wire [63:0] hilo_i;
