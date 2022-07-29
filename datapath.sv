@@ -253,11 +253,11 @@ hazard u_hazard(
 assign F_pc_except = (|F_pc[1:0]); // 必须是2'b00
 // FIXME: 注意，这里如果是i_stall导致的F_ena=0，inst_sram_en仍然使能(不太确定这个逻辑)
 // assign inst_sram_en =  !(rst | M_except | F_pc_except | fifo_full);  // assign inst_sram_en =  !(rst | M_except | F_pc_except | fifo_full);  // fifo_full 不取指
-assign inst_sram_en =  !(rst | M_except);
+assign inst_sram_en =  !(rst | M_except | occupy);
 assign stallF = ~F_ena;
 assign stallM = ~M_ena;
 wire pc_en;
-assign pc_en = F_en; // 异常的优先级最高，必须使能
+assign pc_en = F_ena | M_except;; // 异常的优先级最高，必须使能
 
 pc_reg u_pc_reg(
     //ports
@@ -289,7 +289,7 @@ if_id u_if_id(
 	.master_is_in_delayslot_o 		( D_master_is_in_delayslot 		),
 	.occupy                   		( occupy                   		),
 	.D_ena1                   		( D_ena                   		),
-	.D_en2                    		( D_slave_ena              		),
+	.D_ena2                    		( D_slave_ena              		),
 	.D_data1                  		( D_master_inst            		),
 	.D_data2                  		( D_slave_inst             		),
 	.D_addr1                  		( D_master_pc              		),
@@ -822,18 +822,22 @@ assign debug_wb_rf_wen      = (rst) ? 4'b0000 : ((clk) ? {4{u_regfile.wen1}} : {
 assign debug_wb_rf_wnum     = (clk) ? u_regfile.wa1 : u_regfile.wa2;
 assign debug_wb_rf_wdata    = (clk) ? u_regfile.wd1 : u_regfile.wd2;
 // ascii
+wire [47:0] master_asciiF;
 wire [47:0] master_asciiD;
 wire [47:0] master_asciiE;
 wire [47:0] master_asciiM;
 wire [47:0] master_asciiW;
+wire [47:0] slave_asciiF ;
 wire [47:0] slave_asciiD ;
 wire [47:0] slave_asciiE ;
 wire [47:0] slave_asciiM ;
 wire [47:0] slave_asciiW ;
+instdec u_master_asciiF(inst_rdata1,master_asciiF);
 instdec u_master_asciiD(D_master_inst,master_asciiD);
 instdec u_master_asciiE(E_master_inst,master_asciiE);
 instdec u_master_asciiM(M_master_inst,master_asciiM);
 instdec u_master_asciiW(W_master_inst,master_asciiW);
+instdec u_slave_asciiF (inst_rdata2,slave_asciiF );
 instdec u_slave_asciiD (D_slave_inst ,slave_asciiD );
 instdec u_slave_asciiE (E_slave_inst ,slave_asciiE );
 instdec u_slave_asciiM (M_slave_inst ,slave_asciiM );
