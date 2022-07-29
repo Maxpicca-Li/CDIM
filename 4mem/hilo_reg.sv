@@ -25,9 +25,9 @@ module hilo_reg(
             else if (~(|(aluop ^ `ALUOP_MTLO))) 
                 hilo_reg <= {hilo_reg[63:32],rs_value};
             else if (~(|(aluop ^ `ALUOP_MADD)) || ~(|(aluop ^ `ALUOP_MADDU))) 
-                hilo_reg <= hilo_reg[63:32] + hilo_i;
+                hilo_reg <= hilo_reg + hilo_i;
             else if (~(|(aluop ^ `ALUOP_MSUB)) || ~(|(aluop ^ `ALUOP_MSUBU))) 
-                hilo_reg <= hilo_reg[63:32] - hilo_i;
+                hilo_reg <= hilo_reg - hilo_i;
             else
                 hilo_reg <= hilo_i;
         end else 
