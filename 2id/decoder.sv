@@ -119,10 +119,12 @@ module  decoder(
                     end
                     `FUN_SRL   : begin
                         signsD.alu_sela = 1'b1;
-                        signsD.aluop = instr[21]?`ALUOP_ROTR:`ALUOP_SRL; // ROTR RS1 is different from SRL
+                        // signsD.aluop = instr[21]?`ALUOP_ROTR:`ALUOP_SRL; // ROTR RS1 is different from SRL
+                        signsD.aluop = `ALUOP_SRL;                          // no MIPS release 2
                     end
                     `FUN_SRLV  : begin
-                        signsD.aluop = instr[6]?`ALUOP_ROTR:`ALUOP_SRLV; // ROTRV sa1 is different from SRLV
+                        // signsD.aluop = instr[6]?`ALUOP_ROTR:`ALUOP_SRLV; // ROTRV sa1 is different from SRLV
+                        signsD.aluop = `ALUOP_SRLV;                         // no MIPS release 2
                     end
                     `FUN_SRA   : begin
                         signsD.aluop = `ALUOP_SRA;

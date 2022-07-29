@@ -119,7 +119,7 @@ module alu_master(
             // 数据移动指令
             `ALUOP_MOV : y = a;
             // 旋转指令
-            `ALUOP_ROTR  : y = (b << (32 - a[4:0])) + (b >> a[4:0]);
+            // `ALUOP_ROTR  : y = (b << (32 - a[4:0])) + (b >> a[4:0]); // no MIPS release 2
             // 前导计数指令
             `ALUOP_CLO: begin
                 y = 32;
