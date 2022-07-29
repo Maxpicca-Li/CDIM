@@ -631,8 +631,8 @@ assign E_slave_reg_wen  =   E_slave_cmov_type==`C_MOVN ? (|E_slave_rt_value):   
                             E_slave_reg_wen_a;
 // mem_addr && 提前访存
 assign E_master_mem_addr = E_master_rs_value + E_master_imm_value; // base(rs value) + offset(immediate value)
-assign mem_read_enE = E_master_memRead & !M_flush & M_ena & E_master_mem_addr != 32'hbfaffff0;
-assign mem_write_enE = E_master_memWrite & !M_flush & M_ena & E_master_mem_addr != 32'hbfaffff0;
+assign mem_read_enE = E_master_memRead & !M_flush;// & M_ena;// & E_master_mem_addr != 32'hbfaffff0;
+assign mem_write_enE = E_master_memWrite & !M_flush;// & M_ena;// & E_master_mem_addr != 32'hbfaffff0;
 assign mem_addrE = E_master_mem_addr;
 
 branch_judge u_branch_judge(

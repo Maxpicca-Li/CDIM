@@ -125,6 +125,7 @@ module mycpu_top (
     wire d_bvalid           ;
     wire d_bready           ;
 
+    wire no_cache_E         ;
     datapath u_datapath(
         //ports
         .clk               		( clk               		),
@@ -162,6 +163,7 @@ module mycpu_top (
     );    
 
     //简易的MMU
+  
     mmu u_mmu(
         .inst_vaddr(pcF_dp),
         .inst_vaddr2(pc_next_dp),
@@ -173,9 +175,10 @@ module mycpu_top (
         .data_paddr(data_addr),
         .data_paddr2(mem_addrE),
         .no_cache_d(no_cache_d),
+        .no_cache_E(no_cache_E),
         .no_cache_i(no_cache_i)
     );
-  
+
     i_cache_daxi u_i_cache_daxi(
         .clk(clk), .rst(rst),
 
@@ -206,10 +209,11 @@ module mycpu_top (
         .rready          (i_rready)
     );
 
-    d_cache_daxi u_d_cache_daxi(
+    d_arbitrater u_d_arbitrater(
         .clk(clk), .rst(rst),
 
         //TLB
+        .no_cache_E(no_cache_E),
         .no_cache(no_cache_d),
 
         //datapath

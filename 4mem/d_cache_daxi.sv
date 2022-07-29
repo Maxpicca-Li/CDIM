@@ -1,28 +1,12 @@
-`timescale 1ns / 1ps
-//////////////////////////////////////////////////////////////////////////////////
-// Company: 
-// Engineer: 
-// 
-// Create Date: 2021/12/15 11:31:38
-// Design Name: 
-// Module Name: d_cache
-// Project Name: 
-// Target Devices: 
-// Tool Versions: 
-// Description: 
-// 
-// Dependencies: 
-// 
-// Revision:
-// Revision 0.01 - File Created
-// Additional Comments:
-// 
-//////////////////////////////////////////////////////////////////////////////////
 
+
+`timescale 1ns / 1ps
 module d_cache_daxi (
     input wire clk, rst,
     //tlb
-    input wire no_cache,
+    input wire data_en_E,
+    // input wire no_cache,
+    input wire cfg_writting,
     //datapath
     input wire data_en,
     input wire [31:0] data_addr,
@@ -50,7 +34,7 @@ module d_cache_daxi (
     //write
     output wire [31:0] awaddr,
     output wire [7:0] awlen,
-    output wire [2:0] awsize,
+    //output wire [2:0] awsize,
     output wire awvalid,
     input wire awready,
     
@@ -142,7 +126,8 @@ module d_cache_daxi (
     wire write_finish;  //写事务完毕
 //FSM
     reg [1:0] state;
-    parameter IDLE = 2'b00, HitJudge = 2'b01, MissHandle=2'b11, NoCache=2'b10;
+    parameter IDLE = 2'b00, HitJudge = 2'b01, MissHandle=2'b11;
+    parameter WaitCfg = 2'b10;
 
     always @(posedge clk) begin
         if(rst) begin
@@ -150,13 +135,13 @@ module d_cache_daxi (
         end
         else begin
             case(state)
-                IDLE        : state <= (mem_read_enE | mem_write_enE) & ~stallM ? HitJudge : IDLE;  
-                HitJudge    : state <= data_en & no_cache           ? NoCache :
-                                       data_en & miss               ? MissHandle :
+                IDLE        : state <= (mem_read_enE | mem_write_enE) & ~stallM & data_en_E ? HitJudge : IDLE;  
+                HitJudge    : state <= data_en & miss &~cfg_writting  ? MissHandle :
                                        mem_read_enE | mem_write_enE ? HitJudge :
+                                       cfg_writting & miss? WaitCfg :
                                        IDLE;
-                MissHandle  : state <= ~read_req & ~write_req ? IDLE : state;
-                NoCache     : state <= read & read_finish | write & write_finish ? IDLE : NoCache;
+                MissHandle  : state <= ~read_req & ~write_req & ~cfg_writting ? IDLE : state;
+                WaitCfg     : state <= cfg_writting ? WaitCfg : MissHandle;
             endcase
         end
     end
@@ -168,23 +153,27 @@ module d_cache_daxi (
 
     assign collisionE = mem_read_enE & write & hit & (mem_addrE == data_addr);
     always@(posedge clk) begin
-        data_wdata_r <= rst ? 0 : data_wdata;
-        collisionM <= rst ? 0 : collisionE;
+        if(collisionE) begin
+            collisionM <= 1'b1;
+            data_wdata_r <= data_wdata;
+        end
+        else if(~read) begin
+            collisionM <= 1'b0;
+            data_wdata_r <= 32'b0;
+        end
     end
 
-    assign stall = ~(state==IDLE || state==HitJudge && hit && ~no_cache);
-    assign data_rdata = hit & ~no_cache & ~collisionM ? block_sel_way[sel]:
+
+    assign stall = ~(state==IDLE || state==HitJudge && hit);
+    assign data_rdata = hit &  ~collisionM ? block_sel_way[sel]:
                         collisionM     ? data_wdata_r: saved_rdata;
 //AXI
     always @(posedge clk) begin
         read_req <= (rst)            ? 1'b0 : 
-                    ~no_cache && data_en && (state == HitJudge) && miss && ~read_req ? 1'b1 : 
-                    read & no_cache & (state == HitJudge) & ~read_req ? 1'b1 :
+                    data_en && (state == HitJudge || state==WaitCfg) && miss && ~read_req && ~cfg_writting ? 1'b1 :  
                     read_finish      ? 1'b0 : read_req;
-        
         write_req <= (rst)              ? 1'b0 :
-                     ~no_cache & data_en && (state == HitJudge) && miss && dirty && ~write_req ? 1'b1 :
-                     write & no_cache & (state == HitJudge) & ~read_req ? 1'b1 :
+                     data_en && (state == HitJudge || state==WaitCfg) && miss && dirty && ~read_req && ~cfg_writting ? 1'b1 :
                      write_finish       ? 1'b0 : write_req;
     end
     always @(posedge clk) begin
@@ -201,19 +190,19 @@ module d_cache_daxi (
     //读事务burst传输，计数当前传递的bank的编�?
     reg [OFFSET_WIDTH-3:0] cnt;  
     always @(posedge clk) begin
-        cnt <= rst | no_cache | read_finish ? 0 :
+        cnt <= rst | ~data_en |read_finish ? 0 :
                 data_back                   ? cnt + 1 : cnt;
     end
     //写事务burst传输，计数当前传递的bank的编�?
     reg [OFFSET_WIDTH-3:0] wcnt; 
     always @(posedge clk) begin
-        wcnt <= rst | no_cache | write_finish ? 0 :
+        wcnt <= rst | ~data_en |write_finish ? 0 :
                 data_go                       ? wcnt + 1 : wcnt;
     end
 
     always @(posedge clk) begin
         saved_rdata <= rst ? 32'b0 :
-                      ( data_back & (cnt==offset) & ~no_cache) | (no_cache & read_finish) ? rdata : saved_rdata;
+                      data_back & (cnt==offset) ? rdata : saved_rdata;
     end
     assign data_back = raddr_rcv & (rvalid & rready);
     assign data_go   = waddr_rcv & (wvalid & wready); 
@@ -221,10 +210,10 @@ module d_cache_daxi (
     assign write_finish = waddr_rcv & wdata_rcv & (bvalid & bready);
     //AXI signal
     //read
-    assign araddr = ~no_cache ? {tag,index,5'b0}: data_addr; //如果是可以cache的数据,就把8个字的起始地址传过去,否则只传一个字的地址
-    assign arlen = ~no_cache ? BLOCK_NUM-1 : 8'd0;
-    assign arsize = ~no_cache ? 3'd2 : {1'b0,data_rlen};
-    assign arvalid = read_req & ~raddr_rcv;
+    assign araddr = {tag,index,5'b0}; //如果是可以cache的数据,就把8个字的起始地址传过去,否则只传一个字的地址
+    assign arlen = BLOCK_NUM-1;
+    assign arsize = 3'd2 ;
+    assign arvalid = read_req & ~raddr_rcv & ~cfg_writting;  //assign arvalid = read_req & ~raddr_rcv;
     assign rready = raddr_rcv;
     //write
     wire [31:0] dirty_write_addr;
@@ -233,20 +222,18 @@ module d_cache_daxi (
             {TAG_WIDTH{evict_mask[0]}} & tag_way[0][TAG_WIDTH : 1]|
             {TAG_WIDTH{evict_mask[1]}} & tag_way[1][TAG_WIDTH : 1]
         ), index, {OFFSET_WIDTH{1'b0}}};
-    assign awaddr = ~no_cache ? dirty_write_addr : data_addr;
-    assign awlen = ~no_cache ? BLOCK_NUM-1 : 8'd0;
-    assign awsize = ~no_cache ? 3'b10 :
-                                data_wen==4'b1111 ? 3'b10:
-                                data_wen==4'b1100 || data_wen==4'b0011 ? 3'b01: 3'b00;
-    assign awvalid = write_req & ~waddr_rcv;
-    assign wdata = ~no_cache ? block_way[evict_way][wcnt] : data_wdata;
-    assign wstrb = ~no_cache ? 4'b1111 : data_wen;
+    assign awaddr = dirty_write_addr;
+    assign awlen = write_req ? BLOCK_NUM-1 : 8'd0;
+    //assign awsize = 3'b10 ;
+    assign awvalid = write_req & ~waddr_rcv & ~cfg_writting;  //assign awvalid = write_req & ~waddr_rcv;
+    assign wdata = block_way[evict_way][wcnt];
+    assign wstrb = 4'b1111;
     assign wlast = {5'd0,wcnt}==awlen;
     assign wvalid = waddr_rcv & ~wdata_rcv;
     assign bready = waddr_rcv;
 //LRU
     wire write_LRU_en;
-    assign write_LRU_en = ~no_cache & hit & ~stallM | ~no_cache & read_finish;
+    assign write_LRU_en = hit & ~stallM | read_finish;
     always @(posedge clk) begin
         if(rst) begin
             LRU_bit <= '{default:'0};
@@ -263,10 +250,9 @@ module d_cache_daxi (
     wire write_dirty_bit_en;
     wire write_way_sel;
     wire write_dirty_bit;   //dirty被修改成�?�?
-    assign write_dirty_bit_en =  ~no_cache & (
-                                    read & read_finish | write & hit & ~stallM |
-                                    (state==MissHandle) & read_finish
-                                );
+    assign write_dirty_bit_en =      read & read_finish | write & hit & ~stallM |
+                                    (state==MissHandle) & read_finish;
+
     assign write_way_sel = write & hit ? sel : evict_way;
     assign write_dirty_bit = read ? 1'b0 : 1'b1;
     always @(posedge clk) begin
@@ -306,26 +292,26 @@ module d_cache_daxi (
         for(i = 0; i < WAY_NUM; i=i+1) begin: way
             d_tag_ram tag_ram (
                 .clka(clk),  
-                .ena(~no_cache),   
+                .ena(1'b1),   
                 .wea(wena_tag_ram_way[i]),   
                 .addra(addra), 
                 .dina(tag_ram_dina),  
 
                 .clkb(clk),  
-                .enb(~stallM & ~collisionE),  
+                .enb(~stallM & ~collisionE),  //.enb(~stallM & ~collisionE),  
                 .addrb(addrb),  
                 .doutb(tag_way[i]) 
             );
             for(j = 0; j < BLOCK_NUM; j=j+1) begin: bank
                 d_data_bank data_bank (
                     .clka(clk), 
-                    .ena(~no_cache),  
+                    .ena(1'b1),  
                     .wea(wena_data_bank_way[i][j]),   
                     .addra(addra), 
                     .dina(data_bank_dina),  
 
                     .clkb(clk),  
-                    .enb(~stallM & ~collisionE), 
+                    .enb(~stallM & ~collisionE), //.enb(~stallM & ~collisionE),
                     .addrb(addrb),  
                     .doutb(block_way[i][j]) 
                 );
