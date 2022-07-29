@@ -18,6 +18,7 @@ module issue_ctrl (
     input  [4:0]    D_slave_rs,
     input  [4:0]    D_slave_rt,
     input           D_slave_mem_en,
+    input           D_slave_inst_ok,
     input           D_slave_is_branch,
     input           D_slave_is_spec_inst,
     input           D_slave_is_only_in_master,
@@ -31,7 +32,7 @@ module issue_ctrl (
     logic load_stall;
     logic _en_slave;
 
-    assign D_slave_en              = _en_slave && (!load_stall) & !occupy; 
+    assign D_slave_en              = _en_slave && (!load_stall) & !occupy & D_slave_inst_ok; 
     assign D_slave_is_in_delayslot = D_master_is_branch & D_slave_en;
 
     always_comb begin : define_slave_en

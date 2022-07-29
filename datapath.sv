@@ -85,6 +85,7 @@ wire            F_pc_except                 ;
 
 // ===== D =====
 wire [31:0]     D_master_inst     ,D_slave_inst    ;
+wire            D_master_inst_ok  ,D_slave_inst_ok ;
 wire [31:0]     D_master_pc       ,D_slave_pc      ;
 wire            D_master_is_in_delayslot ,D_slave_is_in_delayslot ;
 // inst
@@ -294,7 +295,9 @@ if_id u_if_id(
 	.occupy                   		( occupy                   		),
 	.D_ena1                   		( D_ena                   		),
 	.D_ena2                    		( D_slave_ena              		),
-	.D_data1                  		( D_master_inst            		),
+	.D_inst_ok1               		( D_master_inst_ok              ),
+	.D_inst_ok2               		( D_slave_inst_ok               ),
+    .D_data1                  		( D_master_inst            		),
 	.D_data2                  		( D_slave_inst             		),
 	.D_addr1                  		( D_master_pc              		),
 	.D_addr2                  		( D_slave_pc              		),
@@ -453,6 +456,7 @@ issue_ctrl u_issue_ctrl(
     .D_slave_is_branch              ( (|D_slave_branch_type)   ),
     .D_slave_is_spec_inst           ( D_slave_spec_inst        ),
     .D_slave_is_only_in_master      ( D_slave_is_only_in_master),
+    .D_slave_inst_ok                ( D_slave_inst_ok          ),
     .occupy                         ( occupy                   ),
     
     .D_slave_is_in_delayslot        ( D_slave_is_in_delayslot  ),
