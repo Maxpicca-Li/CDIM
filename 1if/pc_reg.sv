@@ -21,7 +21,7 @@ module pc_reg (
     // 中间逻辑
     reg  [31:0] pc_reg;
     always_ff @(posedge clk) begin
-        if(pc_en)
+        // if(pc_en)
             pc_reg <= pc_next; 
     end
 
@@ -35,7 +35,8 @@ module pc_reg (
                 pc_next = branch_addr;
             else if (flush_all)
                 pc_next = flush_all_addr;
-            // else if (occupy)
+            else if (occupy)
+                pc_next = pc_curr;
             //  pc_next = (pc_en & inst_data_ok1) ? pc_curr + 32'd4 : pc_curr;
             else if(inst_data_ok1 && inst_data_ok2)
                 pc_next = pc_curr + 32'd8;
