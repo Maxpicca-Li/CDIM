@@ -19,6 +19,7 @@ module mem_wb(
     input wire [63:0]M_master_alu_out64, 
 
     input wire M_slave_reg_wen,
+    input wire M_slave_memtoReg,
     input wire [4 :0]M_slave_reg_waddr,
     input wire [`EXCEPT_BUS]M_slave_except,
     input wire [31:0]M_slave_inst,
@@ -37,6 +38,7 @@ module mem_wb(
     output reg [63:0]W_master_alu_out64, 
 
     output reg W_slave_reg_wen,
+    output reg W_slave_memtoReg,
     output reg [4 :0]W_slave_reg_waddr,
     output reg [`EXCEPT_BUS]W_slave_except,
     output reg [31:0]W_slave_inst,
@@ -74,6 +76,7 @@ module mem_wb(
     always @(posedge clk) begin
         if(rst | clear2) begin
             W_slave_reg_wen <= 0;
+            W_slave_memtoReg <= 0;
             W_slave_reg_waddr <= 0;
             W_slave_except <= 0;
             W_slave_inst <= 0;
@@ -82,6 +85,7 @@ module mem_wb(
         end
         else if (ena2) begin
             W_slave_reg_wen <= M_slave_reg_wen;
+            W_slave_memtoReg <= M_slave_memtoReg;
             W_slave_reg_waddr <= M_slave_reg_waddr;
             W_slave_except <= M_slave_except;
             W_slave_inst <= M_slave_inst;
