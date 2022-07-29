@@ -227,6 +227,7 @@ assign D_slave_is_pc_except  = ~(|D_slave_pc[1:0]) ? 1'b0 : 1'b1;
 // 冒险处理
 hazard u_hazard(
     //ports
+    .occupy                         ( occupy                         ),
     .i_stall                        ( i_stall                        ),
     .d_stall                        ( d_stall                        ),
     .D_master_rs                    ( D_master_rs                    ),
@@ -287,6 +288,7 @@ if_id u_if_id(
 	.rst                      		( rst                      		),
 	.flush_rst                      ( D_flush | D_master_flush_all  ),
     .delay_rst                		( E_branch_taken && ~E_slave_ena),
+    .F_ena                          ( F_ena                         ),
 	.master_is_branch         		( (|D_master_branch_type) 		),
 	.master_is_in_delayslot_o 		( D_master_is_in_delayslot 		),
 	.occupy                   		( occupy                   		),

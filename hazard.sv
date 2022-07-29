@@ -1,5 +1,6 @@
 `timescale 1ns/1ps
 module hazard (
+    input wire       occupy,
     input wire       i_stall,
     input wire       d_stall,
     input wire [4:0] D_master_rs,
@@ -43,7 +44,7 @@ module hazard (
                      (M_master_memtoReg & (D_master_rs == M_master_reg_waddr | D_master_rt == M_master_reg_waddr))*/;
     assign longest_stall = E_alu_stall | i_stall | d_stall;
     
-    assign F_ena = ~(lwstall | longest_stall); // 存在fifo情况下，d_stall不影响取指
+    assign F_ena = ~(lwstall | longest_stall | occupy); // 存在fifo情况下，d_stall不影响取指
     assign D_ena = ~(lwstall | longest_stall);
     assign E_ena = ~longest_stall;
     assign M_ena = ~longest_stall;

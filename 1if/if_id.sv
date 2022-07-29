@@ -5,6 +5,7 @@ module if_id(
     input  logic                rst,
     input  logic                flush_rst,
     input  logic                delay_rst,                // 下一条master指令是延迟槽指令，要存起来
+    input  logic                F_ena,
     input  logic                master_is_branch,         // 延迟槽判断
     output logic                master_is_in_delayslot_o, // 延迟槽判断结果
     output logic                occupy,                   // 表示register占位
@@ -33,7 +34,7 @@ module if_id(
     logic         delayslot_enable; // 需要读取延迟槽的数据
     logic [31:0]  delayslot_data;
     logic [31:0]  delayslot_addr;
-    // temp reg
+    // save reg
     logic [31:0] D_data1_save;
     logic [31:0] D_data2_save;
     logic [31:0] D_addr1_save;
@@ -51,47 +52,13 @@ module if_id(
             D_inst_ok1_save <= 0;
             D_inst_ok2_save <= 0;
         end 
-        else if (D_ena1) begin
-            if(F_inst_ok1 & F_inst_ok2) begin
-                D_data1_save    <= F_data1;
-                D_data2_save    <= F_data2;
-                D_addr1_save    <= F_addr1;
-                D_addr2_save    <= F_addr2;
-                D_inst_ok1_save <= 1;
-                D_inst_ok2_save <= 1;
-            end 
-            else if(F_inst_ok1) begin
-                D_data1_save    <= F_data1;
-                D_data2_save    <= 0;
-                D_addr1_save    <= F_addr1;
-                D_addr2_save    <= 0;
-                D_inst_ok1_save <= 1;
-                D_inst_ok2_save <= 0;
-            end
-            else if(F_inst_ok2) begin
-                D_data1_save    <= F_data2;
-                D_data2_save    <= 0;
-                D_addr1_save    <= F_addr2;
-                D_addr2_save    <= 0;
-                D_inst_ok1_save <= 1;
-                D_inst_ok2_save <= 0;
-            end 
-            else begin
-                D_data1_save    <= D_data1_save;
-                D_data2_save    <= D_data2_save;
-                D_addr1_save    <= D_addr1_save;
-                D_addr2_save    <= D_addr2_save;
-                D_inst_ok1_save <= D_inst_ok1_save;
-                D_inst_ok2_save <= D_inst_ok2_save;
-            end
-        end
-        else begin
-            D_data1_save    <= D_data1_save;
-            D_data2_save    <= D_data2_save;
-            D_addr1_save    <= D_addr1_save;
-            D_addr2_save    <= D_addr2_save;
-            D_inst_ok1_save <= D_inst_ok1_save;
-            D_inst_ok2_save <= D_inst_ok2_save;
+        else if (F_ena) begin
+            D_data1_save    <= F_data1;
+            D_data2_save    <= F_data2;
+            D_addr1_save    <= F_addr1;
+            D_addr2_save    <= F_addr2;
+            D_inst_ok1_save <= F_inst_ok1;
+            D_inst_ok2_save <= F_inst_ok2;
         end
     end
 
@@ -181,12 +148,27 @@ module if_id(
             D_inst_ok2 = 0;
         end
         else begin
-            D_data1    = D_data1_save   ;
-            D_data2    = D_data2_save   ;
-            D_addr1    = D_addr1_save   ;
-            D_addr2    = D_addr2_save   ;
-            D_inst_ok1 = D_inst_ok1_save;
-            D_inst_ok2 = D_inst_ok2_save;
+            if(D_inst_ok1_save) begin
+                D_data1    = D_data1_save   ;
+                D_addr1    = D_addr1_save   ;
+                D_inst_ok1 = D_inst_ok1_save;
+            end
+            else begin
+                D_data1    = 0;
+                D_addr1    = 0;
+                D_inst_ok1 = 0;
+            end
+            
+            if(D_inst_ok2_save) begin
+                D_data2    = D_data2_save   ;
+                D_addr2    = D_addr2_save   ;
+                D_inst_ok2 = D_inst_ok2_save;    
+            end
+            else begin
+                D_data2    = 0;
+                D_addr2    = 0;
+                D_inst_ok2 = 0;
+            end
         end
     end
 
