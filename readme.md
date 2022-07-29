@@ -13,6 +13,7 @@
 - `dev_lw`：基于`lyq_axi`优化了load to use的stall，同时将M的访存数据前推到D。
 - `dev_occupy`：基于`lyq_axi`移除了fifo，并区分了F和D，利用occupy存放暂时无法双发的指令。
 - `dev_cache`：基于`dev_lw`，只在E传递访存控制信号和数据，由D$自己流水生成M的信号，并在datapath的M阶段返回需要的数据；独立外设访问。
+- `dev_bp`：基于`dev_lw`，添加局部分支预测。
 
 ## TODO
 
