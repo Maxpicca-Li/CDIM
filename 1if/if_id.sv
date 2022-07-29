@@ -140,9 +140,9 @@ module if_id(
             D_inst_ok2 = 0;
         end
         else if(delay_rst) begin
-            D_data1    = F_data1;
+            D_data1    = D_data1_save;
             D_data2    = 0;
-            D_addr1    = F_addr1;
+            D_addr1    = D_addr1_save;
             D_addr2    = 0;
             D_inst_ok1 = 1;
             D_inst_ok2 = 0;
