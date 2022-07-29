@@ -5,7 +5,6 @@ module if_id(
     input  logic                rst,
     input  logic                flush_rst,
     input  logic                delay_rst,                // 下一条master指令是延迟槽指令，要存起来
-    input  logic                F_ena,
     input  logic                master_is_branch,         // 延迟槽判断
     output logic                master_is_in_delayslot_o, // 延迟槽判断结果
     output logic                occupy,                   // 表示register占位
@@ -52,7 +51,7 @@ module if_id(
             D_inst_ok1_save <= 0;
             D_inst_ok2_save <= 0;
         end 
-        else if (F_ena) begin
+        else if (D_ena1 & !occupy) begin
             D_data1_save    <= F_data1;
             D_data2_save    <= F_data2;
             D_addr1_save    <= F_addr1;

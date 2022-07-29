@@ -288,7 +288,6 @@ if_id u_if_id(
 	.rst                      		( rst                      		),
 	.flush_rst                      ( D_flush | D_master_flush_all  ),
     .delay_rst                		( E_branch_taken && ~E_slave_ena),
-    .F_ena                          ( F_ena                         ),
 	.master_is_branch         		( (|D_master_branch_type) 		),
 	.master_is_in_delayslot_o 		( D_master_is_in_delayslot 		),
 	.occupy                   		( occupy                   		),
