@@ -35,7 +35,6 @@ module d_confreg(
     input wire awready,
     
     output wire [31:0] wdata,
-    output wire [3:0] wstrb,
     output wire wlast,
     output wire wvalid,
     input wire wready,
@@ -127,5 +126,4 @@ module d_confreg(
     
     assign awaddr = data_addr;
     assign wdata  = data_wdata;
-    assign wstrb  = data_wen;
 endmodule

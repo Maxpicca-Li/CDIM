@@ -36,7 +36,7 @@ module d_arbitrater (
     output wire awvalid,
     input wire awready,
     
-    output reg [31:0] wdata,
+    output wire [31:0] wdata,
     output reg [3:0] wstrb,
     //output reg wlast,
     output wire wlast,
@@ -59,6 +59,7 @@ module d_arbitrater (
     wire         cfg_wvalid     , cache_wvalid;
     wire         cfg_writting;
     wire [31:0] cache_wdata;
+    reg  [31:0] cfg_wdata;
     d_cache_daxi u_d_cache_daxi(
         .clk(clk), .rst(rst),
         .data_en_E(~no_cache_E),
@@ -145,8 +146,8 @@ module d_arbitrater (
         .awvalid         (cfg_awvalid),
         .awready         (awready),
 
-        .wdata           (cfg_wdata ),
-        .wstrb           (cfg_wstrb ),
+        .wdata           ( ),
+        //.wstrb           (cfg_wstrb ),
         .wlast           (cfg_wlast ),
         .wvalid          (cfg_wvalid),
         .wready          (wready),
@@ -171,19 +172,20 @@ module d_arbitrater (
     assign bready     = cfg_bready | cache_bready;
     assign awlen      = cache_awlen;
     //assign wdata      = no_cache ? data_wdata : cache_wdata;
+    assign wdata      = (data_en & ~no_cache) ? cache_wdata : cfg_wdata;
     always @(posedge clk) begin
         if(data_en) begin
         if(no_cache) begin
             awaddr <= data_addr;
             awsize <= data_wen==4'b1111 ? 3'b10:
                        data_wen==4'b1100 || data_wen==4'b0011 ? 3'b01: 3'b00;
-            wdata  <= data_wdata;
+            cfg_wdata  <= data_wdata;
             wstrb  <= data_wen;
         end
         else begin
             awaddr <= cache_awaddr;
             awsize <= 3'b10;
-            wdata  <= cache_wdata;
+            //wdata  <= cache_wdata;
             wstrb  <= cache_wstrb;
         end
         end
