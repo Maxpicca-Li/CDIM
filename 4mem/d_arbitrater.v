@@ -171,8 +171,7 @@ module d_arbitrater (
     assign wvalid     = cfg_wvalid | cache_wvalid;
     assign bready     = cfg_bready | cache_bready;
     assign awlen      = cache_awlen;
-    //assign wdata      = no_cache ? data_wdata : cache_wdata;
-    assign wdata      = (data_en & ~no_cache) ? cache_wdata : cfg_wdata;
+    assign wdata      = cfg_writting ? cfg_wdata : cache_wdata;
     always @(posedge clk) begin
         if(data_en) begin
         if(no_cache) begin
