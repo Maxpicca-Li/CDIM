@@ -671,6 +671,8 @@ alu_master u_alu_master(
     .aluop                 ( E_master_aluop    ),
     .a                     ( E_master_alu_srca ),
     .b                     ( E_master_alu_srcb ),
+    .cp0_data              ( cp0_data              ),
+    .hilo                  ( hilo                  ),
     .stall_alu             ( E_alu_stall             ),
     .y                     ( E_master_alu_res_tmp  ),
     .aluout_64             ( E_master_alu_out64),
@@ -686,8 +688,19 @@ alu_slave u_alu_slave(
     .overflow              ( E_slave_overflow )
 );
 
-// assign E_master_alu_res = E_master_is_link_pc8 ? (E_master_pc + 32'd8) : E_master_alu_res_tmp;
-alu_res_select u_alu_res_select_master(
+assign E_master_alu_res = {32{E_master_is_link_pc8==1'b1}} & (E_master_pc + 32'd8) |
+                          {32{E_master_is_link_pc8==1'b0}} & E_master_alu_res_tmp  ;
+// E阶段写，M阶段出结果
+hilo_reg u_hilo_reg(
+    //ports
+    .clk                ( clk                ),
+    .rst                ( rst                ),
+    .wen                ( E_master_hilowrite & M_ena & ~M_flush), // 保证E_master_hilowrite能成功送到M
+    .hilo_i             ( E_master_alu_out64 ),  
+    .hilo_o             ( hilo               )
+);
+
+/*alu_res_select u_alu_res_select_master(
 	//ports
 	.aluop       		( E_master_aluop       		),
 	.is_link_pc8        ( E_master_is_link_pc8      ),
@@ -708,7 +721,7 @@ hilo_reg u_hilo_reg(
 	.rs_value 		( E_master_rs_value ),
 	.hilo_i   		( E_master_alu_out64),
 	.hilo_o   		( hilo   		    )
-);
+);*/
 
 // ====================================== Memory ======================================
 // wire [31:0] M_master_alu_res_tmp, M_slave_alu_res_tmp;

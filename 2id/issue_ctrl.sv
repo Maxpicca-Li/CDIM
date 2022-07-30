@@ -55,7 +55,7 @@ module issue_ctrl (
         end
     end
 
-    assign load_stall = (E_master_memtoReg & (D_slave_rs == E_master_reg_waddr | D_slave_rt == E_master_reg_waddr)) || 
-                        (M_master_memtoReg & (D_slave_rs == M_master_reg_waddr | D_slave_rt == M_master_reg_waddr));
+    assign load_stall = (E_master_memtoReg & ((|D_slave_rs & D_slave_rs == E_master_reg_waddr) | (|D_slave_rt & D_slave_rt == E_master_reg_waddr)))/* || 
+                        (M_master_memtoReg & ((|D_slave_rs & D_slave_rs == M_master_reg_waddr) | (|D_slave_rt & D_slave_rt == M_master_reg_waddr)))*/;
 
 endmodule
