@@ -40,8 +40,6 @@ module  decoder(
 );
 
     assign op = instr[31:26];
-    assign rs = instr[25:21];
-    assign rt = instr[20:16];
     assign rd = instr[15:11];
     assign shamt = instr[10:6];
     assign funct = instr[5:0];
@@ -73,6 +71,8 @@ module  decoder(
         spec_inst = 1'b0;
         trap_type = `TT_NOP;
         signsD = `CTRL_SIGN_NOP;
+        rs = instr[25:21];
+        rt = instr[20:16];
         case(op)
             `OP_SPECIAL_INST:begin
                 signsD.reg_wen = 1'b1;
@@ -191,11 +191,15 @@ module  decoder(
                         spec_inst = 1'b1;
                         syscall_inst =1'b1;
                         signsD.reg_wen = 1'b0;
+                        rs = 0;
+                        rt = 0;
                     end
                     `FUN_BREAK  :begin
                         break_inst = 1'b1;
                         spec_inst = 1'b1;
                         signsD.reg_wen = 1'b0;
+                        rs = 0;
+                        rt = 0;
                     end
                     `FUN_SYNC   :begin
                         signsD.reg_wen = 1'b0;// NOP ==> don't need to set value
@@ -279,6 +283,7 @@ module  decoder(
                 signsD.mem_en = 1'b1;
                 signsD.reg_wen = 1'b1;
                 signsD.alu_selb = 1'b1;
+                rt = 0; // 写GPR[rt]，读GPR[rt]
             end
             `OP_LBU   : begin
                 signsD.aluop = `ALUOP_ADDU;
@@ -287,6 +292,7 @@ module  decoder(
                 signsD.mem_en = 1'b1;
                 signsD.reg_wen = 1'b1;
                 signsD.alu_selb = 1'b1;
+                rt = 0; // 写GPR[rt]，读GPR[rt]
             end
             `OP_LH    : begin
                 signsD.aluop = `ALUOP_ADDU;
@@ -295,6 +301,7 @@ module  decoder(
                 signsD.mem_en = 1'b1;
                 signsD.reg_wen = 1'b1;
                 signsD.alu_selb = 1'b1;
+                rt = 0; // 写GPR[rt]，读GPR[rt]
             end
             `OP_LHU   : begin
                 signsD.aluop = `ALUOP_ADDU;
@@ -303,6 +310,7 @@ module  decoder(
                 signsD.mem_en = 1'b1;
                 signsD.reg_wen = 1'b1;
                 signsD.alu_selb = 1'b1;
+                rt = 0; // 写GPR[rt]，读GPR[rt]
             end
             `OP_LW    : begin
                 signsD.aluop = `ALUOP_ADDU;
@@ -311,6 +319,7 @@ module  decoder(
                 signsD.mem_en = 1'b1;
                 signsD.reg_wen = 1'b1;
                 signsD.alu_selb = 1'b1;
+                rt = 0; // 写GPR[rt]，读GPR[rt]
             end
             `OP_SB    : begin
                 signsD.aluop = `ALUOP_ADDU;
@@ -335,21 +344,25 @@ module  decoder(
                 signsD.aluop = `ALUOP_ADD;
                 signsD.reg_wen = 1'b1;
                 signsD.alu_selb = 1'b1;
+                rt = 0; // 写GPR[rt]，读GPR[rt]
             end
             `OP_ADDIU : begin
                 signsD.aluop = `ALUOP_ADDU;
                 signsD.reg_wen = 1'b1;
                 signsD.alu_selb = 1'b1;
+                rt = 0; // 写GPR[rt]，读GPR[rt]
             end
             `OP_SLTI  : begin
                 signsD.aluop = `ALUOP_SLT;
                 signsD.reg_wen = 1'b1;
                 signsD.alu_selb = 1'b1;
+                rt = 0; // 写GPR[rt]，读GPR[rt]
             end
             `OP_SLTIU : begin
                 signsD.aluop = `ALUOP_SLTU;
                 signsD.reg_wen = 1'b1;
                 signsD.alu_selb = 1'b1;
+                rt = 0; // 写GPR[rt]，读GPR[rt]
             end
             // logic imme
             `OP_ANDI  : begin
@@ -375,24 +388,30 @@ module  decoder(
             // jump
             `OP_J     : begin
                 signsD.aluop = `ALUOP_NOP;
+                rs = 0;
+                rt = 0;
             end
             `OP_JAL   : begin
                 signsD.aluop = `ALUOP_NOP;
                 signsD.reg_wen = 1'b1;
+                rs = 0;
+                rt = 0;
             end
             // branch
             `OP_BEQ, `OP_BNE, `OP_BGTZ, `OP_BLEZ: begin
                 ;// NOP ==> don't need to set value
             end
             `OP_REGIMM: begin     // BGEZ,BLTZ,BGEZAL,BLTZAL
-                case(rt)
+                case(instr[20:16])
                     // `RT_BGEZ
                     // `RT_BLTZ
                     `RT_BGEZAL: begin
                         signsD.reg_wen = 1'b1;
+                        rt = 0; // 与GPR[rt]无关
                     end
                     `RT_BLTZAL: begin
                         signsD.reg_wen = 1'b1;
+                        rt = 0; // 与GPR[rt]无关
                     end
                     `RT_SYNCI: begin
                         signsD.flush_all = 1'b1;
@@ -403,14 +422,16 @@ module  decoder(
             // special
             `OP_COP0_INST:begin
                 spec_inst = 1'b1;
-                case (rs)
+                case (instr[25:21])
                     `RS_MFC0: begin
                         signsD.aluop = `ALUOP_MFC0;
                         signsD.reg_wen = 1'b1;
+                        rs = 0; // 与GPR[rs]无关
                     end
                     `RS_MTC0: begin
                         signsD.aluop = `ALUOP_MTC0;
                         signsD.cp0write = 1'b1;
+                        rs = 0; // 与GPR[rs]无关
                     end
                 endcase
             end
@@ -437,7 +458,7 @@ module  decoder(
             `OP_BGTZ  : {branch_type, is_link_pc8} = {`BT_BGTZ,1'b0}; // BGTZ
             `OP_BLEZ  : {branch_type, is_link_pc8} = {`BT_BLEZ,1'b0}; // BLEZ  
             `OP_REGIMM: begin    // BGEZ,BLTZ,BGEZAL,BLTZAL
-                case(rt)
+                case(instr[20:16])
                     `RT_BGEZ  : {branch_type, is_link_pc8} = {`BT_BGEZ_, 1'b0};
                     `RT_BLTZ  : {branch_type, is_link_pc8} = {`BT_BLTZ_, 1'b0};
                     `RT_BGEZAL: {branch_type, is_link_pc8} = {`BT_BGEZ_, 1'b1}; // GPR[31] = PC + 8
@@ -451,39 +472,39 @@ module  decoder(
 
 
     always_comb begin : generate_reg_waddr
-        reg_waddr = rd;
+        reg_waddr = instr[15:11];
         case (op) 
             // load
-            `OP_LB    : reg_waddr = rt;
-            `OP_LBU   : reg_waddr = rt;
-            `OP_LH    : reg_waddr = rt;
-            `OP_LHU   : reg_waddr = rt;
-            `OP_LW    : reg_waddr = rt;
+            `OP_LB    : reg_waddr = instr[20:16];
+            `OP_LBU   : reg_waddr = instr[20:16];
+            `OP_LH    : reg_waddr = instr[20:16];
+            `OP_LHU   : reg_waddr = instr[20:16];
+            `OP_LW    : reg_waddr = instr[20:16];
             // arith imme
-            `OP_ADDI  : reg_waddr = rt;
-            `OP_ADDIU : reg_waddr = rt;
-            `OP_SLTI  : reg_waddr = rt;
-            `OP_SLTIU : reg_waddr = rt;
+            `OP_ADDI  : reg_waddr = instr[20:16];
+            `OP_ADDIU : reg_waddr = instr[20:16];
+            `OP_SLTI  : reg_waddr = instr[20:16];
+            `OP_SLTIU : reg_waddr = instr[20:16];
             // logic imme
-            `OP_ANDI  : reg_waddr = rt;
-            `OP_ORI   : reg_waddr = rt;
-            `OP_XORI  : reg_waddr = rt;
-            `OP_LUI   : reg_waddr = rt;
+            `OP_ANDI  : reg_waddr = instr[20:16];
+            `OP_ORI   : reg_waddr = instr[20:16];
+            `OP_XORI  : reg_waddr = instr[20:16];
+            `OP_LUI   : reg_waddr = instr[20:16];
             // jump
             `OP_JAL   : reg_waddr = 5'd31;
             `OP_REGIMM: begin    // BGEZ,BLTZ,BGEZAL,BLTZAL
-                case(rt)
+                case(instr[20:16])
                     `RT_BGEZAL: reg_waddr = 5'd31;
                     `RT_BLTZAL: reg_waddr = 5'd31;
-                    default:reg_waddr = rd;
+                    default:reg_waddr = instr[15:11];
                 endcase
             end
             `OP_COP0_INST:
-                if (rs==`RS_MFC0)  // GPR[rt] ← CP0[rd, sel]
-                    reg_waddr = rt; 
+                if (instr[25:21]==`RS_MFC0)  // GPR[rt] ← CP0[rd, sel]
+                    reg_waddr = instr[20:16]; 
                 else
-                    reg_waddr = rd; 
-            default:reg_waddr = rd; 
+                    reg_waddr = instr[15:11]; 
+            default:reg_waddr = instr[15:11]; 
         endcase
     end
 
