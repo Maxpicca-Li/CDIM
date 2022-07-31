@@ -11,6 +11,8 @@ module issue_ctrl (
     input           D_master_is_spec_inst,
     input           E_master_memtoReg,
     input [4:0]     E_master_reg_waddr,
+    input           E_slave_memtoReg,
+    input [4:0]     E_slave_reg_waddr,
     //slave's status
     input  [5:0]    D_slave_op,
     input  [4:0]    D_slave_rs,
@@ -35,7 +37,8 @@ module issue_ctrl (
     assign D_slave_is_in_delayslot = D_master_is_branch & D_slave_en;
     assign fifo_disable = fifo_empty || fifo_almost_empty; // fifo 限制
     assign struct_conflict = (D_master_mem_en & D_slave_mem_en);
-    assign load_stall = (E_master_memtoReg & ((|D_slave_rs & D_slave_rs == E_master_reg_waddr) | (|D_slave_rt & D_slave_rt == E_master_reg_waddr)));
+    assign load_stall = (E_master_memtoReg & ((|D_slave_rs & D_slave_rs == E_master_reg_waddr) | (|D_slave_rt & D_slave_rt == E_master_reg_waddr))) |
+                        (E_slave_memtoReg & ((|D_slave_rs & D_slave_rs == E_slave_reg_waddr) | (|D_slave_rt & D_slave_rt == E_slave_reg_waddr)));
 
     /* 
     数据冲突 WAR
@@ -57,6 +60,7 @@ module issue_ctrl (
             D_slave_en = 1'b0;
         else begin
             if(D_master_reg_wen && (D_master_reg_waddr != 5'd0)) begin
+                // TODO: 双发率限制
                 D_slave_en = ((|D_slave_rs) & D_slave_rs != D_master_reg_waddr) && ((|D_slave_rt) & D_slave_rt != D_master_reg_waddr);
             end
             else begin
