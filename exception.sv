@@ -7,7 +7,7 @@ module exception(
     input              master_is_in_delayslot,
     input [`EXCEPT_BUS]       master_except  ,
     input [31:0]       master_pc      ,
-    input [31:0]       master_daddr   ,
+    input [31:0]       mem_addr   ,
     input              slave_is_in_delayslot,
     input [`EXCEPT_BUS]       slave_except   ,
     input [31:0]       slave_pc       ,
@@ -38,7 +38,7 @@ module exception(
             end else if(except[1] == 1'b1) begin
                 // data load出错
                 excepttype = 32'h00000004;
-                except_bad_addr = master_daddr;
+                except_bad_addr = mem_addr;
             end else if(except[7] == 1'b1) begin
                 // inst load出错
                 excepttype = 32'h00000004;
@@ -46,7 +46,7 @@ module exception(
             end else if(except[0] == 1'b1) begin
                 // data store出错
                 excepttype = 32'h00000005;
-                except_bad_addr = master_daddr;
+                except_bad_addr = mem_addr;
             end else if(except[6] == 1'b1) begin
                 excepttype = 32'h00000008;
             end else if(except[5] == 1'b1) begin

@@ -7,7 +7,20 @@ module ex_mem(
     input wire ena1,
     input wire ena2,
 
-    input wire E_master_mem_en,
+    input wire E_mem_en,
+    input wire E_mem_ren,
+    input wire E_mem_wen,
+    input wire [5 :0] E_mem_op,
+    input wire [31:0] E_mem_addr,
+    input wire [31:0] E_mem_wdata,
+    output reg M_mem_en,
+    output reg M_mem_ren,
+    output reg M_mem_wen,
+    output reg [5 :0] M_mem_op,
+    output reg [31:0] M_mem_addr,
+    output reg [31:0] M_mem_wdata,
+
+    input wire E_master_mem_sel,
     input wire E_master_hilowrite,
     input wire E_master_memtoReg,
     input wire E_master_reg_wen,
@@ -25,6 +38,7 @@ module ex_mem(
     input wire [31:0]E_master_mem_addr,
     input wire [63:0]E_master_alu_out64,
 
+    input wire E_slave_mem_sel,
     input wire E_slave_reg_wen,
     input wire E_slave_memtoReg,
     input wire E_slave_cp0write,
@@ -36,7 +50,7 @@ module ex_mem(
     input wire [31:0]E_slave_inst,
     input wire [31:0]E_slave_alu_res,
 
-    output reg M_master_mem_en,
+    output reg M_master_mem_sel,
     output reg M_master_hilowrite,
     output reg M_master_memtoReg,
     output reg M_master_reg_wen,
@@ -53,6 +67,8 @@ module ex_mem(
     output reg [31:0]M_master_pc,
     output reg [31:0]M_master_mem_addr,
     output reg [63:0]M_master_alu_out64,
+    
+    output reg M_slave_mem_sel,
     output reg M_slave_reg_wen,
     output reg M_slave_memtoReg,
     output reg M_slave_cp0write,
@@ -67,7 +83,7 @@ module ex_mem(
 
     always_ff @(posedge clk) begin
         if(rst | clear1) begin
-            M_master_mem_en <= 0;
+            M_master_mem_sel <= 0;
             M_master_hilowrite <= 0;
             M_master_memtoReg <= 0;
             M_master_reg_wen <= 0;
@@ -84,9 +100,15 @@ module ex_mem(
             M_master_alu_out64 <= 0;
             M_master_mem_addr <= 0;
             M_master_aluop <= 0;
+            M_mem_en <= 0;
+            M_mem_ren <= 0;
+            M_mem_wen <= 0;
+            M_mem_op <= 0;
+            M_mem_addr <= 0;
+            M_mem_wdata <= 0;
         end
         else if (ena1) begin
-            M_master_mem_en <= E_master_mem_en;
+            M_master_mem_sel <= E_master_mem_sel;
             M_master_hilowrite <= E_master_hilowrite;
             M_master_memtoReg <= E_master_memtoReg;
             M_master_reg_wen <= E_master_reg_wen;
@@ -103,6 +125,12 @@ module ex_mem(
             M_master_alu_out64 <= E_master_alu_out64;
             M_master_mem_addr <= E_master_mem_addr;
             M_master_aluop <= E_master_aluop;
+            M_mem_en <= E_mem_en;
+            M_mem_ren <= E_mem_ren;
+            M_mem_wen <= E_mem_wen;
+            M_mem_op <= E_mem_op;
+            M_mem_addr <= E_mem_addr;
+            M_mem_wdata <= E_mem_wdata;
         end
     end
 
@@ -118,6 +146,7 @@ module ex_mem(
             M_slave_inst <= 0;
             M_slave_alu_res <= 0;
             M_slave_aluop <= 0;
+            M_slave_mem_sel <= 0;
         end
         else if (ena2) begin
             M_slave_reg_wen <= E_slave_reg_wen;
@@ -130,6 +159,7 @@ module ex_mem(
             M_slave_inst <= E_slave_inst;
             M_slave_alu_res <= E_slave_alu_res;
             M_slave_aluop <= E_slave_aluop;
+            M_slave_mem_sel <= E_slave_mem_sel;
         end
     end
 

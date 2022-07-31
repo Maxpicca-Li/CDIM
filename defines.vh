@@ -371,8 +371,8 @@
 
 // condition move type
 `define CmovBus 1:0
-`define C_MOVN  01
-`define C_MOVZ  10
+`define C_MOVN  2'b01
+`define C_MOVZ  2'b10
 
 `define MEM_LOAD    2'b10
 `define MEM_STOR    2'b01

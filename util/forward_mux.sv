@@ -14,9 +14,9 @@ module forward_mux(
     input [ 4:0]            alu_waddr4,
     input [31:0]            alu_wdata4,
     
-    input                   memtoReg,
-    input [ 4:0]            mem_waddr,
-    input [31:0]            mem_rdata,
+    // input                   memtoReg,
+    // input [ 4:0]            mem_waddr,
+    // input [31:0]            mem_rdata,
 
     input [ 4:0]            reg_addr,
     input [31:0]            reg_data_tmp,
@@ -32,8 +32,8 @@ module forward_mux(
             reg_data = alu_wdata3;
         else if(alu_wen4 && ~(|(alu_waddr4 ^ reg_addr)))
             reg_data = alu_wdata4;
-        else if(memtoReg && ~(|(mem_waddr ^ reg_addr)))
-            reg_data = mem_rdata;
+        // else if(memtoReg && ~(|(mem_waddr ^ reg_addr)))
+        //     reg_data = mem_rdata;
         else
             reg_data = reg_data_tmp;
     end

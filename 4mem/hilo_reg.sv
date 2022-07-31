@@ -67,6 +67,6 @@ module hilo_reg(
 
 	// 读寄存器：前MUL后MF*这种需要在MUL的M阶段，返回给MF*的E阶段数据
     // M阶段数据前推
-	assign hilo_o = hilo_reg;
+	assign hilo_o = wen ? hilo_i : hilo_reg;
 
 endmodule

@@ -131,36 +131,34 @@ module mycpu_top (
         .clk               		( clk               		),
         .rst               		( rst               		),
         .ext_int           		( ext_int           		),
-        
         // inst
-        .inst_sram_en      		( inst_en      		),
+        .i_stall           		( i_cache_stall        		),
         .stallF            		( stallF            		),
+        .inst_sram_en      		( inst_en            		),
         .F_pc              		( pcF_dp              		),
         .F_pc_next         		( pc_next_dp         		),
-        .i_stall           		( i_cache_stall           		),
         .inst_data_ok1     		( inst_data_ok1     		),
         .inst_data_ok2     		( inst_data_ok2     		),
         .inst_rdata1       		( inst_rdata1       		),
         .inst_rdata2       		( inst_rdata2       		),
-        
         // data
+        .d_stall           		( d_cache_stall           	),
+        .stallM            		( stallM            		),
         .mem_read_enE      		( mem_read_enE      		),
         .mem_write_enE     		( mem_write_enE     		),
-        .mem_addrE         		( mem_addrE_dp     		),
-        .mem_enM           		( data_en           		),
-        .stallM            		( stallM            		),
-        .mem_rlenM              ( data_rlen                 ),
-        .mem_wenM          		( data_wen          		),
-        .mem_addrM         		( data_addr_dp         		),
-        .mem_wdataM        		( data_wdata        		),
-        .d_stall           		( d_cache_stall           		),
-        .mem_rdataM        		( data_rdata        		),
-        
+        .mem_addrE         		( mem_addrE_dp      		),
+        .data_sram_enM     		( data_en           		),
+        .data_sram_rdataM  		( data_rdata          		),
+        .data_sram_rlenM   		( data_rlen           		),
+        .data_sram_wenM    		( data_wen             		),
+        .data_sram_addrM   		( data_addr_dp         		),
+        .data_sram_wdataM  		( data_wdata          		),
+        // debug
         .debug_wb_pc       		( debug_wb_pc       		),
         .debug_wb_rf_wen   		( debug_wb_rf_wen   		),
         .debug_wb_rf_wnum  		( debug_wb_rf_wnum  		),
         .debug_wb_rf_wdata 		( debug_wb_rf_wdata 		)
-    );    
+    );
 
     //简易的MMU
   

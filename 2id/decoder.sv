@@ -138,46 +138,46 @@ module  decoder(
                         signsD.aluop = `ALUOP_MULT;
                         signsD.hilowrite = 1'b1;
                         signsD.reg_wen = 1'b0;
-                        signsD.is_olny_in_master = 1'b1;
+                        // signsD.is_olny_in_master = 1'b1;
                     end
                     `FUN_MULTU : begin
                         signsD.aluop = `ALUOP_MULTU;
                         signsD.hilowrite = 1'b1;
                         signsD.reg_wen = 1'b0;
-                        signsD.is_olny_in_master = 1'b1;
+                        // signsD.is_olny_in_master = 1'b1;
                     end
                     `FUN_DIV   : begin
                         signsD.aluop = `ALUOP_DIV;
                         signsD.hilowrite = 1'b1;
                         signsD.reg_wen = 1'b0;
-                        signsD.is_olny_in_master = 1'b1;
+                        // signsD.is_olny_in_master = 1'b1;
                     end
                     `FUN_DIVU  : begin
                         signsD.aluop = `ALUOP_DIVU;
                         signsD.hilowrite = 1'b1;
                         signsD.reg_wen = 1'b0;
-                        signsD.is_olny_in_master = 1'b1;
+                        // signsD.is_olny_in_master = 1'b1;
                     end
                     // move ==> hilo access
                     `FUN_MFHI  : begin
                         signsD.aluop = `ALUOP_MFHI;
-                        signsD.is_olny_in_master = 1'b1;
+                        // signsD.is_olny_in_master = 1'b1;
                     end
                     `FUN_MFLO  : begin
                         signsD.aluop = `ALUOP_MFLO;
-                        signsD.is_olny_in_master = 1'b1;
+                        // signsD.is_olny_in_master = 1'b1;
                     end
                     `FUN_MTHI  : begin
                         signsD.aluop = `ALUOP_MTHI;
                         signsD.reg_wen = 1'b0;
                         signsD.hilowrite = 1'b1;
-                        signsD.is_olny_in_master = 1'b1;
+                        // signsD.is_olny_in_master = 1'b1;
                     end
                     `FUN_MTLO  : begin
                         signsD.aluop = `ALUOP_MTLO;
                         signsD.reg_wen = 1'b0;
                         signsD.hilowrite = 1'b1;
-                        signsD.is_olny_in_master = 1'b1;
+                        // signsD.is_olny_in_master = 1'b1;
                     end
                     // jump R
                     `FUN_JR    : begin
@@ -239,7 +239,7 @@ module  decoder(
                 endcase
             end
             `OP_SPECIAL2_INST: begin
-                signsD.is_olny_in_master = 1'b1; // mul/div ==> hilo access
+                // signsD.is_olny_in_master = 1'b1; // mul/div ==> hilo access
                 case (funct)
                     `FUN_MUL: begin
                         signsD.aluop = `ALUOP_MULT;

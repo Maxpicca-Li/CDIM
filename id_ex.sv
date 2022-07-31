@@ -41,7 +41,11 @@ module id_ex(
     input wire D_slave_alu_sela,
     input wire D_slave_alu_selb,
     input wire D_slave_is_link_pc8,
+    input wire D_slave_mem_en,
+    input wire D_slave_memWrite,
+    input wire D_slave_memRead,
     input wire D_slave_memtoReg,
+    input wire D_slave_hilowrite,   
     input wire D_slave_cp0write,
     input wire D_slave_is_in_delayslot,
     input wire [3 :0]D_slave_trap_type,
@@ -49,6 +53,7 @@ module id_ex(
     input wire [4 :0]D_slave_rt,
     input wire [4 :0]D_slave_shamt,
     input wire [4 :0]D_slave_reg_waddr,
+    input wire [5 :0]D_slave_op,
     input wire [7 :0]D_slave_aluop,
     input wire [`EXCEPT_BUS]D_slave_except,
     input wire [`CmovBus]D_slave_cmov_type,
@@ -92,7 +97,11 @@ module id_ex(
     output reg E_slave_alu_sela,
     output reg E_slave_alu_selb,
     output reg E_slave_is_link_pc8,
+    output reg E_slave_mem_en,
+    output reg E_slave_memWrite,
+    output reg E_slave_memRead,
     output reg E_slave_memtoReg,
+    output reg E_slave_hilowrite,
     output reg E_slave_cp0write,
     output reg E_slave_is_in_delayslot,
     output reg [3 :0]E_slave_trap_type,
@@ -100,6 +109,7 @@ module id_ex(
     output reg [4 :0]E_slave_rs,
     output reg [4 :0]E_slave_rt,
     output reg [4 :0]E_slave_reg_waddr,
+    output reg [5 :0]E_slave_op,
     output reg [7 :0]E_slave_aluop,
     output reg [`EXCEPT_BUS]E_slave_except,
     output reg [`CmovBus]E_slave_cmov_type,
@@ -180,6 +190,7 @@ module id_ex(
             E_slave_alu_selb <= 0;
             E_slave_is_link_pc8 <= 0;
             E_slave_memtoReg <= 0;
+            E_slave_hilowrite <= 0;
             E_slave_cp0write <= 0;
             E_slave_is_in_delayslot <= 0;
             E_slave_shamt <= 0;
@@ -196,6 +207,10 @@ module id_ex(
             E_slave_ena <= 0;
             E_slave_trap_type <= 0;
             E_slave_cmov_type <= 0;
+            E_slave_op <= 0;
+            E_slave_mem_en <= 0;
+            E_slave_memWrite <= 0;
+            E_slave_memRead <= 0;
         end
         else if (ena2) begin
             E_slave_reg_wen <= D_slave_reg_wen;
@@ -203,6 +218,7 @@ module id_ex(
             E_slave_alu_selb <= D_slave_alu_selb;
             E_slave_is_link_pc8 <= D_slave_is_link_pc8;
             E_slave_memtoReg <= D_slave_memtoReg;
+            E_slave_hilowrite <= D_slave_hilowrite;
             E_slave_cp0write <= D_slave_cp0write;
             E_slave_is_in_delayslot <= D_slave_is_in_delayslot;
             E_slave_shamt <= D_slave_shamt;
@@ -219,6 +235,10 @@ module id_ex(
             E_slave_ena <= ena2;
             E_slave_trap_type <= D_slave_trap_type;
             E_slave_cmov_type <= D_slave_cmov_type;
+            E_slave_op <= D_slave_op;
+            E_slave_mem_en <= D_slave_mem_en;
+            E_slave_memWrite <= D_slave_memWrite;
+            E_slave_memRead <= D_slave_memRead;
         end
     end
 

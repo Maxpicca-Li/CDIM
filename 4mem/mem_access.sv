@@ -1,9 +1,8 @@
 `timescale 1ns / 1ps
 
 module mem_access (
-        input [ 5:0] opM,
-
         input               mem_en,
+        input        [ 5:0] mem_op,
         input        [31:0] mem_wdata, // writedata_4B
         input        [31:0] mem_addr,
         output logic [31:0] mem_rdata,
@@ -16,14 +15,18 @@ module mem_access (
         output logic [31:0] data_sram_wdata,
 
         // 异常处理
+        input                      M_master_mem_sel,
+        input                      M_slave_mem_sel,
         input        [`EXCEPT_BUS] M_master_except_a,
-        output logic [`EXCEPT_BUS] M_master_except
+        output logic [`EXCEPT_BUS] M_master_except,
+        input        [`EXCEPT_BUS] M_slave_except_a,
+        output logic [`EXCEPT_BUS] M_slave_except
     );
 
     logic  ades, adel;
-    assign M_master_except = {M_master_except_a[8:2],adel,ades};
-    assign data_sram_en    = mem_en && ~(|M_master_except);
-    //assign data_sram_en    = mem_en && ~(|M_master_except) && mem_addr != 32'hbfaffff0;
+    assign M_master_except = {M_master_except_a[8:2],M_master_mem_sel & adel,M_master_mem_sel & ades};
+    assign M_slave_except = {M_slave_except_a[8:2],M_slave_mem_sel & adel,M_slave_mem_sel & ades};
+    assign data_sram_en    = mem_en && ((M_master_mem_sel && ~(|M_master_except)) || (M_slave_mem_sel && ~(|M_master_except) && ~(|M_slave_except))); // && mem_addr != 32'hbfaffff0;
     assign data_sram_addr  = mem_addr;
                 
     always_comb begin:mem_access_transform
@@ -33,7 +36,7 @@ module mem_access (
         mem_rdata = 0;
         data_sram_wdata = 0;
         data_sram_rlen = 0;
-        case(opM)
+        case(mem_op)
             `OP_LW: begin
                 data_sram_wen = 4'b0000;
                 data_sram_rlen = 2'd2;
@@ -87,6 +90,9 @@ module mem_access (
                                 {4{mem_addr[1:0]==2'b10}} & 4'b0100 |
                                 {4{mem_addr[1:0]==2'b01}} & 4'b0010 |
                                 {4{mem_addr[1:0]==2'b00}} & 4'b0001 ;
+            end
+            default:begin
+                data_sram_wen = 4'b0000;
             end
         endcase
     end

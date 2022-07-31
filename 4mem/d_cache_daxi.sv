@@ -164,7 +164,7 @@ module d_cache_daxi (
     end
 
 
-    assign stall = ~(state==IDLE || state==HitJudge && hit);
+    assign stall = ~(state==IDLE || state==HitJudge && !miss);
     assign data_rdata = hit &  ~collisionM ? block_sel_way[sel]:
                         collisionM     ? data_wdata_r: saved_rdata;
 //AXI
