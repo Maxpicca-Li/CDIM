@@ -924,16 +924,18 @@ cp0_reg u_cp0_reg(
     //ports
     .clk                    ( clk                        ),
     .rst                    ( rst                        ),
+    
     .we_i                   ( M_master_cp0write  & M_ena ),  // 只有master访问cp0_reg
     .waddr_i                ( M_master_rd                ),  // M阶段写入CP0  // MTCP0 CP0[rd, sel] ← GPR[rt] 
+    .wdata_i                ( M_master_rt_value          ),
     .raddr_i                ( E_master_rd                ),  // E阶段读取CP0，这两步可以避免数据冒险处理 // MFCP0 GPR[rt] ← CP0[rd, sel] 写寄存器
-    .data_i                 ( M_master_rt_value          ),
+    .rdata_o                ( cp0_data                   ),
+    
     .int_i                  ( ext_int                    ),
     .excepttype_i           ( M_excepttype               ),
     .current_inst_addr_i    ( M_except_inst_addr         ),
     .is_in_delayslot_i      ( M_except_in_delayslot      ),
     .bad_addr_i             ( M_bad_addr                 ),
-    .data_o                 ( cp0_data                   ),
     .count_o                ( cp0_count                  ),
     .compare_o              ( cp0_compare                ),
     .status_o               ( cp0_status                 ),

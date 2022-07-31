@@ -9,12 +9,12 @@
  	input  wire[4:0] waddr_i,
  	input  wire[4:0] raddr_i,
  	input  wire[5:0] int_i,
-	input  wire[`RegBus] data_i,
+	input  wire[`RegBus] wdata_i,
  	input  wire[`RegBus] excepttype_i,
  	input  wire[`RegBus] current_inst_addr_i,
  	input  wire[`RegBus] bad_addr_i,
 
-	output wire[`RegBus] data_o,
+	output wire[`RegBus] rdata_o,
 	output reg timer_int_o,
  	output reg[`RegBus] count_o,
  	output reg[`RegBus] compare_o,
@@ -47,22 +47,22 @@
  				/* code */
  				case (waddr_i)
  					`CP0_REG_COUNT:begin 
- 						count_o <= data_i;
+ 						count_o <= wdata_i;
  					end
  					`CP0_REG_COMPARE:begin 
- 						compare_o <= data_i;
+ 						compare_o <= wdata_i;
  						timer_int_o <= `InterruptNotAssert;
  					end
  					`CP0_REG_STATUS:begin 
- 						// status_o <= data_i;
-						 status_o[0] <= data_i[0];
-						 status_o[15:8] <= data_i[15:8];
+ 						// status_o <= wdata_i;
+						 status_o[0] <= wdata_i[0];
+						 status_o[15:8] <= wdata_i[15:8];
  					end
  					`CP0_REG_CAUSE:begin 
- 						cause_o[9:8] <= data_i[9:8];
+ 						cause_o[9:8] <= wdata_i[9:8];
  					end
  					`CP0_REG_EPC:begin 
- 						epc_o <= data_i;
+ 						epc_o <= wdata_i;
  					end
  					default : /* default */;
  				endcase
@@ -192,7 +192,7 @@
 	assign config1  = (~rst & ~(|( raddr_i ^ `CP0_REG_CONFIG    )));
 	assign badvaddr = (~rst & ~(|( raddr_i ^ `CP0_REG_BADVADDR  )));
 
-	assign data_o =   ( {32{rst}     } & 32'd0     )
+	assign rdata_o =   ( {32{rst}     } & 32'd0     )
 					| ( {32{count}   } & count_o   )
 					| ( {32{compare} } & compare_o )
 					| ( {32{status}  } & status_o  )
