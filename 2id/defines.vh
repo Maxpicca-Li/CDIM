@@ -370,9 +370,10 @@
 `define TT_TLTU     4'b0110
 
 // condition move type
-`define CmovBus 1:0
-`define C_MOVN  2'b01
-`define C_MOVZ  2'b10
+`define CmovBus     1:0
+`define C_MOVNOP    2'b00
+`define C_MOVN      2'b01
+`define C_MOVZ      2'b10
 
 `define MEM_LOAD    2'b10
 `define MEM_STOR    2'b01
@@ -389,21 +390,23 @@
 
 typedef struct packed{
     logic [7:0] aluop;
-    logic [`CmovBus] cmov_type;
     logic flush_all; // 1: flush all but commit current inst
-    logic reg_wen;
-    logic alu_sela; // 0: reg value; 1: shamt
-    logic alu_selb; // 0: reg value; 1: imm
+    logic read_rs; // 1: reg value; 0: shamt / not need read reg
+    logic read_rt; // 1: reg value; 0: imm / not need read reg
+    logic reg_write;
     logic mem_en;
-    logic memRead;
-    logic memWrite;
-    logic memtoReg;
-    logic cp0write;
-    logic hilowrite;
-    logic is_olny_in_master;
+    logic mem_write_reg;
+    logic mem_read;
+    logic mem_write;
+    logic cp0_read;
+    logic cp0_write;
+    logic hilo_read;
+    logic hilo_write;
+    logic may_bring_flush; // instruction which will bring flush
+    logic only_one_issue;  // such as
 } ctrl_sign;
 
-//                    {aluop     ,fa  ,rwen,sela,selb,men ,mr  ,mw  ,mtr ,cp0w,hlw ,ioim,cmov}
-`define CTRL_SIGN_NOP {`ALUOP_NOP,1'd0,1'd0,1'd0,1'd0,1'd0,1'd0,1'd0,1'd0,1'd0,1'd0,1'd0,2'd0}
+//                    {aluop     ,fa  ,rdrs,rdrt,rw  ,men ,mwr ,mr  ,mw  ,cp0r,cp0w,hlr ,hlw ,mbf ,ooi }
+`define CTRL_SIGN_NOP {`ALUOP_NOP,1'd0,1'd0,1'd0,1'd0,1'd0,1'd0,1'd0,1'd0,1'd0,1'd0,1'd0,1'd0,1'd0,1'd0}
 
 `endif

@@ -41,9 +41,14 @@ module issue_ctrl (
                         (E_slave_memtoReg & ((|D_slave_rs & D_slave_rs == E_slave_reg_waddr) | (|D_slave_rt & D_slave_rt == E_slave_reg_waddr)));
 
     /* 
-    数据冲突 WAR
-        - D_master 
-        - E_master/E_slave load_stall
+    数据冲突 
+        - WAR
+            - D_master 
+            - hilo
+            - CP0
+        - load_stall
+            E_master/E_slave 
+        - 
     结构冲突
         - 访存
         - 乘除法 ==> 应该可以同时发射
@@ -52,8 +57,9 @@ module issue_ctrl (
         - D_ena
         - fifo是否为空
     防刷新
-        - branch只放在master执行，slave可放延迟槽
-        - spec_inst只放在master执行，slave不放指令
+        - 只放在master执行，slave可放延迟槽[may_bring_flush]: 跳转指令
+        - 只放在master执行，slave不放指令[only_one_issue]: SYSCALL, BREAK明显异常; MTC0可能带来异常
+        - 
     */
     always_comb begin : define_slave_en
         if( !D_master_en || fifo_disable || load_stall || D_slave_is_branch || D_master_is_spec_inst || D_slave_is_spec_inst || D_slave_is_only_in_master || struct_conflict)

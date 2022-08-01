@@ -92,17 +92,14 @@ wire [4:0]      D_master_shamt           ,D_slave_shamt           ;
 wire [5:0]      D_master_funct           ,D_slave_funct           ;
 wire [15:0]     D_master_imm             ,D_slave_imm             ;
 wire [31:0]     D_master_imm_value       ,D_slave_imm_value       ;
-wire            D_master_is_hilo_accessed,D_slave_is_hilo_accessed;
-wire            D_master_spec_inst       ,D_slave_spec_inst       ;
 wire            D_master_break_inst      ,D_slave_break_inst      ;
 wire            D_master_syscall_inst    ,D_slave_syscall_inst    ;
 wire            D_master_eret_inst       ,D_slave_eret_inst       ;
 wire            D_master_undefined_inst  ,D_slave_undefined_inst  ;
 wire            D_master_memRead         ,D_slave_memRead         ;
-wire            D_master_flush_all;
-wire            D_slave_is_only_in_master;
-wire            E_master_memWrite;
-wire            E_master_memRead ;
+wire            D_master_flush_all       ,D_slave_flush_all       ;
+wire            D_master_only_one_issue  ,D_slave_only_one_issue  ;
+wire            D_master_may_bring_flush ,D_slave_may_bring_flush ;
 // branch
 wire [3:0]      D_master_branch_type     ,D_slave_branch_type     ;
 wire            D_master_is_link_pc8     ,D_slave_is_link_pc8     ;
@@ -110,8 +107,8 @@ wire [25:0]     D_master_j_target        ,D_slave_j_target        ;
 wire [3:0]      D_master_trap_type       ,D_slave_trap_type       ;
 // alu
 wire [7:0]      D_master_aluop           ,D_slave_aluop           ;
-wire            D_master_alu_sela        ,D_slave_alu_sela        ;
-wire            D_master_alu_selb        ,D_slave_alu_selb        ;
+wire            D_master_read_rs        ,D_slave_read_rs        ;
+wire            D_master_read_rt        ,D_slave_read_rt        ;
 // reg
 wire [4:0]      D_master_rs              ,D_slave_rs              ;
 wire [4:0]      D_master_rt              ,D_slave_rt              ;
@@ -128,11 +125,15 @@ wire            D_master_memWrite        ,D_slave_memWrite        ;
 wire            D_master_memtoReg        ,D_slave_memtoReg        ;
 // other
 wire            D_master_cp0write        ,D_slave_cp0write        ;
+wire            D_master_cp0read         ,D_slave_cp0read         ;
 wire            D_master_hilowrite       ,D_slave_hilowrite       ;
+wire            D_master_hiloread        ,D_slave_hiloread        ;
 wire            D_master_is_pc_except    ,D_slave_is_pc_except    ;
 wire [`CmovBus] D_master_cmov_type       ,D_slave_cmov_type       ;
 
 // ===== E =====
+wire            E_master_memWrite;
+wire            E_master_memRead ;
 wire [4 :0]     E_master_rs,E_master_rt,E_slave_rs,E_slave_rt;
 wire 	        E_master_exp_trap ,E_slave_exp_trap;
 wire [3 :0]     E_master_trap_type,E_slave_trap_type;
@@ -171,8 +172,8 @@ wire [`CmovBus] E_master_cmov_type      ,E_slave_cmov_type      ;
 wire            E_master_cp0write, E_slave_cp0write ;
 wire [ 4:0]     E_master_rd             ;
 // alu
-wire            E_master_alu_sela,E_slave_alu_sela;
-wire            E_master_alu_selb,E_slave_alu_selb;
+wire            E_master_read_rs,E_slave_read_rs;
+wire            E_master_read_rt,E_slave_read_rt;
 wire [31:0]     E_master_alu_srca,E_slave_alu_srca;
 wire [31:0]     E_master_alu_srcb,E_slave_alu_srcb;
 wire [31:0]     E_master_alu_res_tmp;
@@ -310,74 +311,81 @@ inst_fifo u_inst_fifo(
 
 
 // ====================================== Decode ======================================
+
 decoder u_decoder_master(
-    //ports
-    .instr                      ( D_master_inst                      ),
-    .op                         ( D_master_op                         ),
-    .rs                         ( D_master_rs                         ),
-    .rt                         ( D_master_rt                         ),
-    .rd                         ( D_master_rd                         ),
-    .shamt                      ( D_master_shamt                      ),
-    .funct                      ( D_master_funct                      ),
-    .imm                        ( D_master_imm                        ),
-    .sign_extend_imm_value      ( D_master_imm_value                  ),
-    .j_target                   ( D_master_j_target                   ),
-    .is_link_pc8                ( D_master_is_link_pc8                ),
-    .branch_type                ( D_master_branch_type                ),
-    .trap_type                  ( D_master_trap_type                  ),
-    .cmov_type                  ( D_master_cmov_type                  ),
-    .reg_waddr                  ( D_master_reg_waddr                  ),
-    .aluop                      ( D_master_aluop                      ),
-    .alu_sela                   ( D_master_alu_sela                   ),
-    .alu_selb                   ( D_master_alu_selb                   ),
-    .mem_en                     ( D_master_mem_en                     ),
-    .memWrite                   ( D_master_memWrite                   ),
-    .memRead                    ( D_master_memRead                    ),
-    .memtoReg                   ( D_master_memtoReg                   ),
-    .cp0write                   ( D_master_cp0write                   ),
-    .hilowrite                  ( D_master_hilowrite                  ),
-    .flush_all                  ( D_master_flush_all                  ),
-    .reg_wen                    ( D_master_reg_wen                    ),
-    .spec_inst                  ( D_master_spec_inst                  ),
-    .undefined_inst             ( D_master_undefined_inst             ),
-    .break_inst                 ( D_master_break_inst           ),
-    .syscall_inst               ( D_master_syscall_inst         ),
-    .eret_inst                  ( D_master_eret_inst            )
+	//ports
+	.instr                 		( D_master_inst                 		),
+	.op                    		( D_master_op                    		),
+	.rs                    		( D_master_rs                    		),
+	.rt                    		( D_master_rt                    		),
+	.rd                    		( D_master_rd                    		),
+	.shamt                 		( D_master_shamt                 		),
+	.funct                 		( D_master_funct                 		),
+	.imm                   		( D_master_imm                   		),
+	.j_target              		( D_master_j_target              		),
+	.sign_extend_imm_value 		( D_master_imm_value			 		),
+	.is_link_pc8           		( D_master_is_link_pc8           		),
+	.branch_type           		( D_master_branch_type           		),
+	.trap_type             		( D_master_trap_type             		),
+	.cmov_type             		( D_master_cmov_type             		),
+	.reg_waddr             		( D_master_reg_waddr             		),
+	.aluop                 		( D_master_aluop                 		),
+	.flush_all             		( D_master_flush_all             		),
+	.read_rs               		( D_master_read_rs               		),
+	.read_rt               		( D_master_read_rt               		),
+	.reg_write             		( D_master_reg_wen	             		),
+	.mem_en                		( D_master_mem_en                		),
+	.mem_write_reg         		( D_master_memtoReg		         		),
+	.mem_read              		( D_master_memRead              		),
+	.mem_write             		( D_master_memWrite             		),
+	.cp0_read              		( D_master_cp0read              		),
+	.cp0_write             		( D_master_cp0write             		),
+	.hilo_read             		( D_master_hiloread             		),
+	.hilo_write            		( D_master_hilowrite            		),
+	.may_bring_flush       		( D_master_may_bring_flush       		),
+    .only_one_issue       		( D_master_only_one_issue       		),
+	.undefined_inst        		( D_master_undefined_inst        		),
+	.syscall_inst          		( D_master_syscall_inst          		),
+	.break_inst            		( D_master_break_inst            		),
+	.eret_inst             		( D_master_eret_inst             		)
 );
 
-decoder u_decoder_slave(
-    //ports
-    .instr                      ( D_slave_inst                      ),
-    .op                         ( D_slave_op                         ),
-    .rs                         ( D_slave_rs                         ),
-    .rt                         ( D_slave_rt                         ),
-    .rd                         ( D_slave_rd                         ),
-    .shamt                      ( D_slave_shamt                      ),
-    .funct                      ( D_slave_funct                      ),
-    .imm                        ( D_slave_imm                   ),
-    .sign_extend_imm_value      ( D_slave_imm_value            ),
-    .j_target                   ( D_slave_j_target                   ),
-    .is_link_pc8                ( D_slave_is_link_pc8                ),
-    .branch_type                ( D_slave_branch_type                ),
-    .trap_type                  ( D_slave_trap_type                  ),
-    .cmov_type                  ( D_slave_cmov_type                  ),
-    .reg_waddr                  ( D_slave_reg_waddr                  ),
-    .aluop                      ( D_slave_aluop                      ),
-    .is_olny_in_master          ( D_slave_is_only_in_master          ),
-    .alu_sela                   ( D_slave_alu_sela                   ),
-    .alu_selb                   ( D_slave_alu_selb                   ),
-    .mem_en                     ( D_slave_mem_en                     ),
-    .memWrite                   ( D_slave_memWrite                   ),
-    .memRead                    ( D_slave_memRead                    ),
-    .memtoReg                   ( D_slave_memtoReg                   ),
-    .cp0write                   ( D_slave_cp0write                   ),
-    .hilowrite                  ( D_slave_hilowrite                  ),
-    .reg_wen                    ( D_slave_reg_wen                    ),
-    .spec_inst                  ( D_slave_spec_inst                  ),
-    .undefined_inst             ( D_slave_undefined_inst             ),
-    .break_inst                 ( D_slave_break_inst            ),
-    .syscall_inst               ( D_slave_syscall_inst          ),
-    .eret_inst                  ( D_slave_eret_inst             )
+decoder u_decoder_master(
+	//ports
+	.instr                 		( D_slave_inst                  		),
+	.op                    		( D_slave_op                     		),
+	.rs                    		( D_slave_rs                     		),
+	.rt                    		( D_slave_rt                     		),
+	.rd                    		( D_slave_rd                     		),
+	.shamt                 		( D_slave_shamt                  		),
+	.funct                 		( D_slave_funct                  		),
+	.imm                   		( D_slave_imm                    		),
+	.j_target              		( D_slave_j_target               		),
+	.sign_extend_imm_value 		( D_slave_imm_value 			 		),
+	.is_link_pc8           		( D_slave_is_link_pc8            		),
+	.branch_type           		( D_slave_branch_type            		),
+	.trap_type             		( D_slave_trap_type              		),
+	.cmov_type             		( D_slave_cmov_type              		),
+	.reg_waddr             		( D_slave_reg_waddr              		),
+	.aluop                 		( D_slave_aluop                  		),
+	.flush_all             		( D_slave_flush_all              		),
+	.read_rs               		( D_slave_read_rs                		),
+	.read_rt               		( D_slave_read_rt                		),
+	.reg_write             		( D_slave_reg_wen 	             		),
+	.mem_en                		( D_slave_mem_en                 		),
+	.mem_write_reg         		( D_slave_memtoReg 		         		),
+	.mem_read              		( D_slave_memRead               		),
+	.mem_write             		( D_slave_memWrite              		),
+	.cp0_read              		( D_slave_cp0read               		),
+	.cp0_write             		( D_slave_cp0write              		),
+	.hilo_read             		( D_slave_hiloread              		),
+	.hilo_write            		( D_slave_hilowrite             		),
+	.may_bring_flush       		( D_slave_may_bring_flush        		),
+    .only_one_issue       		( D_slave_only_one_issue        		),
+	.undefined_inst        		( D_slave_undefined_inst         		),
+	.syscall_inst          		( D_slave_syscall_inst           		),
+	.break_inst            		( D_slave_break_inst             		),
+	.eret_inst             		( D_slave_eret_inst              		)
 );
 
 
@@ -442,7 +450,6 @@ issue_ctrl u_issue_ctrl(
 	.D_master_mem_en           		( D_master_mem_en           		),
 	.D_master_reg_waddr        		( D_master_reg_waddr        		),
 	.D_master_is_branch        		( (|D_master_branch_type)     		),
-	.D_master_is_spec_inst     		( D_master_spec_inst         		),
 	.E_master_memtoReg         		( E_master_memtoReg         		),
 	.E_master_reg_waddr        		( E_master_reg_waddr        		),
     .E_slave_memtoReg               ( E_slave_memtoReg                  ),
@@ -452,7 +459,6 @@ issue_ctrl u_issue_ctrl(
 	.D_slave_rt                		( D_slave_rt                		),
 	.D_slave_mem_en            		( D_slave_mem_en            		),
 	.D_slave_is_branch         		( (|D_slave_branch_type)      		),
-	.D_slave_is_spec_inst      		( D_slave_spec_inst           		),
 	.D_slave_is_only_in_master 		( D_slave_is_only_in_master 		),
 	.fifo_empty                		( fifo_empty                		),
 	.fifo_almost_empty         		( fifo_almost_empty         		),
@@ -476,8 +482,8 @@ id_ex u_id_ex(
     .ena2                     		( D_slave_ena                   ),
 	.D_master_memtoReg        		( D_master_memtoReg        		),
 	.D_master_reg_wen         		( D_master_reg_wen         		),
-	.D_master_alu_sela        		( D_master_alu_sela        		),
-	.D_master_alu_selb        		( D_master_alu_selb        		),
+	.D_master_read_rs        		( D_master_read_rs        		),
+	.D_master_read_rt        		( D_master_read_rt        		),
 	.D_master_is_link_pc8     		( D_master_is_link_pc8     		),
 	.D_master_mem_en          		( D_master_mem_en          		),
 	.D_master_memWrite        		( D_master_memWrite        		),
@@ -503,8 +509,8 @@ id_ex u_id_ex(
     .D_master_rs                    ( D_master_rs                   ),
     .D_master_rt                    ( D_master_rt                   ),
 	.D_slave_reg_wen          		( D_slave_reg_wen          		),
-	.D_slave_alu_sela         		( D_slave_alu_sela         		),
-	.D_slave_alu_selb         		( D_slave_alu_selb         		),
+	.D_slave_read_rs         		( D_slave_read_rs         		),
+	.D_slave_read_rt         		( D_slave_read_rt         		),
 	.D_slave_is_link_pc8      		( D_slave_is_link_pc8      		),
 	.D_slave_op              		( D_slave_op              		),
     .D_slave_mem_en          		( D_slave_mem_en          		),
@@ -529,8 +535,8 @@ id_ex u_id_ex(
     .D_slave_rt                     ( D_slave_rt                    ),
 	.E_master_memtoReg        		( E_master_memtoReg        		),
 	.E_master_reg_wen         		( E_master_reg_wen_a       		),
-	.E_master_alu_sela        		( E_master_alu_sela        		),
-	.E_master_alu_selb        		( E_master_alu_selb        		),
+	.E_master_read_rs        		( E_master_read_rs        		),
+	.E_master_read_rt        		( E_master_read_rt        		),
 	.E_master_is_link_pc8     		( E_master_is_link_pc8     		),
 	.E_master_mem_en          		( E_master_mem_en          		),
 	.E_master_memWrite        		( E_master_memWrite        		),
@@ -557,8 +563,8 @@ id_ex u_id_ex(
     .E_master_rt                    ( E_master_rt                   ),
 	.E_slave_ena                    ( E_slave_ena            		),
     .E_slave_reg_wen          		( E_slave_reg_wen_a        		),
-	.E_slave_alu_sela         		( E_slave_alu_sela         		),
-	.E_slave_alu_selb         		( E_slave_alu_selb         		),
+	.E_slave_read_rs         		( E_slave_read_rs         		),
+	.E_slave_read_rt         		( E_slave_read_rt         		),
 	.E_slave_is_link_pc8      		( E_slave_is_link_pc8      		),
 	.E_slave_op              		( E_slave_op              		),
     .E_slave_mem_en          		( E_slave_mem_en          		),
@@ -616,10 +622,10 @@ id_ex u_id_ex(
 // );
 
 // select_alusrc: 所有的pc要加8的，都在alu执行，进行电路复用
-assign E_master_alu_srca =  E_master_alu_sela ? {{27{1'b0}},E_master_shamt} : E_master_rs_value;
-assign E_master_alu_srcb =  E_master_alu_selb ? E_master_imm_value : E_master_rt_value;
-assign E_slave_alu_srca  =  E_slave_alu_sela  ? {{27{1'b0}},E_slave_shamt} : E_slave_rs_value ;                            
-assign E_slave_alu_srcb  =  E_slave_alu_selb  ? E_slave_imm_value : E_slave_rt_value ;
+assign E_master_alu_srca =  E_master_read_rs ? E_master_rs_value : {{27{1'b0}},E_master_shamt};
+assign E_master_alu_srcb =  E_master_read_rt ? E_master_rt_value : E_master_imm_value;
+assign E_slave_alu_srca  =  E_slave_read_rs  ? E_slave_rs_value : {{27{1'b0}},E_slave_shamt};
+assign E_slave_alu_srcb  =  E_slave_read_rt  ? E_slave_rt_value : E_slave_imm_value;
 
 // reg_wen
 assign E_master_reg_wen =   E_master_cmov_type==`C_MOVN ? (|E_master_rt_value):    // !=0

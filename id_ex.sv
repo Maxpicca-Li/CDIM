@@ -10,8 +10,8 @@ module id_ex(
 
     input wire D_master_memtoReg,
     input wire D_master_reg_wen,
-    input wire D_master_alu_sela,
-    input wire D_master_alu_selb,
+    input wire D_master_read_rs,
+    input wire D_master_read_rt,
     input wire D_master_is_link_pc8,
     input wire D_master_mem_en,
     input wire D_master_memWrite,
@@ -38,8 +38,8 @@ module id_ex(
     input wire [31:0]D_master_imm_value,
 
     input wire D_slave_reg_wen,
-    input wire D_slave_alu_sela,
-    input wire D_slave_alu_selb,
+    input wire D_slave_read_rs,
+    input wire D_slave_read_rt,
     input wire D_slave_is_link_pc8,
     input wire D_slave_mem_en,
     input wire D_slave_memWrite,
@@ -65,8 +65,8 @@ module id_ex(
 
     output reg E_master_memtoReg,
     output reg E_master_reg_wen,
-    output reg E_master_alu_sela,
-    output reg E_master_alu_selb,
+    output reg E_master_read_rs,
+    output reg E_master_read_rt,
     output reg E_master_is_link_pc8,
     output reg E_master_mem_en,
     output reg E_master_memWrite,
@@ -94,8 +94,8 @@ module id_ex(
 
     output reg E_slave_ena,
     output reg E_slave_reg_wen,
-    output reg E_slave_alu_sela,
-    output reg E_slave_alu_selb,
+    output reg E_slave_read_rs,
+    output reg E_slave_read_rt,
     output reg E_slave_is_link_pc8,
     output reg E_slave_mem_en,
     output reg E_slave_memWrite,
@@ -124,8 +124,8 @@ module id_ex(
         if(rst | clear1) begin
             E_master_memtoReg <= 0;
             E_master_reg_wen <= 0;
-            E_master_alu_sela <= 0;
-            E_master_alu_selb <= 0;
+            E_master_read_rs <= 0;
+            E_master_read_rt <= 0;
             E_master_is_link_pc8 <= 0;
             E_master_mem_en <= 0;
             E_master_memWrite <= 0;
@@ -154,8 +154,8 @@ module id_ex(
         else if (ena1) begin
             E_master_memtoReg <= D_master_memtoReg;
             E_master_reg_wen <= D_master_reg_wen;
-            E_master_alu_sela <= D_master_alu_sela;
-            E_master_alu_selb <= D_master_alu_selb;
+            E_master_read_rs <= D_master_read_rs;
+            E_master_read_rt <= D_master_read_rt;
             E_master_is_link_pc8 <= D_master_is_link_pc8;
             E_master_mem_en <= D_master_mem_en;
             E_master_memWrite <= D_master_memWrite;
@@ -186,8 +186,8 @@ module id_ex(
     always @(posedge clk) begin
         if(rst | clear2) begin
             E_slave_reg_wen <= 0;
-            E_slave_alu_sela <= 0;
-            E_slave_alu_selb <= 0;
+            E_slave_read_rs <= 0;
+            E_slave_read_rt <= 0;
             E_slave_is_link_pc8 <= 0;
             E_slave_memtoReg <= 0;
             E_slave_hilowrite <= 0;
@@ -214,8 +214,8 @@ module id_ex(
         end
         else if (ena2) begin
             E_slave_reg_wen <= D_slave_reg_wen;
-            E_slave_alu_sela <= D_slave_alu_sela;
-            E_slave_alu_selb <= D_slave_alu_selb;
+            E_slave_read_rs <= D_slave_read_rs;
+            E_slave_read_rt <= D_slave_read_rt;
             E_slave_is_link_pc8 <= D_slave_is_link_pc8;
             E_slave_memtoReg <= D_slave_memtoReg;
             E_slave_hilowrite <= D_slave_hilowrite;

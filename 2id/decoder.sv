@@ -18,21 +18,25 @@ module  decoder(
     output logic                is_link_pc8,
     output logic [3:0]          branch_type,
     output logic [3:0]          trap_type,
-    output logic [4:0]          reg_waddr,
-    output logic [7:0]	 		aluop, // ALU operation
-    output logic                flush_all,
-    output logic                is_olny_in_master,
     output logic [`CmovBus]     cmov_type,
-    output logic       			alu_sela,
-    output logic       			alu_selb,
+    output logic [4:0]          reg_waddr,
+    
+    output logic                aluop,
+    output logic                flush_all,
+    output logic                read_rs,
+    output logic                read_rt,
+    output logic                reg_write,
     output logic                mem_en,
-    output logic                memWrite,
-    output logic                memRead,
-    output logic                memtoReg,
-    output logic                cp0write,
-    output logic                hilowrite,
-    output logic                reg_wen,
-    output logic				spec_inst,
+    output logic                mem_write_reg,
+    output logic                mem_read,
+    output logic                mem_write,
+    output logic                cp0_read,
+    output logic                cp0_write,
+    output logic                hilo_read,
+    output logic                hilo_write,
+    output logic                may_bring_flush,
+    output logic                only_one_issue,
+    
     output logic				undefined_inst,  // 1 as received a unknown operation.
     output logic                syscall_inst,
     output logic                break_inst,
@@ -48,189 +52,252 @@ module  decoder(
     assign imm = instr[15:0];
     assign j_target = instr[25:0];
     assign sign_extend_imm_value = (instr[29:28]==2'b11) ? {{16{1'b0}},instr[15:0]}:{{16{instr[15]}},instr[15:0]}; //op[3:2] for logic_imm type
-
-    // signsD = {[22:15]]ALUOP,14memRead,13mem_en,12cp0write,11hilowrite,10bal,9jr,8jal,7alu_sela,6reg_wen,5regdst,4alu_selb,3branch,2memWrite,1memtoReg,0jump}
+    assign eret_inst = (instr == 32'b01000010000000000000000000011000);
+    
     ctrl_sign signsD;
     assign aluop = signsD.aluop;
     assign flush_all = signsD.flush_all;
-    assign reg_wen = signsD.reg_wen;
-    assign alu_sela = signsD.alu_sela;
-    assign alu_selb = signsD.alu_selb;
+    assign read_rs = signsD.read_rs;
+    assign read_rt = signsD.read_rt;
+    assign reg_write = signsD.reg_write;
     assign mem_en = signsD.mem_en;
-    assign memRead = signsD.memRead;
-    assign memWrite = signsD.memWrite;
-    assign memtoReg = signsD.memtoReg;
-    assign cp0write = signsD.cp0write;
-    assign hilowrite = signsD.hilowrite;
-    assign is_olny_in_master = signsD.is_olny_in_master;
-    assign cmov_type = signsD.cmov_type;
-    assign eret_inst = (instr == 32'b01000010000000000000000000011000);
+    assign mem_write_reg = signsD.mem_write_reg;
+    assign mem_read = signsD.mem_read;
+    assign mem_write = signsD.mem_write;
+    assign cp0_read = signsD.cp0_read;
+    assign cp0_write = signsD.cp0_write;
+    assign hilo_read = signsD.hilo_read;
+    assign hilo_write = signsD.hilo_write;
+    assign may_bring_flush = signsD.may_bring_flush;
+    assign only_one_issue = signsD.only_one_issue;
 
     always_comb begin : generate_control_signals
         undefined_inst = 1'b0;
         syscall_inst = 1'b0;
         break_inst = 1'b0;
-        spec_inst = 1'b0;
         trap_type = `TT_NOP;
+        cmov_type = `C_MOVNOP;
         signsD = `CTRL_SIGN_NOP;
         case(op)
             `OP_SPECIAL_INST:begin
-                signsD.reg_wen = 1'b1;
                 case (funct)
                     // logic
                     `FUN_AND   : begin
                         signsD.aluop = `ALUOP_AND;
+                        signsD.read_rs = 1'b1;
+                        signsD.read_rt = 1'b1;
+                        signsD.reg_write = 1'b1;
                     end
                     `FUN_OR    : begin
                         signsD.aluop = `ALUOP_OR;
+                        signsD.read_rs = 1'b1;
+                        signsD.read_rt = 1'b1;
+                        signsD.reg_write = 1'b1;
                     end
                     `FUN_XOR   : begin
                         signsD.aluop = `ALUOP_XOR;
+                        signsD.read_rs = 1'b1;
+                        signsD.read_rt = 1'b1;
+                        signsD.reg_write = 1'b1;
                     end
                     `FUN_NOR   : begin
                         signsD.aluop = `ALUOP_NOR;
+                        signsD.read_rs = 1'b1;
+                        signsD.read_rt = 1'b1;
+                        signsD.reg_write = 1'b1;
                     end
                     // arith
                     `FUN_SLT   : begin
                         signsD.aluop = `ALUOP_SLT;
+                        signsD.read_rs = 1'b1;
+                        signsD.read_rt = 1'b1;
+                        signsD.reg_write = 1'b1;
                     end
                     `FUN_SLTU  : begin
                         signsD.aluop = `ALUOP_SLTU;
+                        signsD.read_rs = 1'b1;
+                        signsD.read_rt = 1'b1;
+                        signsD.reg_write = 1'b1;
                     end
                     `FUN_ADD   : begin
                         signsD.aluop = `ALUOP_ADD;
+                        signsD.read_rs = 1'b1;
+                        signsD.read_rt = 1'b1;
+                        signsD.reg_write = 1'b1;
                     end
                     `FUN_ADDU  : begin
                         signsD.aluop = `ALUOP_ADDU;
+                        signsD.read_rs = 1'b1;
+                        signsD.read_rt = 1'b1;
+                        signsD.reg_write = 1'b1;
                     end
                     `FUN_SUB   : begin
                         signsD.aluop = `ALUOP_SUB;
+                        signsD.read_rs = 1'b1;
+                        signsD.read_rt = 1'b1;
+                        signsD.reg_write = 1'b1;
                     end
                     `FUN_SUBU  : begin
                         signsD.aluop = `ALUOP_SUBU;
+                        signsD.read_rs = 1'b1;
+                        signsD.read_rt = 1'b1;
+                        signsD.reg_write = 1'b1;
                     end
                     // shift
                     `FUN_SLL   : begin
                         signsD.aluop = `ALUOP_SLL;
-                        signsD.alu_sela = 1'b1;
+                        signsD.read_rt = 1'b1;
+                        signsD.reg_write = 1'b1;
                     end
                     `FUN_SLLV  : begin
                         signsD.aluop = `ALUOP_SLLV;
+                        signsD.read_rs = 1'b1;
+                        signsD.read_rt = 1'b1;
+                        signsD.reg_write = 1'b1;
                     end
                     `FUN_SRL   : begin
-                        signsD.alu_sela = 1'b1;
                         // signsD.aluop = instr[21]?`ALUOP_ROTR:`ALUOP_SRL; // ROTR RS1 is different from SRL
                         signsD.aluop = `ALUOP_SRL;                          // no MIPS release 2
+                        signsD.read_rt = 1'b1;
+                        signsD.reg_write = 1'b1;
                     end
                     `FUN_SRLV  : begin
                         // signsD.aluop = instr[6]?`ALUOP_ROTR:`ALUOP_SRLV; // ROTRV sa1 is different from SRLV
                         signsD.aluop = `ALUOP_SRLV;                         // no MIPS release 2
+                        signsD.read_rs = 1'b1;
+                        signsD.read_rt = 1'b1;
+                        signsD.reg_write = 1'b1;
                     end
                     `FUN_SRA   : begin
                         signsD.aluop = `ALUOP_SRA;
-                        signsD.alu_sela = 1'b1;
+                        signsD.read_rt = 1'b1;
+                        signsD.reg_write = 1'b1;
                     end
                     `FUN_SRAV  : begin
                         signsD.aluop = `ALUOP_SRAV;
+                        signsD.read_rs = 1'b1;
+                        signsD.read_rt = 1'b1;
+                        signsD.reg_write = 1'b1;
                     end
                     // mul/div ==> hilo access
                     `FUN_MULT  : begin
                         signsD.aluop = `ALUOP_MULT;
-                        signsD.hilowrite = 1'b1;
-                        signsD.reg_wen = 1'b0;
-                        // signsD.is_olny_in_master = 1'b1;
+                        signsD.read_rs = 1'b1;
+                        signsD.read_rt = 1'b1;
+                        signsD.hilo_write = 1'b1;
                     end
                     `FUN_MULTU : begin
                         signsD.aluop = `ALUOP_MULTU;
-                        signsD.hilowrite = 1'b1;
-                        signsD.reg_wen = 1'b0;
-                        // signsD.is_olny_in_master = 1'b1;
+                        signsD.read_rs = 1'b1;
+                        signsD.read_rt = 1'b1;
+                        signsD.hilo_write = 1'b1;
                     end
                     `FUN_DIV   : begin
                         signsD.aluop = `ALUOP_DIV;
-                        signsD.hilowrite = 1'b1;
-                        signsD.reg_wen = 1'b0;
-                        // signsD.is_olny_in_master = 1'b1;
+                        signsD.read_rs = 1'b1;
+                        signsD.read_rt = 1'b1;
+                        signsD.hilo_write = 1'b1;
                     end
                     `FUN_DIVU  : begin
                         signsD.aluop = `ALUOP_DIVU;
-                        signsD.hilowrite = 1'b1;
-                        signsD.reg_wen = 1'b0;
-                        // signsD.is_olny_in_master = 1'b1;
+                        signsD.read_rs = 1'b1;
+                        signsD.read_rt = 1'b1;
+                        signsD.hilo_write = 1'b1;
                     end
                     // move ==> hilo access
                     `FUN_MFHI  : begin
                         signsD.aluop = `ALUOP_MFHI;
-                        // signsD.is_olny_in_master = 1'b1;
+                        signsD.hilo_read = 1'b1;
+                        signsD.reg_write = 1'b1;
                     end
                     `FUN_MFLO  : begin
                         signsD.aluop = `ALUOP_MFLO;
-                        // signsD.is_olny_in_master = 1'b1;
+                        signsD.hilo_read = 1'b1;
+                        signsD.reg_write = 1'b1;
                     end
                     `FUN_MTHI  : begin
                         signsD.aluop = `ALUOP_MTHI;
-                        signsD.reg_wen = 1'b0;
-                        signsD.hilowrite = 1'b1;
-                        // signsD.is_olny_in_master = 1'b1;
+                        signsD.read_rs = 1'b1;
+                        signsD.hilo_write = 1'b1;
                     end
                     `FUN_MTLO  : begin
                         signsD.aluop = `ALUOP_MTLO;
-                        signsD.reg_wen = 1'b0;
-                        signsD.hilowrite = 1'b1;
-                        // signsD.is_olny_in_master = 1'b1;
+                        signsD.read_rs = 1'b1;
+                        signsD.hilo_write = 1'b1;
                     end
                     // jump R
                     `FUN_JR    : begin
-                        signsD.reg_wen = 1'b0;
+                        signsD.read_rs = 1'b1;
+                        signsD.may_bring_flush = 1'b1;
                     end
                     `FUN_JALR  : begin // JALR:GPR[rd]=pc+8;
-                        signsD.aluop = `ALUOP_NOP;
+                        signsD.read_rs = 1'b1;
+                        signsD.may_bring_flush = 1'b1;
+                        signsD.reg_write = 1'b1;
                     end
                     // 内陷指令
                     `FUN_SYSCALL:begin
-                        spec_inst = 1'b1;
                         syscall_inst =1'b1;
-                        signsD.reg_wen = 1'b0;
+                        signsD.may_bring_flush = 1'b1;
+                        signsD.only_one_issue = 1'b0;
                     end
                     `FUN_BREAK  :begin
                         break_inst = 1'b1;
-                        spec_inst = 1'b1;
-                        signsD.reg_wen = 1'b0;
+                        signsD.may_bring_flush = 1'b1;
+                        signsD.only_one_issue = 1'b0;
                     end
                     `FUN_SYNC   :begin
-                        signsD.reg_wen = 1'b0;// NOP ==> don't need to set value
+                        signsD.may_bring_flush = 1'b1; // NOP ==> don't need to set value
                     end
                     `FUN_TEQ    :begin
                         trap_type = `TT_TEQ;
-                        signsD.reg_wen = 1'b0;
+                        signsD.read_rs = 1'b1;
+                        signsD.read_rt = 1'b1;
+                        signsD.may_bring_flush = 1'b1;
                     end
                     `FUN_TNE    :begin
                         trap_type = `TT_TNE;
-                        signsD.reg_wen = 1'b0;
+                        signsD.read_rs = 1'b1;
+                        signsD.read_rt = 1'b1;
+                        signsD.may_bring_flush = 1'b1;
                     end
                     `FUN_TGE    :begin
                         trap_type = `TT_TGE;
-                        signsD.reg_wen = 1'b0;
+                        signsD.read_rs = 1'b1;
+                        signsD.read_rt = 1'b1;
+                        signsD.may_bring_flush = 1'b1;
                     end
                     `FUN_TGEU   :begin
                         trap_type = `TT_TGEU;
-                        signsD.reg_wen = 1'b0;
+                        signsD.read_rs = 1'b1;
+                        signsD.read_rt = 1'b1;
+                        signsD.may_bring_flush = 1'b1;
                     end
                     `FUN_TLT    :begin
                         trap_type = `TT_TLT;
-                        signsD.reg_wen = 1'b0;
+                        signsD.read_rs = 1'b1;
+                        signsD.read_rt = 1'b1;
+                        signsD.may_bring_flush = 1'b1;
                     end
                     `FUN_TLTU   :begin
                         trap_type = `TT_TLTU;
-                        signsD.reg_wen = 1'b0;
+                        signsD.read_rs = 1'b1;
+                        signsD.read_rt = 1'b1;
+                        signsD.may_bring_flush = 1'b1;
                     end
                     `FUN_MOVN: begin
+                        cmov_type = `C_MOVN;
                         signsD.aluop = `ALUOP_MOV;
-                        signsD.cmov_type = `C_MOVN;
+                        signsD.read_rs = 1'b1;
+                        signsD.read_rt = 1'b1;
+                        signsD.reg_write = 1'b1;
                     end
                     `FUN_MOVZ: begin
+                        cmov_type = `C_MOVZ;
                         signsD.aluop = `ALUOP_MOV;
-                        signsD.cmov_type = `C_MOVZ;
+                        signsD.read_rs = 1'b1;
+                        signsD.read_rt = 1'b1;
+                        signsD.reg_write = 1'b1;
                     end
                     default: begin 
                         signsD = `CTRL_SIGN_NOP;
@@ -239,178 +306,185 @@ module  decoder(
                 endcase
             end
             `OP_SPECIAL2_INST: begin
-                // signsD.is_olny_in_master = 1'b1; // mul/div ==> hilo access
                 case (funct)
                     `FUN_MUL: begin
                         signsD.aluop = `ALUOP_MULT;
-                        signsD.reg_wen = 1'b1;
+                        signsD.read_rs = 1'b1;
+                        signsD.read_rt = 1'b1;
+                        signsD.reg_write = 1'b1;
                     end
                     `FUN_CLO: begin
+                        signsD.read_rs = 1'b1;
                         signsD.aluop = `ALUOP_CLO;
-                        signsD.reg_wen = 1'b1;
+                        signsD.reg_write = 1'b1;
                     end
                     `FUN_CLZ: begin
                         signsD.aluop = `ALUOP_CLZ;
-                        signsD.reg_wen = 1'b1;
+                        signsD.read_rs = 1'b1;
+                        signsD.reg_write = 1'b1;
                     end
                     `FUN_MADD:begin
                         signsD.aluop = `ALUOP_MADD;
-                        signsD.hilowrite = 1'b1;
+                        signsD.read_rs = 1'b1;
+                        signsD.read_rt = 1'b1;
+                        signsD.hilo_write = 1'b1;
                     end
                     `FUN_MADDU:begin
                         signsD.aluop = `ALUOP_MADDU;
-                        signsD.hilowrite = 1'b1;
+                        signsD.read_rs = 1'b1;
+                        signsD.read_rt = 1'b1;
+                        signsD.hilo_write = 1'b1;
                     end
                     `FUN_MSUB:begin
                         signsD.aluop = `ALUOP_MSUB;
-                        signsD.hilowrite = 1'b1;
+                        signsD.read_rs = 1'b1;
+                        signsD.read_rt = 1'b1;
+                        signsD.hilo_write = 1'b1;
                     end
                     `FUN_MSUBU:begin
                         signsD.aluop = `ALUOP_MSUBU;
-                        signsD.hilowrite = 1'b1;
+                        signsD.read_rs = 1'b1;
+                        signsD.read_rt = 1'b1;
+                        signsD.hilo_write = 1'b1;
                     end
                 endcase
             end
             // lsmen
             `OP_LB    : begin
-                signsD.aluop = `ALUOP_ADDU;
-                signsD.memtoReg = 1'b1;
-                signsD.memRead = 1'b1;
                 signsD.mem_en = 1'b1;
-                signsD.reg_wen = 1'b1;
-                signsD.alu_selb = 1'b1;
+                signsD.mem_read = 1'b1; signsD.mem_write_reg = 1'b1;
+                signsD.reg_write = 1'b1;
+                signsD.read_rs = 1'b1;
             end
             `OP_LBU   : begin
-                signsD.aluop = `ALUOP_ADDU;
-                signsD.memtoReg = 1'b1;
-                signsD.memRead = 1'b1;
                 signsD.mem_en = 1'b1;
-                signsD.reg_wen = 1'b1;
-                signsD.alu_selb = 1'b1;
+                signsD.mem_read = 1'b1; signsD.mem_write_reg = 1'b1;
+                signsD.reg_write = 1'b1;
+                signsD.read_rs = 1'b1;
             end
             `OP_LH    : begin
-                signsD.aluop = `ALUOP_ADDU;
-                signsD.memtoReg = 1'b1;
-                signsD.memRead = 1'b1;
                 signsD.mem_en = 1'b1;
-                signsD.reg_wen = 1'b1;
-                signsD.alu_selb = 1'b1;
+                signsD.mem_read = 1'b1; signsD.mem_write_reg = 1'b1;
+                signsD.reg_write = 1'b1;
+                signsD.read_rs = 1'b1;
             end
             `OP_LHU   : begin
-                signsD.aluop = `ALUOP_ADDU;
-                signsD.memtoReg = 1'b1;
-                signsD.memRead = 1'b1;
                 signsD.mem_en = 1'b1;
-                signsD.reg_wen = 1'b1;
-                signsD.alu_selb = 1'b1;
+                signsD.mem_read = 1'b1; signsD.mem_write_reg = 1'b1;
+                signsD.reg_write = 1'b1;
+                signsD.read_rs = 1'b1;
             end
             `OP_LW    : begin
-                signsD.aluop = `ALUOP_ADDU;
-                signsD.memtoReg = 1'b1;
-                signsD.memRead = 1'b1;
                 signsD.mem_en = 1'b1;
-                signsD.reg_wen = 1'b1;
-                signsD.alu_selb = 1'b1;
+                signsD.mem_read = 1'b1; signsD.mem_write_reg = 1'b1;
+                signsD.reg_write = 1'b1;
+                signsD.read_rs = 1'b1;
             end
             `OP_SB    : begin
-                signsD.aluop = `ALUOP_ADDU;
-                signsD.memWrite = 1'b1;
                 signsD.mem_en = 1'b1;
-                signsD.alu_selb = 1'b1;
+                signsD.mem_write = 1'b1;
+                signsD.read_rs = 1'b1;
             end
             `OP_SH    : begin
-                signsD.aluop = `ALUOP_ADDU;
-                signsD.memWrite = 1'b1;
                 signsD.mem_en = 1'b1;
-                signsD.alu_selb = 1'b1;
+                signsD.mem_write = 1'b1;
+                signsD.read_rs = 1'b1;
             end
             `OP_SW    : begin
-                signsD.aluop = `ALUOP_ADDU;
-                signsD.memWrite = 1'b1;
                 signsD.mem_en = 1'b1;
-                signsD.alu_selb = 1'b1;
+                signsD.mem_write = 1'b1;
+                signsD.read_rs = 1'b1;
             end
             // arith imme
             `OP_ADDI  : begin
                 signsD.aluop = `ALUOP_ADD;
-                signsD.reg_wen = 1'b1;
-                signsD.alu_selb = 1'b1;
+                signsD.reg_write = 1'b1;
+                signsD.read_rs = 1'b1;
             end
             `OP_ADDIU : begin
                 signsD.aluop = `ALUOP_ADDU;
-                signsD.reg_wen = 1'b1;
-                signsD.alu_selb = 1'b1;
+                signsD.reg_write = 1'b1;
+                signsD.read_rs = 1'b1;
             end
             `OP_SLTI  : begin
                 signsD.aluop = `ALUOP_SLT;
-                signsD.reg_wen = 1'b1;
-                signsD.alu_selb = 1'b1;
+                signsD.reg_write = 1'b1;
+                signsD.read_rs = 1'b1;
             end
             `OP_SLTIU : begin
                 signsD.aluop = `ALUOP_SLTU;
-                signsD.reg_wen = 1'b1;
-                signsD.alu_selb = 1'b1;
+                signsD.reg_write = 1'b1;
+                signsD.read_rs = 1'b1;
             end
             // logic imme
             `OP_ANDI  : begin
                 signsD.aluop = `ALUOP_AND;
-                signsD.reg_wen = 1'b1;
-                signsD.alu_selb = 1'b1;
+                signsD.reg_write = 1'b1;
+                signsD.read_rs = 1'b1;
             end
             `OP_ORI   : begin
                 signsD.aluop = `ALUOP_OR;
-                signsD.reg_wen = 1'b1;
-                signsD.alu_selb = 1'b1;
+                signsD.reg_write = 1'b1;
+                signsD.read_rs = 1'b1;
             end
             `OP_XORI  : begin
                 signsD.aluop = `ALUOP_XOR;
-                signsD.reg_wen = 1'b1;
-                signsD.alu_selb = 1'b1;
+                signsD.reg_write = 1'b1;
+                signsD.read_rs = 1'b1;
             end
             `OP_LUI   : begin
                 signsD.aluop = `ALUOP_LUI;
-                signsD.reg_wen = 1'b1;
-                signsD.alu_selb = 1'b1;
+                signsD.reg_write = 1'b1;
+                signsD.read_rs = 1'b1;
             end
             // jump
             `OP_J     : begin
-                signsD.aluop = `ALUOP_NOP;
+                signsD.may_bring_flush = 1'b1;
             end
             `OP_JAL   : begin
-                signsD.aluop = `ALUOP_NOP;
-                signsD.reg_wen = 1'b1;
+                signsD.reg_write = 1'b1;
+                signsD.may_bring_flush = 1'b1;
             end
             // branch
             `OP_BEQ, `OP_BNE, `OP_BGTZ, `OP_BLEZ: begin
-                ;// NOP ==> don't need to set value
+                signsD.read_rs = 1'b1;
+                signsD.read_rt = 1'b1;
+                signsD.may_bring_flush = 1'b1;// NOP ==> don't need to set value
             end
             `OP_REGIMM: begin     // BGEZ,BLTZ,BGEZAL,BLTZAL
+                signsD.may_bring_flush = 1'b1;
                 case(rt)
                     // `RT_BGEZ
                     // `RT_BLTZ
                     `RT_BGEZAL: begin
-                        signsD.reg_wen = 1'b1;
+                        signsD.reg_write = 1'b1;
+                        signsD.read_rs = 1'b1;
+                        signsD.read_rt = 1'b1;
                     end
                     `RT_BLTZAL: begin
-                        signsD.reg_wen = 1'b1;
+                        signsD.reg_write = 1'b1;
+                        signsD.read_rs = 1'b1;
+                        signsD.read_rt = 1'b1;
                     end
                     `RT_SYNCI: begin
                         signsD.flush_all = 1'b1;
-                        signsD.is_olny_in_master = 1'b1;
+                        signsD.read_rs = 1'b1;
                     end
                 endcase
             end
             // special
             `OP_COP0_INST:begin
-                spec_inst = 1'b1;
                 case (rs)
                     `RS_MFC0: begin
                         signsD.aluop = `ALUOP_MFC0;
-                        signsD.reg_wen = 1'b1;
+                        signsD.reg_write = 1'b1;
+                        signsD.cp0_read = 1'b1;
                     end
                     `RS_MTC0: begin
                         signsD.aluop = `ALUOP_MTC0;
-                        signsD.cp0write = 1'b1;
+                        signsD.read_rt = 1'b1;
+                        signsD.cp0_write = 1'b1;
+                        signsD.only_one_issue = 1'b1;
                     end
                 endcase
             end
