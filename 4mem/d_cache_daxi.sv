@@ -157,14 +157,14 @@ module d_cache_daxi (
             collisionM <= 1'b1;
             data_wdata_r <= data_wdata;
         end
-        else if(~read) begin
+        else if(~stallM) begin
             collisionM <= 1'b0;
             data_wdata_r <= 32'b0;
         end
     end
 
 
-    assign stall = ~(state==IDLE || state==HitJudge && hit);
+    assign stall = ~(state==IDLE || state==HitJudge && !miss);
     assign data_rdata = hit &  ~collisionM ? block_sel_way[sel]:
                         collisionM     ? data_wdata_r: saved_rdata;
 //AXI
