@@ -228,7 +228,9 @@ hazard u_hazard(
     //ports
     .i_stall                        ( i_stall                        ),
     .d_stall                        ( d_stall                        ),
-    .D_master_rs                    ( D_master_rs                    ),
+    .D_master_read_rs				( D_master_read_rs				 ),
+	.D_master_read_rt				( D_master_read_rt				 ),
+	.D_master_rs                    ( D_master_rs                    ),
     .D_master_rt                    ( D_master_rt                    ),
     .E_master_memtoReg              ( E_master_memtoReg              ),
     .E_master_reg_waddr             ( E_master_reg_waddr             ),
@@ -350,7 +352,7 @@ decoder u_decoder_master(
 	.eret_inst             		( D_master_eret_inst             		)
 );
 
-decoder u_decoder_master(
+decoder u_decoder_slave(
 	//ports
 	.instr                 		( D_slave_inst                  		),
 	.op                    		( D_slave_op                     		),
@@ -394,7 +396,7 @@ regfile u_regfile(
     .clk               ( clk                    ),
     .rst               ( rst                    ),
     
-    .ra1_a             ( D_master_rs            ),
+	.ra1_a             ( D_master_rs            ),
     .rd1_a             ( D_master_rs_value_tmp  ),
     .ra1_b             ( D_master_rt            ),
     .rd1_b             ( D_master_rt_value_tmp  ),
@@ -445,25 +447,31 @@ forward_top u_forward_top(
 
 issue_ctrl u_issue_ctrl(
 	//ports
-	.D_master_en               		( D_ena                        		),
-	.D_master_reg_wen          		( D_master_reg_wen          		),
-	.D_master_mem_en           		( D_master_mem_en           		),
-	.D_master_reg_waddr        		( D_master_reg_waddr        		),
-	.D_master_is_branch        		( (|D_master_branch_type)     		),
-	.E_master_memtoReg         		( E_master_memtoReg         		),
-	.E_master_reg_waddr        		( E_master_reg_waddr        		),
-    .E_slave_memtoReg               ( E_slave_memtoReg                  ),
-    .E_slave_reg_waddr              ( E_slave_reg_waddr                 ),
-	.D_slave_op                		( D_slave_op                		),
-	.D_slave_rs                		( D_slave_rs                		),
-	.D_slave_rt                		( D_slave_rt                		),
-	.D_slave_mem_en            		( D_slave_mem_en            		),
-	.D_slave_is_branch         		( (|D_slave_branch_type)      		),
-	.D_slave_is_only_in_master 		( D_slave_is_only_in_master 		),
-	.fifo_empty                		( fifo_empty                		),
-	.fifo_almost_empty         		( fifo_almost_empty         		),
-	.D_slave_is_in_delayslot   		( D_slave_is_in_delayslot   		),
-	.D_slave_en                		( D_slave_ena               		)
+	.D_master_ena            		( D_ena  		          		),
+	.D_master_mem_en         		( D_master_mem_en         		),
+	.D_slave_mem_en          		( D_slave_mem_en          		),
+	.E_master_memtoReg       		( E_master_memtoReg       		),
+	.E_master_reg_waddr      		( E_master_reg_waddr      		),
+	.E_slave_memtoReg        		( E_slave_memtoReg        		),
+	.E_slave_reg_waddr       		( E_slave_reg_waddr       		),
+	.D_master_reg_wen        		( D_master_reg_wen        		),
+	.D_master_reg_waddr      		( D_master_reg_waddr      		),
+	.D_slave_read_rs         		( D_slave_read_rs         		),
+	.D_slave_read_rt         		( D_slave_read_rt         		),
+	.D_slave_rs              		( D_slave_rs              		),
+	.D_slave_rt              		( D_slave_rt              		),
+	.D_master_hilowrite      		( D_master_hilowrite      		),
+	.D_slave_hiloread        		( D_slave_hiloread        		),
+	.D_master_cp0write       		( D_master_cp0write       		),
+	.D_slave_cp0read         		( D_slave_cp0read         		),
+	.D_master_is_branch      		( (|D_master_branch_type) 		),
+	.D_master_only_one_issue 		( D_master_only_one_issue 		),
+	.D_slave_only_one_issue  		( D_slave_only_one_issue  		),
+	.D_slave_may_bring_flush 		( D_slave_may_bring_flush 		),
+	.fifo_empty              		( fifo_empty              		),
+	.fifo_almost_empty       		( fifo_almost_empty       		),
+	.D_slave_is_in_delayslot 		( D_slave_is_in_delayslot 		),
+	.D_slave_ena             		( D_slave_ena             		)
 );
 
 // ====================================== Execute ======================================

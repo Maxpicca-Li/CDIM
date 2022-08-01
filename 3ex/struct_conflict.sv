@@ -35,8 +35,8 @@ module struct_conflict(
     input  logic [31:0] M_mem_rdata
 );
 
-    assign E_mem_sel1 = E_mem_en1 & !E_exp1 & !M_flush; // & M_ena;
-    assign E_mem_sel2 = E_mem_en2 & !E_exp1 & !E_exp2 & !M_flush; // & M_ena;
+    assign E_mem_sel1 = E_mem_en1 & !E_exp1 & !M_flush;// & E_mem_addr1 != 32'hbfaffff0; // & M_ena;
+    assign E_mem_sel2 = E_mem_en2 & !E_exp1 & !E_exp2 & !M_flush;// & E_mem_addr2 != 32'hbfaffff0; // & M_ena;
     
     assign E_mem_en = E_mem_sel1 | E_mem_sel2; // & M_ena;
     assign E_mem_ren = (E_mem_sel1 & E_mem_ren1) | (E_mem_sel2 & E_mem_ren2);

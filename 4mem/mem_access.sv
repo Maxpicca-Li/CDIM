@@ -26,7 +26,7 @@ module mem_access (
     logic  ades, adel;
     assign M_master_except = {M_master_except_a[8:2],M_master_mem_sel & adel,M_master_mem_sel & ades};
     assign M_slave_except = {M_slave_except_a[8:2],M_slave_mem_sel & adel,M_slave_mem_sel & ades};
-    assign data_sram_en    = mem_en && ((M_master_mem_sel && ~(|M_master_except)) || (M_slave_mem_sel && ~(|M_master_except) && ~(|M_slave_except))); // && mem_addr != 32'hbfaffff0;
+    assign data_sram_en    = mem_en && ((M_master_mem_sel && ~(|M_master_except)) || (M_slave_mem_sel && ~(|M_master_except) && ~(|M_slave_except)));// && mem_addr != 32'hbfaffff0;
     assign data_sram_addr  = mem_addr;
                 
     always_comb begin:mem_access_transform

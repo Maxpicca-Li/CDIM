@@ -2,6 +2,8 @@
 module hazard (
     input wire       i_stall,
     input wire       d_stall,
+    input wire       D_master_read_rs,
+    input wire       D_master_read_rt,
     input wire [4:0] D_master_rs,
     input wire [4:0] D_master_rt,
     input wire       E_master_memtoReg,
@@ -39,8 +41,8 @@ module hazard (
     这种情况感觉不用stall lbu（会导致3个周期的延迟）
     */
     // FIXME: 这里没有考虑 D_slave_rs 和 D_slave_rt 
-    assign lwstall = (E_master_memtoReg & ((|D_master_rs & D_master_rs == E_master_reg_waddr) | (|D_master_rt & D_master_rt == E_master_reg_waddr))) || 
-                     (E_slave_memtoReg & ((|D_master_rs & D_master_rs == E_slave_reg_waddr) | (|D_master_rt & D_master_rt == E_slave_reg_waddr)));
+    assign lwstall = (E_master_memtoReg & (|E_master_reg_waddr) & ((D_master_read_rs & D_master_rs == E_master_reg_waddr) | (D_master_read_rt & D_master_rt == E_master_reg_waddr))) || 
+                     (E_slave_memtoReg  & (|E_slave_reg_waddr)  & ((D_master_read_rs & D_master_rs == E_slave_reg_waddr)  | (D_master_read_rt & D_master_rt == E_slave_reg_waddr)));
     assign longest_stall = E_alu_stall | i_stall | d_stall;
     
     assign F_ena = ~i_stall; // 存在fifo情况下，d_stall不影响取指
@@ -54,6 +56,7 @@ module hazard (
     assign E_flush = M_except | E_branch_taken; // pclk-fifo, nclk-ibram
     // assign E_flush = M_except;                     // nclk-fifo, pclk-ibram
     assign M_flush = M_except;
+    // TODO:0xbfc7cbe8 异常绑定
     assign W_flush = 1'b0;
 
 

@@ -21,7 +21,7 @@ module  decoder(
     output logic [`CmovBus]     cmov_type,
     output logic [4:0]          reg_waddr,
     
-    output logic                aluop,
+    output logic [7:0]          aluop,
     output logic                flush_all,
     output logic                read_rs,
     output logic                read_rt,
@@ -239,12 +239,12 @@ module  decoder(
                     `FUN_SYSCALL:begin
                         syscall_inst =1'b1;
                         signsD.may_bring_flush = 1'b1;
-                        signsD.only_one_issue = 1'b0;
+                        signsD.only_one_issue = 1'b1;
                     end
                     `FUN_BREAK  :begin
                         break_inst = 1'b1;
                         signsD.may_bring_flush = 1'b1;
-                        signsD.only_one_issue = 1'b0;
+                        signsD.only_one_issue = 1'b1;
                     end
                     `FUN_SYNC   :begin
                         signsD.may_bring_flush = 1'b1; // NOP ==> don't need to set value
@@ -384,16 +384,19 @@ module  decoder(
                 signsD.mem_en = 1'b1;
                 signsD.mem_write = 1'b1;
                 signsD.read_rs = 1'b1;
+                signsD.read_rt = 1'b1;
             end
             `OP_SH    : begin
                 signsD.mem_en = 1'b1;
                 signsD.mem_write = 1'b1;
                 signsD.read_rs = 1'b1;
+                signsD.read_rt = 1'b1;
             end
             `OP_SW    : begin
                 signsD.mem_en = 1'b1;
                 signsD.mem_write = 1'b1;
                 signsD.read_rs = 1'b1;
+                signsD.read_rt = 1'b1;
             end
             // arith imme
             `OP_ADDI  : begin
@@ -454,8 +457,12 @@ module  decoder(
             `OP_REGIMM: begin     // BGEZ,BLTZ,BGEZAL,BLTZAL
                 signsD.may_bring_flush = 1'b1;
                 case(rt)
-                    // `RT_BGEZ
-                    // `RT_BLTZ
+                    `RT_BGEZ: begin
+                        signsD.read_rs = 1'b1;
+                    end
+                    `RT_BLTZ: begin
+                        signsD.read_rs = 1'b1;
+                    end
                     `RT_BGEZAL: begin
                         signsD.reg_write = 1'b1;
                         signsD.read_rs = 1'b1;
@@ -474,6 +481,7 @@ module  decoder(
             end
             // special
             `OP_COP0_INST:begin
+                signsD.only_one_issue = 1'b1;
                 case (rs)
                     `RS_MFC0: begin
                         signsD.aluop = `ALUOP_MFC0;
@@ -484,7 +492,6 @@ module  decoder(
                         signsD.aluop = `ALUOP_MTC0;
                         signsD.read_rt = 1'b1;
                         signsD.cp0_write = 1'b1;
-                        signsD.only_one_issue = 1'b1;
                     end
                 endcase
             end
