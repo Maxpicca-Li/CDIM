@@ -203,26 +203,32 @@ module  decoder(
                     `FUN_TEQ    :begin
                         trap_type = `TT_TEQ;
                         signsD.reg_wen = 1'b0;
+                        signsD.is_olny_in_master = 1'b1;
                     end
                     `FUN_TNE    :begin
                         trap_type = `TT_TNE;
                         signsD.reg_wen = 1'b0;
+                        signsD.is_olny_in_master = 1'b1;
                     end
                     `FUN_TGE    :begin
                         trap_type = `TT_TGE;
                         signsD.reg_wen = 1'b0;
+                        signsD.is_olny_in_master = 1'b1;
                     end
                     `FUN_TGEU   :begin
                         trap_type = `TT_TGEU;
                         signsD.reg_wen = 1'b0;
+                        signsD.is_olny_in_master = 1'b1;
                     end
                     `FUN_TLT    :begin
                         trap_type = `TT_TLT;
                         signsD.reg_wen = 1'b0;
+                        signsD.is_olny_in_master = 1'b1;
                     end
                     `FUN_TLTU   :begin
                         trap_type = `TT_TLTU;
                         signsD.reg_wen = 1'b0;
+                        signsD.is_olny_in_master = 1'b1;
                     end
                     `FUN_MOVN: begin
                         signsD.aluop = `ALUOP_MOV;
@@ -396,6 +402,36 @@ module  decoder(
                     end
                     `RT_SYNCI: begin
                         signsD.flush_all = 1'b1;
+                        signsD.is_olny_in_master = 1'b1;
+                    end
+                    `RT_TEQI: begin
+                        trap_type = `TT_TEQ;
+                        signsD.alu_selb = 1'b1;
+                        signsD.is_olny_in_master = 1'b1;
+                    end
+                    `RT_TNEI: begin
+                        trap_type = `TT_TNE;
+                        signsD.alu_selb = 1'b1;
+                        signsD.is_olny_in_master = 1'b1;
+                    end
+                    `RT_TGEI: begin
+                        trap_type = `TT_TGE;
+                        signsD.alu_selb = 1'b1;
+                        signsD.is_olny_in_master = 1'b1;
+                    end
+                    `RT_TGEIU: begin
+                        trap_type = `TT_TGEU;
+                        signsD.alu_selb = 1'b1;
+                        signsD.is_olny_in_master = 1'b1;
+                    end
+                    `RT_TLTI: begin
+                        trap_type = `TT_TLT;
+                        signsD.alu_selb = 1'b1;
+                        signsD.is_olny_in_master = 1'b1;
+                    end
+                    `RT_TLTIU: begin
+                        trap_type = `TT_TLTU;
+                        signsD.alu_selb = 1'b1;
                         signsD.is_olny_in_master = 1'b1;
                     end
                 endcase

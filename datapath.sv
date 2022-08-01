@@ -650,19 +650,10 @@ branch_judge u_branch_judge(
 trap_judge u_trap_judge_master(
 	//ports
 	.trap_type 		( E_master_trap_type 		),
-	.rs_value  		( E_master_rs_value   		),
-	.rt_value  		( E_master_rt_value   		),
+	.value1  		( E_master_alu_srca   		),
+	.value2  		( E_master_alu_srcb   		),
 	.exp_trap  		( E_master_exp_trap  		)
 );
-
-trap_judge u_trap_judge_slave(
-	//ports
-	.trap_type 		( E_slave_trap_type 		),
-	.rs_value  		( E_slave_rs_value   		),
-	.rt_value  		( E_slave_rt_value   		),
-	.exp_trap  		( E_slave_exp_trap  		)
-);
-
 
 alu_master u_alu_master(
     //ports
@@ -756,7 +747,7 @@ ex_mem u_ex_mem(
 	.E_slave_is_in_delayslot  		( E_slave_is_in_delayslot  		),
 	.E_slave_reg_waddr        		( E_slave_reg_waddr        		),
     .E_slave_aluop                  ( E_slave_aluop                 ),
-	.E_slave_except           		( {E_slave_exp_trap, E_slave_except[7:3],E_slave_overflow,E_slave_except[1:0]}           		),
+	.E_slave_except           		( {1'b0, E_slave_except[7:3],E_slave_overflow,E_slave_except[1:0]}           		),
 	.E_slave_pc               		( E_slave_pc               		),
 	.E_slave_inst             		( E_slave_inst             		),
 	.E_slave_alu_res          		( E_slave_alu_res          		),
