@@ -43,7 +43,7 @@ module inst_fifo(
     reg [3:0] data_count;
 
     // fifo状态
-    assign full     = &data_count[3:1] || (write_pointer+1==read_pointer); // 1110(装不下两条指令了) 
+    assign full     = &data_count[3:1]; // || (write_pointer+1==read_pointer); // 1110(装不下两条指令了) 
     assign empty    = (data_count == 4'd0); //0000
     assign almost_empty = (data_count == 4'd1); //0001
 
@@ -157,7 +157,7 @@ module inst_fifo(
     always_ff @(posedge clk) begin : update_read_pointer
         if(fifo_rst) begin
             read_pointer <= 4'd0;
-        end else if(empty || !D_ena) begin
+        end else if(empty || delayslot_enable) begin
             read_pointer <= read_pointer;
         end else if(read_en1 && read_en2) begin
             read_pointer <= read_pointer + 4'd2;

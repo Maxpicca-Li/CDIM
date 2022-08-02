@@ -27,12 +27,12 @@ module alu_master(
     logic start_div;
     logic signed_div;
     logic div_ready;
-    logic [7 :0] save_div_type;
     logic [31:0] multa,multb;
-    // logic [31:0] save_div_a,save_div_b;
-    // logic [63:0] save_div_result;
     logic [63:0] div_result;
     logic [63:0] temp_aluout_64;
+    // logic [7 :0] save_div_type;
+    // logic [31:0] save_div_a,save_div_b;
+    // logic [63:0] save_div_result;
 
     integer i;
     
@@ -277,6 +277,6 @@ module alu_master(
         .annul_i(1'b0),
         .result_o(div_result),
         .ready_o(div_ready)
-);
+    );
     
 endmodule

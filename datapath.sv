@@ -658,17 +658,9 @@ branch_judge u_branch_judge(
 trap_judge u_trap_judge_master(
 	//ports
 	.trap_type 		( E_master_trap_type 		),
-	.rs_value  		( E_master_rs_value   		),
-	.rt_value  		( E_master_rt_value   		),
+	.value1  		( E_master_alu_srca   		),
+	.value2  		( E_master_alu_srcb   		),
 	.exp_trap  		( E_master_exp_trap  		)
-);
-
-trap_judge u_trap_judge_slave(
-	//ports
-	.trap_type 		( E_slave_trap_type 		),
-	.rs_value  		( E_slave_rs_value   		),
-	.rt_value  		( E_slave_rt_value   		),
-	.exp_trap  		( E_slave_exp_trap  		)
 );
 
 wire E_master_alu_stall, E_slave_alu_stall;
@@ -711,9 +703,8 @@ wire hilo_wen;
 wire [63:0]hilo_wdata;
 // TODO: 很多写，都有这种操作，regfile, except, hilo_reg，可以聚集一起吗？
 assign hilo_wen = ((E_slave_hilowrite & ~(|E_master_except) & ~(|E_slave_except)) | (E_master_hilowrite & ~(|E_master_except))) & M_ena & ~M_flush;
-assign hilo_wdata = E_slave_hilowrite ? E_slave_alu_out64 : E_master_alu_out64;
-// assign hilo_wdata = {64{E_slave_hilowrite}}  & E_slave_alu_out64 | 
-// 					{64{E_master_hilowrite}} & E_master_alu_out64;
+assign hilo_wdata = {64{E_slave_hilowrite==1'b1}} & E_slave_alu_out64 |
+                    {64{E_slave_hilowrite==1'b0}} & E_master_alu_out64 ;
 // E阶段写，M阶段出结果
 hilo_reg u_hilo_reg(
     //ports

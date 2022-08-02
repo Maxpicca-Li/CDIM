@@ -300,7 +300,6 @@ module  decoder(
                         signsD.reg_write = 1'b1;
                     end
                     default: begin 
-                        signsD = `CTRL_SIGN_NOP;
                         undefined_inst = 1'b1;
                     end
                 endcase
@@ -475,6 +474,30 @@ module  decoder(
                     end
                     `RT_SYNCI: begin
                         signsD.flush_all = 1'b1;
+                        signsD.read_rs = 1'b1;
+                    end
+                    `RT_TEQI: begin
+                        trap_type = `TT_TEQ;
+                        signsD.read_rs = 1'b1;
+                    end
+                    `RT_TNEI: begin
+                        trap_type = `TT_TNE;
+                        signsD.read_rs = 1'b1;
+                    end
+                    `RT_TGEI: begin
+                        trap_type = `TT_TGE;
+                        signsD.read_rs = 1'b1;
+                    end
+                    `RT_TGEIU: begin
+                        trap_type = `TT_TGEU;
+                        signsD.read_rs = 1'b1;
+                    end
+                    `RT_TLTI: begin
+                        trap_type = `TT_TLT;
+                        signsD.read_rs = 1'b1;
+                    end
+                    `RT_TLTIU: begin
+                        trap_type = `TT_TLTU;
                         signsD.read_rs = 1'b1;
                     end
                 endcase

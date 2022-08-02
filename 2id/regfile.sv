@@ -47,7 +47,7 @@ module regfile(
                     rf[ra2_b];
 
     always_ff @(posedge clk) begin : write_data     // sram_func
-        if(wen1 && wen2 && wa1 == wa2)
+        if(wen1 && wen2 && ~(|(wa1 ^ wa2)))
             rf[wa2] <= wd2;
         else begin
             if(wen1)

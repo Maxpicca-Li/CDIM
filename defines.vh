@@ -139,6 +139,12 @@
 `define RT_BLTZAL       5'b10000
 `define RT_BGEZAL       5'b10001
 `define RT_SYNCI        5'b11111
+`define RT_TEQI         5'b01100
+`define RT_TNEI         5'b01110
+`define RT_TGEI         5'b01000
+`define RT_TGEIU        5'b01001
+`define RT_TLTI         5'b01010
+`define RT_TLTIU        5'b01011
 
 // ## other op
 `define OP_ANDI		    6'b001100
