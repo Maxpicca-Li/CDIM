@@ -45,19 +45,18 @@ module hazard (
                      (E_slave_memtoReg  & (|E_slave_reg_waddr)  & ((D_master_read_rs & D_master_rs == E_slave_reg_waddr)  | (D_master_read_rt & D_master_rt == E_slave_reg_waddr)));
     assign longest_stall = E_alu_stall | i_stall | d_stall;
     
-    assign F_ena = ~i_stall; // 存在fifo情况下，d_stall不影响取指
-    assign D_ena = ~(lwstall | longest_stall);
-    assign E_ena = ~longest_stall;
-    assign M_ena = ~longest_stall;
-    assign W_ena = ~longest_stall | (E_alu_stall & M_except); // FIXME: M阶段异常不影响W阶段 ==> 该逻辑根据波形图硬改的
+    assign F_ena = ~i_stall | M_except; // 存在fifo情况下，d_stall不影响取指
+    assign D_ena = ~(lwstall | longest_stall) | M_except;
+    assign E_ena = ~longest_stall | M_except;
+    assign M_ena = ~longest_stall | M_except;
+    assign W_ena = ~longest_stall | M_except;
 
     assign F_flush = 1'b0;
     assign D_flush = M_except | E_branch_taken;
     assign E_flush = M_except | E_branch_taken; // pclk-fifo, nclk-ibram
     // assign E_flush = M_except;                     // nclk-fifo, pclk-ibram
     assign M_flush = M_except;
-    // TODO:0xbfc7cbe8 异常绑定
-    assign W_flush = 1'b0;
+    assign W_flush = 1'b0; // TODO:0xbfc7cbe8 异常绑定
 
 
 endmodule
