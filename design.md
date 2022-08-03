@@ -38,7 +38,19 @@ XXMIPS，采用了对称双发射五级顺序流水线的设计，并支持指�
 
 ### 名词解释
 
+- MIPS: Microprocessor without Interlocked Pipeline Stages，无内部互锁流水级的微处理器
+- SOC: System On a Chip，片上系统
+- CPU: Central Processing Unit，中央处理器
+- ALU: Arithmetic Logic Unit，算数逻辑单元
 - GPR: General Purpose Register，通用寄存器
+- CP0: Co-Processor 0，协处理器0
+- BRAM: Block Random Access Memory，块随机访问存储器
+- FIFO: First In First Out，先进先出
+- RAW: Read After Write，写后读
+- WAW: Write After Write，写后写
+- WAR: Write After Read，读后写
+
+
 
 ## CPU设计方案
 
@@ -64,8 +76,8 @@ LaunchMIPS的数据通路示意图如下，其中红线部分为master path，�
 
 3. 数据冲突
 
-   1. RAW（Read After Write）：如果master和slave之间存在HiLo寄存器的WRA或GPR的RAW情况，则slave不发射。
-   2. Load to use：如果slave使用到的寄存器是其上上条指令的访存结果，则slave不发射。
+   1. RAW：如果master和slave之间存在HiLo寄存器的WRA或GPR的RAW情况，则slave不发射。
+   2. load to use：如果slave使用到的寄存器是其上上条指令的访存结果，则slave不发射。
 
 4. 结构冲突
 
@@ -101,7 +113,7 @@ Excute阶段中，主要完成以下操作：
 
 2、ALU计算：可以处理单周期运算指令和多周期运算指令。其中，多周期运算指令（包括2周期乘法指令、36周期除法指令等），在运算完成前会产生stall信号，阻塞D、E、M、W四个阶段。其中，流水线master和slave各有一个乘法器和除法器。
 
-3、访存仲裁及其地址计算：由于data cache是bram结构，需要一个周期取出指令，我们需要在E阶段将访存信号传递给data cache。因为master和slave都支持访存（但不会同时访存），故在传递访存前，需要用`Struct Conflict`模块进行仲裁，并保证`M_flush`置0以使访存信号能由E阶段正常传到M阶段，保证M阶段的数据传回。同时，为了减少访存地址计算经过的路径，我们分离了E阶段中的ALU路径和MEM路径，单独利用`base(rs value) + offset(immediate value)`计算访存地址。
+3、访存仲裁及其地址计算：由于data cache是BRAM结构，需要一个周期取出指令，我们需要在E阶段将访存信号传递给data cache。因为master和slave都支持访存（但不会同时访存），故在传递访存前，需要用`Struct Conflict`模块进行仲裁，并保证`M_flush`置0以使访存信号能由E阶段正常传到M阶段，保证M阶段的数据传回。同时，为了减少访存地址计算经过的路径，我们分离了E阶段中的ALU路径和MEM路径，单独利用`base(rs value) + offset(immediate value)`计算访存地址。
 
 #### 访存阶段
 
@@ -123,11 +135,11 @@ Write Back阶段，主要执行写回寄存器请求。
 
 #### 数据冲突
 
-1、RAW（Read After Write）冲突：当master或slave需要读取的数据是已经发射且进入后续流水阶段的指令，会产生RAW冲突。本设计将需要的数据均前推到D阶段，前推后立即进入触发器，避免前推数据所在关键路径过长。其中，若需要读取的数据是当前E阶段的访存数据，则需要进行阻塞以等待访存数据在M阶段返回。若需要读取的数据是当前E阶段的计算结果、或M阶段的计算结果、或M阶段的访存结果，则通过`forward_top`模块前推到D阶段。
+1、RAW冲突：当master或slave需要读取的数据是已经发射且进入后续流水阶段的指令，会产生RAW冲突。本设计将需要的数据均前推到D阶段，前推后立即进入触发器，避免前推数据所在关键路径过长。其中，若需要读取的数据是当前E阶段的访存数据，则需要进行阻塞以等待访存数据在M阶段返回。若需要读取的数据是当前E阶段的计算结果、或M阶段的计算结果、或M阶段的访存结果，则通过`forward_top`模块前推到D阶段。
 
-2、WAW（Write After Write）冲突：当同周期的master和slave写入寄存器的地址一致时，会产生WAW冲突。因为slave是master后一条指令，故regfile更新时，若存在WAW冲突，则优先写入slave的结果。
+2、WAW冲突：当同周期的master和slave写入寄存器的地址一致时，会产生WAW冲突。因为slave是master后一条指令，故regfile更新时，若存在WAW冲突，则优先写入slave的结果。
 
-3、WAR（Write After Read）冲突：由于本设计为顺序流水线，故不存在WAR冲突。
+3、WAR冲突：由于本设计为顺序流水线，故不存在WAR冲突。
 
 #### 控制冲突
 
@@ -214,9 +226,13 @@ Cache的具体状态转移如下图所示：
 
 我们采用的是2路组相联Cache，1bit 伪LRU替换算法，其原理很简单。一共有两种情况需要改变LRU位，一是Cache命中时，二是其缺失时。如果Cache命中，则把命中路地址的LRU位标记为另外那条没有命中的Line，如果是Cache未命中，则会根据对应地址的LRU位选择替换路并读入新数据，此时只需将对应地址的LRU位取反即可。
 
+
+
 ## 总结
 
 本设计，相较于重庆大学往届参赛队，做出了两大突破。一是双发射的设计，二是cache的优化，使得XXMIPS得以支持主频100Mhz，取得66.477的性能分。接下来的时间，我们将继续在系统软件方面进击。
+
+
 
 ## 参考文献
 
@@ -228,6 +244,8 @@ Cache的具体状态转移如下图所示：
 - Cache 实验指导书.重庆大学
 - Sirius 设计文档. 于海鑫，尹思维
 - PipelineMips 设计报告. 袁福焱，李果，李雅雯，江焰丰
+
+
 
 ## 附录
 
@@ -325,13 +343,13 @@ Cache的具体状态转移如下图所示：
   - NOP: No Operation(Assembly Idiom)
   - SYNC: Synchronize Shared Memory
   - SYNCI: Synchronize Caches to Make Instruction Writes Effective
-
 - 待添加指令
-  - B: Unconditional Branch
   - CACHE: Perform Cache Operation
+  - PREF: Prefetch
+  - LL: Load Linked Word
   - LWL: Load Word Left
   - LWR: Load Word Right
-  - SSNOP: Superscalar No Operation(Pseudo instruction)
+  - SC: Store Conditional Word
   - SWL: Store Word Left
   - SWR: Store Word Right
   - TLBP: Probe TLB for Matching Entry
@@ -339,3 +357,6 @@ Cache的具体状态转移如下图所示：
   - TLBWI: Write Indexed TLB Entry
   - TLBWR: Write Random TLB Entry
   - WAIT: Enter Standby Mode
+
+
+
