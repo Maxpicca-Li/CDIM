@@ -123,11 +123,67 @@ Write Back阶段，主要执行写回寄存器请求。
 
 #### 2.4.1 AXI总线设计
 
+​      AXI的访问接口设计如下，Arbitrator用于集中处理I Cache和D_Arbitrator发来的AXI请求，当读请求冲突时，优先发送读指令请求，并用arid=0代表指令，arid=1代表数据，对应地，接收数据时也根据rid的值来分发数据。
+
+​      访问uncached数据的指令由D_Confreg模块单独负责。当写uncached的数据时，会由D_Confreg模块发起写外设请求，除非下一条数据访存指令也访问外设，否则写外设这一过程将不会阻塞流水线。
+
+![image-20220802194209555](design.assets/AXI_BUS.png)
+
 #### 2.4.2 Cache结构
 
-#### 2.4.3 ...
+​    I Cache和D Cache都为2路组相联，1 bit 伪LRU替换算法，每路8KB，共16KB，每块8个字。Valid位与tag都存在RAM里，dirty位则采用Reg实现。为了便于debug及后续上操作系统，我们不调用Xilinx IP核实现RAM，而是自己手写了相关功能模块以模拟Xilinx IP核生成的RAM的功能。
 
+#### 2.4.3 Cache状态机
 
+​    I Cache的状态机较为简单，且与D Cache的状态机有很大重复，因此这里只介绍D Cache的状态机，下面是它的处理流程图（此流程图较大程度上参考了：姚永斌，《超标量处理器设计》p28，写回写分配cache）
+
+![CacheDFA](design.assets/CacheDFA.png)
+
+​    上图中的CfgWritting是一个由D_Confreg传过来的1位信号，值为1表示此时正在写外设，AXI写通道被占用，因此当需要替换脏数据到内存中时，需要先检查此时写通道是否被占用，如果被占用，则会自旋直至其空闲。
+
+​    Cache的具体状态转移如下图所示
+
+<img src="design.assets/CacheState.png" alt="CacheState" style="zoom: 67%;" />
+
+状态：
+
+IDLE：空闲状态
+
+HitJudge：Cache正在进行是否命中的判断
+
+MissHandle：Cache未命中，数据缺失，此时Cache正在读/写内存
+
+WaitCfg：Cache未命中，数据缺失，但此时正在写uncached数据，写通道被占用
+
+路径：
+
+Path 1：无访存指令，Cache空闲
+
+Path 2：Cache收到访存指令且此时Mem阶段的Stall信号为低，取出其对应Line的数据并进行Hit判断
+
+Path 3：Cache命中且下一条指令(也即处于Master线的EXE阶段指令)不为访存指令
+
+Path 4：Cache命中且下一条指令也为访存指令，此时保持HitJudge状态，以判断是否连续命中
+
+Path 5：Cache未命中且此时写通道空闲，Cache进入缺失处理
+
+Path 6：Cache未命中，但此时正在写uncached数据，写通道被占用，将等待直至写通道空闲
+
+Path 7：Cache未命中，此时写通道空闲，状态转到MissHandle进入缺失处理
+
+Path 8：缺失处理完成，回到空闲状态
+
+重要的补充点说明：
+
+​    1）所有的地址和使能信号都提前一个周期传入Cache并在下一个周期时取出用于判断是否Hit。
+
+​    2）Cache Line的data部分有多个RAM实例，每个字都有对应的写使能，AXI每返回一个数据就将其写入到对应地址。
+
+​    3）当Cache未命中且此时为Load型指令且需要替换的数据为脏，则会同时向AXI发起写请求和读请求。D Cache发起写请求时，写通道必定空闲，所以写操作总是会先于读操作覆盖其数据前完成(如果同时发起读写请求时读写通道都空闲，那么写操作依然会比读操作快1个周期)
+
+#### 2.4.4 替换算法
+
+​    我们采用的是2路组相联Cache，1bit 伪LRU替换算法，其原理很简单。一共有两种情况需要改变LRU位，一是Cache命中时，二是其缺失时。如果Cache命中，则把命中路地址的LRU位标记为另外那条没有命中的Line，如果是Cache未命中，则会根据对应地址的LRU位选择替换路并读入新数据，此时只需将对应地址的LRU位取反即可。
 
 ## 3. 总结
 
@@ -141,6 +197,7 @@ Write Back阶段，主要执行写回寄存器请求。
 - Cache 实验指导书.重庆大学
 - CPU设计实战. 汪文祥，邢金璋
 - Sirius 设计文档. 于海鑫，尹思维
+- 超标量处理器设计. 姚永斌
 
 ## 5. 附录
 
