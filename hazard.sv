@@ -45,10 +45,10 @@ module hazard (
                      (E_slave_memtoReg  & (|E_slave_reg_waddr)  & ((D_master_read_rs & D_master_rs == E_slave_reg_waddr)  | (D_master_read_rt & D_master_rt == E_slave_reg_waddr)));
     assign longest_stall = E_alu_stall | i_stall | d_stall;
     
-    assign F_ena = ~i_stall | M_except; // 存在fifo情况下，d_stall不影响取指
-    assign D_ena = ~(lwstall | longest_stall) | M_except;
-    assign E_ena = ~longest_stall | M_except;
-    assign M_ena = ~longest_stall | M_except;
+    assign F_ena = ~i_stall; // 存在fifo情况下，d_stall不影响取指
+    assign D_ena = ~(lwstall | longest_stall);
+    assign E_ena = ~longest_stall;
+    assign M_ena = ~longest_stall;
     assign W_ena = ~longest_stall | M_except;
 
     assign F_flush = 1'b0;
