@@ -400,7 +400,7 @@ regfile u_regfile(
     .rd1_a             ( D_master_rs_value_tmp  ),
     .ra1_b             ( D_master_rt            ),
     .rd1_b             ( D_master_rt_value_tmp  ),
-    .wen1              ( W_master_reg_wen & W_ena & ~(|W_master_except)), // 跟踪异常，该指令出现异常，则不
+    .wen1              ( W_master_reg_wen & W_ena), // 跟踪异常，该指令出现异常，则不
     .wa1               ( W_master_reg_waddr     ),
     .wd1               ( W_master_reg_wdata     ),
     
@@ -408,7 +408,7 @@ regfile u_regfile(
     .rd2_a             ( D_slave_rs_value_tmp   ),
     .ra2_b             ( D_slave_rt             ),
     .rd2_b             ( D_slave_rt_value_tmp   ),
-    .wen2              ( W_slave_reg_wen & W_ena & ~(|W_slave_except) & ~(|W_master_except)),
+    .wen2              ( W_slave_reg_wen & W_ena),
     .wa2               ( W_slave_reg_waddr      ),
     .wd2               ( W_slave_reg_wdata      )
 );
@@ -757,6 +757,8 @@ wire [5 :0] mem_opM;
 wire [31:0] mem_addrM;
 wire [31:0] mem_wdataM;
 wire        E_master_mem_sel, E_slave_mem_sel ;
+wire        E_master_mem_adel, E_slave_mem_adel;
+wire        E_master_mem_ades, E_slave_mem_ades;
 wire        M_master_mem_sel, M_slave_mem_sel ;
 
 // mem_addr: base(rs value) + offset(immediate value)
@@ -777,6 +779,8 @@ struct_conflict u_struct_conflict(
 	.E_mem_addr1  		( E_master_mem_addr	),
 	.E_mem_wdata1 		( E_master_rt_value ),
 	.M_mem_sel1   		( M_master_mem_sel  ),
+	.E_mem_adel1		( E_master_mem_adel ),
+	.E_mem_ades1		( E_master_mem_ades ),
 	.E_mem_sel1   		( E_master_mem_sel  ),
 	.M_mem_rdata1 		( M_master_mem_rdata),
 	// slave
@@ -787,6 +791,8 @@ struct_conflict u_struct_conflict(
 	.E_mem_addr2  		( E_slave_mem_addr 	),
 	.E_mem_wdata2 		( E_slave_rt_value  ),
 	.M_mem_sel2   		( M_slave_mem_sel   ),
+	.E_mem_adel2		( E_slave_mem_adel ),
+	.E_mem_ades2		( E_slave_mem_ades ),
 	.E_mem_sel2   		( E_slave_mem_sel   ),
 	.M_mem_rdata2 		( M_slave_mem_rdata ),
 	// mem
@@ -832,7 +838,7 @@ ex_mem u_ex_mem(
     .E_master_aluop                 ( E_master_aluop                ),
 	.E_master_rd              		( E_master_rd              		),
 	.E_master_op              		( E_master_op              		),
-	.E_master_except_a        		( {E_master_exp_trap, E_master_except[7:3],E_master_overflow,E_master_except[1:0]}        		),
+	.E_master_except_a        		( {E_master_exp_trap, E_master_except[7:3],E_master_overflow,E_master_mem_adel, E_master_mem_ades}),
 	.E_master_inst            		( E_master_inst            		),
 	.E_master_rt_value        		( E_master_rt_value        		),
 	.E_master_alu_res         		( E_master_alu_res         		),
@@ -846,7 +852,7 @@ ex_mem u_ex_mem(
 	.E_slave_is_in_delayslot  		( E_slave_is_in_delayslot  		),
 	.E_slave_reg_waddr        		( E_slave_reg_waddr        		),
     .E_slave_aluop                  ( E_slave_aluop                 ),
-	.E_slave_except           		( {E_slave_exp_trap, E_slave_except[7:3],E_slave_overflow,E_slave_except[1:0]}           		),
+	.E_slave_except           		( {E_slave_exp_trap, E_slave_except[7:3],E_slave_overflow,E_slave_mem_adel, E_slave_mem_ades}),
 	.E_slave_pc               		( E_slave_pc               		),
 	.E_slave_inst             		( E_slave_inst             		),
 	.E_slave_alu_res          		( E_slave_alu_res          		),
@@ -860,7 +866,7 @@ ex_mem u_ex_mem(
     .M_master_aluop                 ( M_master_aluop                ),
 	.M_master_rd              		( M_master_rd              		),
 	.M_master_op              		( M_master_op              		),
-	.M_master_except_a        		( M_master_except_a        		),
+	.M_master_except_a        		( M_master_except        		),
 	.M_master_inst            		( M_master_inst            		),
 	.M_master_rt_value        		( M_master_rt_value        		),
 	.M_master_alu_res         		( M_master_alu_res    		    ),
@@ -874,7 +880,7 @@ ex_mem u_ex_mem(
 	.M_slave_is_in_delayslot  		( M_slave_is_in_delayslot  		),
 	.M_slave_reg_waddr        		( M_slave_reg_waddr        		),
     .M_slave_aluop                  ( M_slave_aluop                 ),
-	.M_slave_except           		( M_slave_except_a         		),
+	.M_slave_except           		( M_slave_except         		),
 	.M_slave_pc               		( M_slave_pc               		),
 	.M_slave_inst             		( M_slave_inst             		),
 	.M_slave_alu_res          		( M_slave_alu_res      		    )
@@ -896,9 +902,7 @@ mem_access u_mem_access(
 	// 异常处理及其选择
     .M_master_mem_sel  		( M_master_mem_sel  		),
 	.M_slave_mem_sel   		( M_slave_mem_sel   		),
-	.M_master_except_a 		( M_master_except_a 		),
 	.M_master_except   		( M_master_except   		),
-	.M_slave_except_a  		( M_slave_except_a  		),
 	.M_slave_except    		( M_slave_except    		)
 );
 
@@ -960,38 +964,38 @@ mem_wb u_mem_wb(
 	//ports
 	.clk                		( clk                		),
 	.rst                		( rst                		),
-	.clear1             		( W_flush             		),
-	.clear2             		( W_flush             		),
+	.clear1             		( |M_master_except			),
+	.clear2             		( (|M_master_except) | (|M_slave_except)),
 	.ena1                		( W_ena               		),
 	.ena2               		( W_ena               		),
 	.M_master_reg_wen   		( M_master_reg_wen   		),
 	.M_master_reg_waddr 		( M_master_reg_waddr 		),
-	.M_master_except    		( M_master_except    		),
+	// .M_master_except    		( M_master_except    		),
 	.M_master_inst      		( M_master_inst      		),
 	.M_master_pc        		( M_master_pc        		),
 	.M_master_reg_wdata 		( M_master_reg_wdata 		),
 	.M_slave_reg_wen    		( M_slave_reg_wen    		),
 	.M_slave_reg_waddr  		( M_slave_reg_waddr  		),
-	.M_slave_except     		( M_slave_except     		),
+	// .M_slave_except     		( M_slave_except     		),
 	.M_slave_inst       		( M_slave_inst       		),
 	.M_slave_pc         		( M_slave_pc         		),
 	.M_slave_reg_wdata  		( M_slave_reg_wdata  		),
 	.W_master_reg_wen   		( W_master_reg_wen   		),
 	.W_master_reg_waddr 		( W_master_reg_waddr 		),
-	.W_master_except    		( W_master_except    		),
+	// .W_master_except    		( W_master_except    		),
 	.W_master_inst      		( W_master_inst      		),
 	.W_master_pc        		( W_master_pc        		),
 	.W_master_reg_wdata 		( W_master_reg_wdata 		),
 	.W_slave_reg_wen    		( W_slave_reg_wen    		),
 	.W_slave_reg_waddr  		( W_slave_reg_waddr  		),
-	.W_slave_except     		( W_slave_except     		),
+	// .W_slave_except     		( W_slave_except     		),
 	.W_slave_inst       		( W_slave_inst       		),
 	.W_slave_pc         		( W_slave_pc         		),
 	.W_slave_reg_wdata  		( W_slave_reg_wdata  		)
 );
 
 // debug
-assign debug_wb_pc          =  W_ena ?((clk) ? W_master_pc : W_slave_pc) : 32'd0;
+assign debug_wb_pc          = (clk) ? W_master_pc : W_slave_pc;
 assign debug_wb_rf_wen      = (rst) ? 4'b0000 : ((clk) ? {4{u_regfile.wen1}} : {4{u_regfile.wen2}});
 assign debug_wb_rf_wnum     = (clk) ? u_regfile.wa1 : u_regfile.wa2;
 assign debug_wb_rf_wdata    = (clk) ? u_regfile.wd1 : u_regfile.wd2;

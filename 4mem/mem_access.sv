@@ -17,21 +17,14 @@ module mem_access (
         // 异常处理
         input                      M_master_mem_sel,
         input                      M_slave_mem_sel,
-        input        [`EXCEPT_BUS] M_master_except_a,
-        output logic [`EXCEPT_BUS] M_master_except,
-        input        [`EXCEPT_BUS] M_slave_except_a,
-        output logic [`EXCEPT_BUS] M_slave_except
+        input        [`EXCEPT_BUS] M_master_except,
+        input        [`EXCEPT_BUS] M_slave_except
     );
 
-    logic  ades, adel;
-    assign M_master_except = {M_master_except_a[8:2],M_master_mem_sel & adel,M_master_mem_sel & ades};
-    assign M_slave_except = {M_slave_except_a[8:2],M_slave_mem_sel & adel,M_slave_mem_sel & ades};
     assign data_sram_en    = mem_en && ((M_master_mem_sel && ~(|M_master_except)) || (M_slave_mem_sel && ~(|M_master_except) && ~(|M_slave_except)));// && mem_addr != 32'hbfaffff0;
     assign data_sram_addr  = mem_addr;
                 
     always_comb begin:mem_access_transform
-        ades = 1'b0; // 写指令地址错例外
-        adel = 1'b0; // 读指令地址错例外
         data_sram_wen = 4'b0000;
         mem_rdata = 0;
         data_sram_wdata = 0;
@@ -40,7 +33,6 @@ module mem_access (
             `OP_LW: begin
                 data_sram_wen = 4'b0000;
                 data_sram_rlen = 2'd2;
-                adel = mem_addr[1:0] != 2'b00;
                 mem_rdata = {32{mem_addr[1:0]==2'b00}} & data_sram_rdata;
             end
             `OP_LB: begin
@@ -62,24 +54,20 @@ module mem_access (
             `OP_LH: begin
                 data_sram_wen = 4'b0000;
                 data_sram_rlen = 2'd1;
-                adel = mem_addr[0] != 1'b0;
                 mem_rdata = {32{mem_addr[1:0]==2'b10}} & {{16{data_sram_rdata[31]}},data_sram_rdata[31:16]} |
                             {32{mem_addr[1:0]==2'b00}} & {{16{data_sram_rdata[15]}},data_sram_rdata[15: 0]} ;
             end
             `OP_LHU: begin
                 data_sram_wen = 4'b0000;
                 data_sram_rlen = 2'd1;
-                adel = mem_addr[0] != 1'b0;
                 mem_rdata = {32{mem_addr[1:0]==2'b10}} & {{16{1'b0}},data_sram_rdata[31:16]} |
                             {32{mem_addr[1:0]==2'b00}} & {{16{1'b0}},data_sram_rdata[15: 0]} ;
             end
             `OP_SW: begin
-                ades = mem_addr[1:0] != 2'b00;
                 data_sram_wen = {4{mem_addr[1:0]==2'b00}} & 4'b1111;
                 data_sram_wdata = {32{mem_addr[1:0]==2'b00}} & mem_wdata;
             end
             `OP_SH: begin
-                ades = mem_addr[0] != 1'b0;
                 data_sram_wen = {4{mem_addr[1:0]==2'b10}} & 4'b1100 |
                                 {4{mem_addr[1:0]==2'b00}} & 4'b0011 ;
                 data_sram_wdata = {32{mem_addr[0]==1'b0}} & {mem_wdata[15:0],mem_wdata[15:0]};
