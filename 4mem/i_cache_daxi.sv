@@ -1,14 +1,6 @@
 `timescale 1ns / 1ps
 
-
-
-
-
-// 代码声明
-// 此模块在一定程度上(约50%)借鉴了 2020年第四届龙芯杯团队赛重庆大学 袁福焱 队伍 i_cache.v的代码，其代码url：https://github.com/14010007517/2020NSCSCC/tree/master/src/PipelineMIPS
-// 我们的代码在read_req,addr_rcv,data_back等信号处理上和袁学长的代码相同
-// 但在cache的规模结构，取指方式，块替换算法，各种模块的使能，以及data_bank和valid位的实现均与其不同
-
+// 参考实现：https://github.com/14010007517/2020NSCSCC/blob/master/src/PipelineMIPS/i_cache.v (2020年第四届龙芯杯团队赛重庆大学1队)
 module i_cache_daxi (
     input wire clk, rst,
     input wire no_cache,

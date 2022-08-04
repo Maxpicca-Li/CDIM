@@ -1,6 +1,5 @@
 `timescale 1ns / 1ps
 
-// 写回前推，参考
 module regfile(
     input                       clk,
     input                       rst,

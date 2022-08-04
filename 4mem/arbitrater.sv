@@ -1,9 +1,6 @@
 `timescale 1ns/1ps
 
-
-// 代码声明
-// 此模块在较大程度上借鉴了 2020年第四届龙芯杯团队赛重庆大学 袁福焱 队伍 arbitrater.v的代码，其代码url：https://github.com/14010007517/2020NSCSCC/tree/master/src/PipelineMIPS
-
+// 参考实现：https://github.com/14010007517/2020NSCSCC/blob/master/src/PipelineMIPS/arbitrater.v (2020年第四届龙芯杯团队赛重庆大学1队)
 module arbitrater (
     input wire clk, rst,
     //I CACHE
