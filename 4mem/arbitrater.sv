@@ -1,4 +1,9 @@
 `timescale 1ns/1ps
+
+
+// 代码声明
+// 此模块在较大程度上借鉴了 2020年第四届龙芯杯团队赛重庆大学 袁福焱 队伍 arbitrater.v的代码，其代码url：https://github.com/14010007517/2020NSCSCC/tree/master/src/PipelineMIPS
+
 module arbitrater (
     input wire clk, rst,
     //I CACHE
@@ -82,7 +87,7 @@ module arbitrater (
     output bready
 );
 
-    wire ar_sel;     //0-> i_cache, 1-> d_cache
+    wire ar_sel;     //0 :i_cache, 1 : d_cache
     // reg [1:0] r_sel;      //2'b00-> no, 2'b01-> i_cache, 2'b10-> d_cache
 
     //ar
@@ -90,36 +95,25 @@ module arbitrater (
     wire r_sel;     //0-> i_cache, 1-> d_cache
     assign r_sel = rid[0];
 
-    //I CACHE
-    assign i_arready = arready & ~ar_sel;
-    assign i_rdata = ~r_sel ? rdata : 32'b0;
-    assign i_rlast = ~r_sel ? rlast : 1'b0;
-    assign i_rvalid = ~r_sel ? rvalid : 1'b0;
-    //D CACHE
+    //D_CACHE
     assign d_arready = arready & ar_sel;
     assign d_rdata = r_sel ? rdata : 32'b0;
     assign d_rlast = r_sel ? rlast : 1'b0;
     assign d_rvalid = r_sel ? rvalid : 1'b0;
-    //AXI
-    //ar
-    assign arid = {3'b0, ar_sel};
-    assign araddr = ar_sel ? d_araddr : i_araddr;
-    assign arlen = ar_sel ? d_arlen : i_arlen;
-    assign arsize  = ar_sel ? d_arsize : i_arsize;
-    assign arburst = 2'b01;         //Incrementing burst
-    assign arlock  = 2'd0;
-    assign arcache = 4'd0;
-    assign arprot  = 3'd0;
-    assign arvalid = ar_sel ? d_arvalid : i_arvalid;
-    assign rready = ~r_sel ? i_rready : d_rready;
-                        //            
 
-    //aw
+    //I_CACHE
+    assign i_arready = arready & ~ar_sel;
+    assign i_rdata = ~r_sel ? rdata : 32'b0;
+    assign i_rlast = ~r_sel ? rlast : 1'b0;
+    assign i_rvalid = ~r_sel ? rvalid : 1'b0;
+
+
+    //AXI
     assign awid    = 4'd0;
     assign awaddr  = d_awaddr;
-    assign awlen   = d_awlen;      //8*4B
+    assign awlen   = d_awlen;  
     assign awsize  = d_awsize;
-    assign awburst = 2'b01;     //Incrementing burst
+    assign awburst = 2'b01; 
     assign awlock  = 2'd0;
     assign awcache = 4'd0;
     assign awprot  = 3'd0;
@@ -137,4 +131,16 @@ module arbitrater (
     assign d_awready = awready;
     assign d_wready  = wready;
     assign d_bvalid  = bvalid;
+
+    assign arid = {3'b0, ar_sel};
+    assign araddr = ar_sel ? d_araddr : i_araddr;
+    assign arlen = ar_sel ? d_arlen : i_arlen;
+    assign arsize  = ar_sel ? d_arsize : i_arsize;
+    assign arburst = 2'b01;  
+    assign arlock  = 2'd0;
+    assign arcache = 4'd0;
+    assign arprot  = 3'd0;
+    assign arvalid = ar_sel ? d_arvalid : i_arvalid;
+    assign rready = ~r_sel ? i_rready : d_rready;
+                        //            
 endmodule

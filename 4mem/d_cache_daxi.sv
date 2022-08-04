@@ -1,6 +1,12 @@
 
 
 `timescale 1ns / 1ps
+
+// 代码声明
+// 此模块在一定程度上(约30%)借鉴了 2020年第四届龙芯杯团队赛重庆大学 袁福焱 队伍 d_cache.v的代码，其代码url：https://github.com/14010007517/2020NSCSCC/tree/master/src/PipelineMIPS
+// 我们的代码在read_req,addr_rcv,data_back等信号处理上和袁学长的代码相同
+// 但在D cache的核心状态机，规模结构，阻塞逻辑，块替换算法，各种模块的使能，data_bank和valid位的实现以及各种AXI信号的处理均与其不同
+
 module d_cache_daxi (
     input wire clk, rst,
     //tlb
