@@ -852,7 +852,7 @@ ex_mem u_ex_mem(
 	.E_slave_is_in_delayslot  		( E_slave_is_in_delayslot  		),
 	.E_slave_reg_waddr        		( E_slave_reg_waddr        		),
     .E_slave_aluop                  ( E_slave_aluop                 ),
-	.E_slave_except           		( {E_slave_exp_trap, E_slave_except[7:3],E_slave_overflow,E_slave_mem_adel, E_slave_mem_ades}),
+	.E_slave_except           		( {1'b0, E_slave_except[7:3],E_slave_overflow,E_slave_mem_adel, E_slave_mem_ades}),
 	.E_slave_pc               		( E_slave_pc               		),
 	.E_slave_inst             		( E_slave_inst             		),
 	.E_slave_alu_res          		( E_slave_alu_res          		),
