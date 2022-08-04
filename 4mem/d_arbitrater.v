@@ -158,7 +158,7 @@ module d_arbitrater (
     );
     // Read
     assign data_rdata = no_cache ? cfg_rdata : cache_rdata;
-    assign stall      = (cache_stall | cfg_stall) & data_en;
+    assign stall      = cache_stall | cfg_stall;
     assign araddr     = no_cache ? cfg_araddr : cache_araddr;
     assign arlen      = no_cache ? cfg_arlen : cache_arlen ;
     assign arsize     = no_cache ? cfg_arsize: cache_arsize;
