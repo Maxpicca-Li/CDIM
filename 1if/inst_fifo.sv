@@ -5,6 +5,7 @@ module inst_fifo(
         input                       clk,
         input                       rst,
         input                       fifo_rst,                 // fifo读写指针重置位
+        input                       flush_delay_slot,
         input                       delay_rst,                // 下一条master指令是延迟槽指令，要存起来
         input                       D_ena,
         input                       master_is_branch,         // 延迟槽判断
@@ -49,7 +50,7 @@ module inst_fifo(
 
     // 延迟槽判断
     always_ff @(posedge clk)begin
-        if(rst) 
+        if(rst | flush_delay_slot) 
             master_is_in_delayslot_o <= 1'b0;
         else if(!read_en1)
             master_is_in_delayslot_o <= master_is_in_delayslot_o;

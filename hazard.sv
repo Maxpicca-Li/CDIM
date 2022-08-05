@@ -13,6 +13,7 @@ module hazard (
     input wire       E_branch_taken,
     input wire       E_alu_stall,
     input wire       D_flush_all, // 暂时用不上这个信号
+    input wire       fifo_empty,
     
     //except
     input wire M_except,
@@ -46,7 +47,7 @@ module hazard (
     assign longest_stall = E_alu_stall | i_stall | d_stall;
     
     assign F_ena = ~i_stall; // 存在fifo情况下，d_stall不影响取指
-    assign D_ena = ~(lwstall | longest_stall);
+    assign D_ena = ~(lwstall | longest_stall | fifo_empty );
     assign E_ena = ~longest_stall;
     assign M_ena = ~longest_stall;
     assign W_ena = ~longest_stall | M_except;

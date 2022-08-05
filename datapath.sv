@@ -128,8 +128,49 @@ wire            D_master_cp0write        ,D_slave_cp0write        ;
 wire            D_master_cp0read         ,D_slave_cp0read         ;
 wire            D_master_hilowrite       ,D_slave_hilowrite       ;
 wire            D_master_hiloread        ,D_slave_hiloread        ;
+except_bus		D_master_except			 ,D_slave_except		  ;
 wire            D_master_is_pc_except    ,D_slave_is_pc_except    ;
 wire [`CmovBus] D_master_cmov_type       ,D_slave_cmov_type       ;
+wire            D_interrupt;
+int_info        D_int_info;
+
+assign D_int_info.int_allowed = (~cp0_status[1]) & (cp0_status[0]) & D_ena;
+assign D_int_info.IM = cp0_status[15:8];
+assign D_int_info.IP = cp0_cause[15:8];
+
+assign D_master_except.if_adel      = (|D_master_pc[1:0]); // TODO: move to if
+assign D_master_except.if_tlbl      = 1'b0;
+assign D_master_except.if_tlbrf     = 1'b0;
+assign D_master_except.id_ri        = D_master_undefined_inst;
+assign D_master_except.id_syscall   = D_master_syscall_inst;
+assign D_master_except.id_break     = D_master_break_inst;
+assign D_master_except.id_eret      = D_master_eret_inst;
+assign D_master_except.id_int       = D_interrupt;
+assign D_master_except.id_cpu       = 1'b0;
+assign D_master_except.ex_ov        = 1'b0;
+assign D_master_except.ex_adel      = 1'b0;
+assign D_master_except.ex_ades      = 1'b0;
+assign D_master_except.ex_tlbl      = 1'b0;
+assign D_master_except.ex_tlbs      = 1'b0;
+assign D_master_except.ex_tlbm      = 1'b0;
+assign D_master_except.ex_trap      = 1'b0;
+
+assign D_slave_except.if_adel       = (|D_slave_pc[1:0]); // TODO: move to if
+assign D_slave_except.if_tlbl       = 1'b0;
+assign D_slave_except.if_tlbrf      = 1'b0;
+assign D_slave_except.id_ri         = D_slave_undefined_inst;
+assign D_slave_except.id_syscall    = D_slave_syscall_inst;
+assign D_slave_except.id_break      = D_slave_break_inst;
+assign D_slave_except.id_eret       = D_slave_eret_inst;
+assign D_slave_except.id_int        = 1'b0;
+assign D_slave_except.id_cpu        = 1'b0;
+assign D_slave_except.ex_ov         = 1'b0;
+assign D_slave_except.ex_adel       = 1'b0;
+assign D_slave_except.ex_ades       = 1'b0;
+assign D_slave_except.ex_tlbl       = 1'b0;
+assign D_slave_except.ex_tlbs       = 1'b0;
+assign D_slave_except.ex_tlbm       = 1'b0;
+assign D_slave_except.ex_trap       = 1'b0;
 
 // ===== E =====
 wire            E_master_memWrite;
@@ -165,9 +206,10 @@ wire [ 7:0]     E_slave_aluop           ;
 wire [31:0]     E_slave_pc              ;
 wire [ 4:0]     E_slave_reg_waddr       ;
 wire            E_slave_is_link_pc8     ;
-wire			E_slave_hilowrite		;
+wire            E_slave_hilowrite       ;
 wire            E_master_is_in_delayslot,E_slave_is_in_delayslot;
-wire [`EXCEPT_BUS]E_master_except       ,E_slave_except         ;
+except_bus      E_master_except_temp    ,E_slave_except_temp    ;
+except_bus      E_master_except         ,E_slave_except         ;
 wire [`CmovBus] E_master_cmov_type      ,E_slave_cmov_type      ;
 wire            E_master_cp0write, E_slave_cp0write ;
 wire [ 4:0]     E_master_rd             ;
@@ -199,8 +241,7 @@ wire [63:0]     M_master_alu_out64;
 wire [31:0]     M_master_mem_rdata;
 wire [31:0]     M_master_mem_addr ;
 wire [ 4:0]     M_master_reg_waddr,M_slave_reg_waddr ;
-wire [`EXCEPT_BUS]     M_master_except_a, M_slave_except_a;
-wire [`EXCEPT_BUS]     M_master_except, M_slave_except;
+except_bus      M_master_except   ,M_slave_except    ;
 wire            M_master_is_in_delayslot, M_slave_is_in_delayslot;
 wire [ 4:0]     M_master_rd       ;
 
@@ -213,7 +254,7 @@ wire [31:0]     W_master_alu_res  ,W_slave_alu_res  ;
 wire            W_master_reg_wen  ,W_slave_reg_wen  ;
 wire [ 4:0]     W_master_reg_waddr,W_slave_reg_waddr;
 wire [31:0]     W_master_reg_wdata,W_slave_reg_wdata;
-wire [`EXCEPT_BUS]     W_master_except   , W_slave_except  ;
+except_bus      W_master_except   ,W_slave_except   ;
 wire [63:0]     W_master_alu_out64;
 
 
@@ -239,6 +280,7 @@ hazard u_hazard(
     .E_branch_taken                 ( E_branch_taken                 ),
     .E_alu_stall                    ( E_alu_stall                    ),
     .D_flush_all                    ( D_master_flush_all             ),
+    .fifo_empty                     ( fifo_empty                     ),
     .M_except                       ( M_except                       ),
     .F_ena                          ( F_ena                          ),
     .D_ena                          ( D_ena                          ),
@@ -287,6 +329,7 @@ inst_fifo u_inst_fifo(
     .clk                          ( clk                    ),
     .rst                          ( rst                    ),
     .fifo_rst                     ( rst | D_flush | D_master_flush_all ),
+    .flush_delay_slot             ( M_except | D_master_flush_all ),
     .D_ena                        ( D_ena                  ),
     .master_is_branch             ( (|D_master_branch_type)), // D阶段的branch
     .delay_rst                    (E_branch_taken && ~E_slave_ena), // next_master_is_in_delayslot
@@ -313,6 +356,10 @@ inst_fifo u_inst_fifo(
 
 
 // ====================================== Decode ======================================
+int_raiser d_int(
+    .info_i(D_int_info),
+    .int_o(D_interrupt)
+);
 
 decoder u_decoder_master(
 	//ports
@@ -505,7 +552,7 @@ id_ex u_id_ex(
 	.D_master_rd              		( D_master_rd              		),
 	.D_master_aluop           		( D_master_aluop           		),
 	.D_master_op              		( D_master_op              		),
-	.D_master_except          		( {1'b0, D_master_is_pc_except,D_master_syscall_inst,D_master_break_inst,D_master_eret_inst,D_master_undefined_inst,3'b0}          		),
+	.D_master_except          		( D_master_except              ),
 	.D_master_j_target        		( D_master_j_target        		),
 	.D_master_pc              		( D_master_pc              		),
 	.D_master_inst            		( D_master_inst            		),
@@ -531,7 +578,7 @@ id_ex u_id_ex(
 	.D_slave_shamt            		( D_slave_shamt            		),
 	.D_slave_reg_waddr        		( D_slave_reg_waddr        		),
 	.D_slave_aluop            		( D_slave_aluop            		),
-	.D_slave_except           		( {1'b0, D_slave_is_pc_except,D_slave_syscall_inst,D_slave_break_inst,D_slave_eret_inst,D_slave_undefined_inst,3'b0}           		),
+	.D_slave_except           		( D_slave_except               ),
 	.D_slave_inst             		( D_slave_inst             		),
 	.D_slave_rs_value         		( D_slave_rs_value         		),
 	.D_slave_rt_value         		( D_slave_rt_value         		),
@@ -558,7 +605,7 @@ id_ex u_id_ex(
 	.E_master_rd              		( E_master_rd              		),
 	.E_master_aluop           		( E_master_aluop           		),
 	.E_master_op              		( E_master_op              		),
-	.E_master_except          		( E_master_except          		),
+	.E_master_except_temp           ( E_master_except_temp          ),
 	.E_master_j_target        		( E_master_j_target        		),
 	.E_master_pc              		( E_master_pc              		),
 	.E_master_inst            		( E_master_inst            		),
@@ -585,7 +632,7 @@ id_ex u_id_ex(
 	.E_slave_shamt            		( E_slave_shamt            		),
 	.E_slave_reg_waddr        		( E_slave_reg_waddr        		),
 	.E_slave_aluop            		( E_slave_aluop            		),
-	.E_slave_except           		( E_slave_except           		),
+	.E_slave_except_temp            ( E_slave_except_temp           ),
 	.E_slave_inst             		( E_slave_inst             		),
 	.E_slave_rs_value         		( E_slave_rs_value       		),
 	.E_slave_rt_value         		( E_slave_rt_value       		),
@@ -596,6 +643,40 @@ id_ex u_id_ex(
     .E_slave_trap_type              ( E_slave_trap_type             ),
     .E_slave_cmov_type              ( E_slave_cmov_type             )
 );
+
+assign E_master_except.if_adel      = E_master_except_temp.if_adel;
+assign E_master_except.if_tlbl      = E_master_except_temp.if_tlbl;
+assign E_master_except.if_tlbrf     = E_master_except_temp.if_tlbrf;
+assign E_master_except.id_ri        = E_master_except_temp.id_ri;
+assign E_master_except.id_syscall   = E_master_except_temp.id_syscall;
+assign E_master_except.id_break     = E_master_except_temp.id_break;
+assign E_master_except.id_eret      = E_master_except_temp.id_eret;
+assign E_master_except.id_int       = E_master_except_temp.id_int;
+assign E_master_except.id_cpu       = E_master_except_temp.id_cpu;
+assign E_master_except.ex_ov        = E_master_overflow;
+assign E_master_except.ex_adel      = E_master_mem_adel;
+assign E_master_except.ex_ades      = E_master_mem_ades;
+assign E_master_except.ex_tlbl      = 1'b0;
+assign E_master_except.ex_tlbs      = 1'b0;
+assign E_master_except.ex_tlbm      = 1'b0;
+assign E_master_except.ex_trap      = E_master_exp_trap;
+
+assign E_slave_except.if_adel       = E_slave_except_temp.if_adel;
+assign E_slave_except.if_tlbl       = E_slave_except_temp.if_tlbl;
+assign E_slave_except.if_tlbrf      = E_slave_except_temp.if_tlbrf;
+assign E_slave_except.id_ri         = E_slave_except_temp.id_ri;
+assign E_slave_except.id_syscall    = E_slave_except_temp.id_syscall;
+assign E_slave_except.id_break      = E_slave_except_temp.id_break;
+assign E_slave_except.id_eret       = E_slave_except_temp.id_eret;
+assign E_slave_except.id_int        = E_slave_except_temp.id_int;
+assign E_slave_except.id_cpu        = E_slave_except_temp.id_cpu;
+assign E_slave_except.ex_ov         = E_slave_overflow;
+assign E_slave_except.ex_adel       = E_slave_mem_adel;
+assign E_slave_except.ex_ades       = E_slave_mem_ades;
+assign E_slave_except.ex_tlbl       = 1'b0;
+assign E_slave_except.ex_tlbs       = 1'b0;
+assign E_slave_except.ex_tlbm       = 1'b0;
+assign E_slave_except.ex_trap       = E_slave_exp_trap;
 
 // 前推计算结果和访存结果 MW->E
 // forwardE_top u_forwardE_top(
@@ -765,10 +846,11 @@ wire        M_master_mem_sel, M_slave_mem_sel ;
 assign E_master_mem_addr = E_master_rs_value + E_master_imm_value;
 assign E_slave_mem_addr = E_slave_rs_value + E_slave_imm_value; 
 
+// Note: only care about except signals from D for load/store.
 struct_conflict u_struct_conflict(
 	// datapath ctrl
-	.E_exp1       		( |E_master_except  ),
-	.E_exp2       		( |E_slave_except   ),
+	.E_exp1       		( |E_master_except_temp ),
+	.E_exp2       		( |E_slave_except_temp  ),
 	.M_flush      		( M_flush           ),
 	.M_ena        		( M_ena             ),
     // master
@@ -838,7 +920,7 @@ ex_mem u_ex_mem(
     .E_master_aluop                 ( E_master_aluop                ),
 	.E_master_rd              		( E_master_rd              		),
 	.E_master_op              		( E_master_op              		),
-	.E_master_except_a        		( {E_master_exp_trap, E_master_except[7:3],E_master_overflow,E_master_mem_adel, E_master_mem_ades}),
+	.E_master_except        		( E_master_except               ),
 	.E_master_inst            		( E_master_inst            		),
 	.E_master_rt_value        		( E_master_rt_value        		),
 	.E_master_alu_res         		( E_master_alu_res         		),
@@ -852,7 +934,7 @@ ex_mem u_ex_mem(
 	.E_slave_is_in_delayslot  		( E_slave_is_in_delayslot  		),
 	.E_slave_reg_waddr        		( E_slave_reg_waddr        		),
     .E_slave_aluop                  ( E_slave_aluop                 ),
-	.E_slave_except           		( {1'b0, E_slave_except[7:3],E_slave_overflow,E_slave_mem_adel, E_slave_mem_ades}),
+	.E_slave_except           		( E_slave_except                ),
 	.E_slave_pc               		( E_slave_pc               		),
 	.E_slave_inst             		( E_slave_inst             		),
 	.E_slave_alu_res          		( E_slave_alu_res          		),
@@ -866,7 +948,7 @@ ex_mem u_ex_mem(
     .M_master_aluop                 ( M_master_aluop                ),
 	.M_master_rd              		( M_master_rd              		),
 	.M_master_op              		( M_master_op              		),
-	.M_master_except_a        		( M_master_except        		),
+	.M_master_except                ( M_master_except               ),
 	.M_master_inst            		( M_master_inst            		),
 	.M_master_rt_value        		( M_master_rt_value        		),
 	.M_master_alu_res         		( M_master_alu_res    		    ),
@@ -880,7 +962,7 @@ ex_mem u_ex_mem(
 	.M_slave_is_in_delayslot  		( M_slave_is_in_delayslot  		),
 	.M_slave_reg_waddr        		( M_slave_reg_waddr        		),
     .M_slave_aluop                  ( M_slave_aluop                 ),
-	.M_slave_except           		( M_slave_except         		),
+	.M_slave_except                 ( M_slave_except                ),
 	.M_slave_pc               		( M_slave_pc               		),
 	.M_slave_inst             		( M_slave_inst             		),
 	.M_slave_alu_res          		( M_slave_alu_res      		    )

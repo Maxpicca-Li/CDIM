@@ -415,4 +415,138 @@ typedef struct packed{
 //                    {aluop     ,fa  ,rdrs,rdrt,rw  ,men ,mwr ,mr  ,mw  ,cp0r,cp0w,hlr ,hlw ,mbf ,ooi }
 `define CTRL_SIGN_NOP {`ALUOP_NOP,1'd0,1'd0,1'd0,1'd0,1'd0,1'd0,1'd0,1'd0,1'd0,1'd0,1'd0,1'd0,1'd0,1'd0}
 
+typedef struct packed {
+    logic           mtc0_en;
+    logic [4:0]     reg_addr;
+    logic [2:0]     sel_addr;
+    logic [31:0]    data;
+} mtc0_info;
+
+/*
+
+typedef struct packed {
+    logic       IE;     // Interrupt Enable
+    logic       EXL;    // Exception Level
+    logic       ERL;    // Error Level
+    logic       R0;
+    logic       UM;     // 0: Kernel, 1: User
+    logic [2:0] blank0;
+    logic [7:0] IM;     // Interrupt Mask
+    logic [5:0] blank1;
+    logic       BEV;    // bootstrap exception vector
+    logic [4:0] blank2;
+    logic       CU0;    // cp0 useable
+    logic [2:0] blank3;
+} cp0_status;
+
+typedef struct packed {
+    logic [1:0] blank0;
+    logic [4:0] exccode;// exception code
+    logic       blank1;
+    logic [7:0] IP;     // interrupt pending
+    logic [6:0] blank2;
+    logic       IV;     // special interrupt vector
+    logic [6:0] blank3;
+    logic       BD;     // in a branch delay slot
+} cp0_cause;
+
+typedef struct packed {
+    logic       G;
+    logic       V;
+    logic       D;
+    logic [2:0] C;
+    logic [19:0]PFN;
+    logic [5:0] F;
+} cp0_entrylo;
+
+typedef struct packed {
+    logic [12:0] blank;
+    logic [18:0] badvpn2;
+    logic [8:0] ptebase;
+} cp0_context;
+
+typedef struct packed {
+    logic [7:0] ASID;
+    logic [4:0] blank0;
+    logic [18:0]VPN2;
+} cp0_entryhi;
+*/
+typedef struct packed {
+    logic [7:0] ASID;
+    logic       usermode;
+} mmu_info;
+
+typedef struct packed {
+    logic       int_allowed;
+    logic [7:0] IM;
+    logic [7:0] IP;
+} int_info;
+
+typedef struct packed {
+    logic       if_adel;
+    logic       if_tlbl;    // 
+    logic       if_tlbrf;   // 1: goto tlb refill, 0: goto tlb invalid
+    logic       id_ri;
+    logic       id_syscall;
+    logic       id_break;
+    logic       id_eret;
+    logic       id_int;     // interrupt
+    logic       id_cpu;     // co-processor unuseable
+    logic       ex_ov;      // alu overflow
+    logic       ex_adel;    // ade load
+    logic       ex_ades;    // ade store
+    logic       ex_tlbl;    // tlb load
+    logic       ex_tlbs;    // tlb store
+    logic       ex_tlbm;    // tlb modified
+    logic       ex_trap;    // trap
+} except_bus;
+
+typedef struct packed {
+    logic [2:0] k0; // Kseg0 cacheability and coherency
+    logic       VI; // Virtual instruction cache
+    logic [2:0] blank0;
+    logic [2:0] MT; // MMU Type: 1: Standard TLB
+    logic [2:0] AR; // MIPS32 Architecture revision level. 0: Release 1
+    logic [1:0] AT; // Architecture Type 1: MIPS32
+    logic       BE; // 0: Little endian
+    logic [8:0] Impl;   // 0
+    logic [2:0] KU; // 0
+    logic [2:0] K23;// 0
+    logic       M;  // 1: Conﬁg1 register is implemented
+} cp0_config0;
+
+typedef struct packed {
+    logic       FP; // no FPU: 0
+    logic       EP; // no EJTAG : 0
+    logic       CA; // no Code compression: 0
+    logic       WR; // no Watch registers: 0
+    logic       PC; // no performance counter: 0
+    logic       MD; // no MDMX: 0
+    logic       C2; // no CP2: 0
+    logic [2:0] DA; // Dcache associativity: 1: 2-way 3: 4-way
+    logic [2:0] DL; // Dcache line size: 3: 16bytes, 4: 32bytes, 5: 64bytes
+    logic [2:0] DS; // Dcache sets per way: 0:64, 1:128, 2:256, 3: 512
+    logic [2:0] IA; // Icache associativity
+    logic [2:0] IL; // Icache line size
+    logic [2:0] IS; // Icache sets per way
+    logic [5:0] MS; // MMU Size - 1
+    logic       M;  // Config2 is present: 0
+} cp0_config1;
+
+typedef struct packed {
+    logic        G;
+    logic        V0;
+    logic        V1;
+    logic        D0;
+    logic        D1;
+    logic        C0;    // 1 as cacheable
+    logic        C1;    // 1 as cacheable
+    logic [19:0] PFN0;
+    logic [19:0] PFN1;
+    logic [18:0] VPN2;
+    logic  [8:0] ASID;
+} tlb_entry;
+
+parameter NR_TLB_ENTRY = 16;
+
 `endif

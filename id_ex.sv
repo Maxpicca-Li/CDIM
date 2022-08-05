@@ -28,7 +28,7 @@ module id_ex(
     input wire [4 :0]D_master_rd,
     input wire [7 :0]D_master_aluop,
     input wire [5 :0]D_master_op,
-    input wire [`EXCEPT_BUS]D_master_except,
+    input except_bus D_master_except,
     input wire [`CmovBus]D_master_cmov_type,
     input wire [25:0]D_master_j_target,
     input wire [31:0]D_master_pc,
@@ -55,7 +55,7 @@ module id_ex(
     input wire [4 :0]D_slave_reg_waddr,
     input wire [5 :0]D_slave_op,
     input wire [7 :0]D_slave_aluop,
-    input wire [`EXCEPT_BUS]D_slave_except,
+    input except_bus D_slave_except,
     input wire [`CmovBus]D_slave_cmov_type,
     input wire [31:0]D_slave_inst,
     input wire [31:0]D_slave_rs_value,
@@ -83,7 +83,7 @@ module id_ex(
     output reg [4 :0]E_master_rd,
     output reg [7 :0]E_master_aluop,
     output reg [5 :0]E_master_op,
-    output reg [`EXCEPT_BUS]E_master_except,
+    output except_bus E_master_except_temp,
     output reg [`CmovBus]E_master_cmov_type,
     output reg [25:0]E_master_j_target,
     output reg [31:0]E_master_pc,
@@ -111,7 +111,7 @@ module id_ex(
     output reg [4 :0]E_slave_reg_waddr,
     output reg [5 :0]E_slave_op,
     output reg [7 :0]E_slave_aluop,
-    output reg [`EXCEPT_BUS]E_slave_except,
+    output except_bus E_slave_except_temp,
     output reg [`CmovBus]E_slave_cmov_type,
     output reg [31:0]E_slave_inst,
     output reg [31:0]E_slave_rs_value,
@@ -141,7 +141,7 @@ module id_ex(
             E_master_rt <= 0;
             E_master_aluop <= 0;
             E_master_op <= 0;
-            E_master_except <= 0;
+            E_master_except_temp <= 0;
             E_master_j_target <= 0;
             E_master_pc <= 0;
             E_master_inst <= 0;
@@ -171,7 +171,7 @@ module id_ex(
             E_master_rd <= D_master_rd;
             E_master_aluop <= D_master_aluop;
             E_master_op <= D_master_op;
-            E_master_except <= D_master_except;
+            E_master_except_temp <= D_master_except;
             E_master_j_target <= D_master_j_target;
             E_master_pc <= D_master_pc;
             E_master_inst <= D_master_inst;
@@ -198,7 +198,7 @@ module id_ex(
             E_slave_rt <= 0;
             E_slave_reg_waddr <= 0;
             E_slave_aluop <= 0;
-            E_slave_except <= 0;
+            E_slave_except_temp <= 0;
             E_slave_inst <= 0;
             E_slave_rs_value <= 0;
             E_slave_rt_value <= 0;
@@ -226,7 +226,7 @@ module id_ex(
             E_slave_rt <= D_slave_rt;
             E_slave_reg_waddr <= D_slave_reg_waddr;
             E_slave_aluop <= D_slave_aluop;
-            E_slave_except <= D_slave_except;
+            E_slave_except_temp <= D_slave_except;
             E_slave_inst <= D_slave_inst;
             E_slave_rs_value <= D_slave_rs_value;
             E_slave_rt_value <= D_slave_rt_value;

@@ -30,7 +30,7 @@ module ex_mem(
     input wire [4 :0]E_master_rd,
     input wire [5 :0]E_master_op,
     input wire [7 :0]E_master_aluop,
-    input wire [`EXCEPT_BUS]E_master_except_a,
+    input except_bus E_master_except,
     input wire [31:0]E_master_inst,
     input wire [31:0]E_master_rt_value,
     input wire [31:0]E_master_alu_res,
@@ -45,7 +45,7 @@ module ex_mem(
     input wire E_slave_is_in_delayslot,
     input wire [4 :0]E_slave_reg_waddr,
     input wire [7 :0]E_slave_aluop,
-    input wire [`EXCEPT_BUS]E_slave_except,
+    input except_bus E_slave_except,
     input wire [31:0]E_slave_pc,
     input wire [31:0]E_slave_inst,
     input wire [31:0]E_slave_alu_res,
@@ -60,7 +60,7 @@ module ex_mem(
     output reg [4 :0]M_master_rd,
     output reg [5 :0]M_master_op,
     output reg [7 :0]M_master_aluop,
-    output reg [`EXCEPT_BUS]M_master_except_a,
+    output except_bus M_master_except,
     output reg [31:0]M_master_inst,
     output reg [31:0]M_master_rt_value,
     output reg [31:0]M_master_alu_res,
@@ -75,7 +75,7 @@ module ex_mem(
     output reg M_slave_is_in_delayslot,
     output reg [4 :0]M_slave_reg_waddr,
     output reg [7 :0]M_slave_aluop,
-    output reg [`EXCEPT_BUS]M_slave_except,
+    output except_bus M_slave_except,
     output reg [31:0]M_slave_pc,
     output reg [31:0]M_slave_inst,
     output reg [31:0]M_slave_alu_res
@@ -92,7 +92,7 @@ module ex_mem(
             M_master_reg_waddr <= 0;
             M_master_rd <= 0;
             M_master_op <= 0;
-            M_master_except_a <= 0;
+            M_master_except <= 0;
             M_master_inst <= 0;
             M_master_rt_value <= 0;
             M_master_alu_res <= 0;
@@ -117,7 +117,7 @@ module ex_mem(
             M_master_reg_waddr <= E_master_reg_waddr;
             M_master_rd <= E_master_rd;
             M_master_op <= E_master_op;
-            M_master_except_a <= E_master_except_a;
+            M_master_except <= E_master_except;
             M_master_inst <= E_master_inst;
             M_master_rt_value <= E_master_rt_value;
             M_master_alu_res <= E_master_alu_res;
