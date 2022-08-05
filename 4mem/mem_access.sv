@@ -17,8 +17,8 @@ module mem_access (
         // 异常处理
         input                      M_master_mem_sel,
         input                      M_slave_mem_sel,
-        input        [`EXCEPT_BUS] M_master_except,
-        input        [`EXCEPT_BUS] M_slave_except
+        input  except_bus          M_master_except,
+        input  except_bus          M_slave_except
     );
 
     assign data_sram_en    = mem_en && ((M_master_mem_sel && ~(|M_master_except)) || (M_slave_mem_sel && ~(|M_master_except) && ~(|M_slave_except)));// && mem_addr != 32'hbfaffff0;
