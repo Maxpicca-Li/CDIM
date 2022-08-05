@@ -44,7 +44,7 @@ module hazard (
     // FIXME: 这里没有考虑 D_slave_rs 和 D_slave_rt 
     assign lwstall = (E_master_memtoReg & (|E_master_reg_waddr) & ((D_master_read_rs & D_master_rs == E_master_reg_waddr) | (D_master_read_rt & D_master_rt == E_master_reg_waddr))) || 
                      (E_slave_memtoReg  & (|E_slave_reg_waddr)  & ((D_master_read_rs & D_master_rs == E_slave_reg_waddr)  | (D_master_read_rt & D_master_rt == E_slave_reg_waddr)));
-    assign longest_stall = E_alu_stall | i_stall | d_stall;
+    assign longest_stall = E_alu_stall | /*i_stall |*/ d_stall;
     
     assign F_ena = ~i_stall; // 存在fifo情况下，d_stall不影响取指
     assign D_ena = ~(lwstall | longest_stall | fifo_empty );

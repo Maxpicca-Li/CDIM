@@ -21,7 +21,8 @@ module pc_reg (
     // 中间逻辑
     reg  [31:0] pc_reg;
     always_ff @(posedge clk) begin
-        pc_reg <= pc_next;
+        if(pc_en)
+            pc_reg <= pc_next;
     end
 
     always_comb begin : compute_pc_next
