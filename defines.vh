@@ -555,7 +555,7 @@ typedef struct packed {
     logic [19:0] PFN0;
     logic [19:0] PFN1;
     logic [18:0] VPN2;
-    logic  [8:0] ASID;
+    logic  [7:0] ASID;
 } tlb_entry;
 
 parameter NR_TLB_ENTRY = 16;
