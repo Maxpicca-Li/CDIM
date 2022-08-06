@@ -38,6 +38,7 @@ module inst_fifo(
     reg [31:0]  delayslot_data;
     reg [31:0]  delayslot_addr;
     reg         delayslot_stall; // 还在读取相关数据
+    reg         delayslot_sel;
     reg         delayslot_enable; // 需要读取延迟槽的数据
 
     // fifo控制
@@ -54,7 +55,7 @@ module inst_fifo(
     always_ff @(posedge clk)begin
         if(rst | flush_delay_slot) 
             master_is_in_delayslot_o <= 1'b0;
-        else if(!read_en1)
+        else if(!read_en1 | empty)
             master_is_in_delayslot_o <= master_is_in_delayslot_o;
         else if(master_is_branch && !read_en2)
             master_is_in_delayslot_o <= 1'b1;
@@ -62,11 +63,22 @@ module inst_fifo(
             master_is_in_delayslot_o <= 1'b0;
     end
         
+    always_ff @(posedge clk)begin
+        if(delayslot_stall) begin
+            delayslot_stall <= !read_en1;   // 是否停止stall
+            delayslot_sel <= delayslot_sel;
+        end
+        else begin
+            delayslot_stall <= fifo_rst && delay_rst && FD_wait_stall;
+            delayslot_sel   <= fifo_rst && delay_rst && empty;  // 是否等待write数据
+        end
+    end
     always_ff @(posedge clk) begin
+        // FD_wait_stall 取的不一定是延迟槽的指令
         if(fifo_rst && delay_rst & FD_wait_stall) begin // !read_en1 当前指令是延迟槽，但是没有读
             delayslot_enable <= 1'b1;
-            delayslot_data  <= (read_pointer + 4'd1 == write_pointer || read_pointer == write_pointer)? write_data1 : data[read_pointer + 4'd1];
-            delayslot_addr  <= (read_pointer + 4'd1 == write_pointer || read_pointer == write_pointer)? write_address1 : address[read_pointer + 4'd1];
+            delayslot_data  <= delayslot_sel ? write_data1 : read_data1;
+            delayslot_addr  <= delayslot_sel ? write_address1 : read_address1;
         end
         else if(FD_wait_stall && write_en1) begin // 要写的数据回来了
             delayslot_data    <= write_data1;

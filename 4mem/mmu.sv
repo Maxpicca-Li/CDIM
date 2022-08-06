@@ -34,8 +34,8 @@ module mmu (
                         ? 1'b1 : 1'b0;
     assign no_cache_E = (data_vaddr2[31:29] == 3'b101) //kseg1
                         ? 1'b1 : 1'b0;
-    assign no_cache_i = 1'b0; // 用于功能调试
-    // assign no_cache_i = (inst_vaddr[31:29] == 3'b101) //kseg1
-    //                     ? 1'b1 : 1'b0;
+    // assign no_cache_i = 1'b0; // 用于功能调试
+    assign no_cache_i = (inst_vaddr[31:29] == 3'b101) //kseg1
+                        ? 1'b1 : 1'b0;
     
 endmodule
