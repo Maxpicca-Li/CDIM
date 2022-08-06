@@ -3,6 +3,7 @@ module pc_reg (
         input               clk,
         input               rst,
         input               pc_en,
+        input               FD_wait_stall,
         input               inst_data_ok1,
         input               inst_data_ok2,
         input               flush_all,
@@ -21,7 +22,7 @@ module pc_reg (
     // 中间逻辑
     reg  [31:0] pc_reg;
     always_ff @(posedge clk) begin
-        if(pc_en)
+        // if(pc_en)
             pc_reg <= pc_next;
     end
 
@@ -29,11 +30,11 @@ module pc_reg (
         if (rst) 
             pc_next = 32'hbfc00000;
         // else if (pc_en) begin
-            else if (is_except) // 异常跳转 M
+            else if (!FD_wait_stall & is_except) // 异常跳转 M
                 pc_next = except_addr;
             else if(branch_en && branch_taken) // 分支跳转 E
                 pc_next = branch_addr;
-            else if (flush_all)
+            else if (!FD_wait_stall & flush_all)
                 pc_next = flush_all_addr;
             else if(fifo_full) // full保持
                 pc_next = pc_curr;

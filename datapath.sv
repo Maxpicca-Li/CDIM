@@ -134,7 +134,7 @@ wire [`CmovBus] D_master_cmov_type       ,D_slave_cmov_type       ;
 wire            D_interrupt;
 int_info        D_int_info;
 
-assign D_int_info.int_allowed = (~cp0_status[1]) & (cp0_status[0]) & D_ena;
+assign D_int_info.int_allowed = (~cp0_status[1]) & (cp0_status[0]) & (!fifo_empty);// D_ena;
 assign D_int_info.IM = cp0_status[15:8];
 assign D_int_info.IP = cp0_cause[15:8];
 
@@ -264,6 +264,7 @@ assign M_except = (|M_excepttype);
 assign D_master_is_pc_except  = (|D_master_pc[1:0]); // 2'b00
 assign D_slave_is_pc_except   = (|D_slave_pc[1:0]);
 
+wire FD_conflict_stall, FD_wait_stall;
 // 冒险处理
 hazard u_hazard(
     //ports
@@ -282,6 +283,8 @@ hazard u_hazard(
     .D_flush_all                    ( D_master_flush_all             ),
     .fifo_empty                     ( fifo_empty                     ),
     .M_except                       ( M_except                       ),
+	.FD_conflict_stall				( FD_conflict_stall			     ),
+	.FD_wait_stall					( FD_wait_stall					 ),
     .F_ena                          ( F_ena                          ),
     .D_ena                          ( D_ena                          ),
     .E_ena                          ( E_ena                          ),
@@ -298,7 +301,7 @@ hazard u_hazard(
 assign F_pc_except = (|F_pc[1:0]); // 必须是2'b00
 // FIXME: 注意，这里如果是i_stall导致的F_ena=0，inst_sram_en仍然使能(不太确定这个逻辑)
 // assign inst_sram_en =  !(rst | M_except | F_pc_except | fifo_full);  // assign inst_sram_en =  !(rst | M_except | F_pc_except | fifo_full);  // fifo_full 不取指
-assign inst_sram_en =  !(rst | M_except | fifo_full);
+assign inst_sram_en =  !(rst | fifo_full | FD_conflict_stall);
 assign stallF = ~F_ena;
 assign stallM = ~M_ena;
 wire pc_en;
@@ -309,6 +312,7 @@ pc_reg u_pc_reg(
     .clk                       ( clk                   ),
     .rst                       ( rst                   ),
     .pc_en                     ( pc_en                 ), 
+	.FD_wait_stall			   ( FD_wait_stall		   ),
     .inst_data_ok1             ( inst_data_ok1 ),
     .inst_data_ok2             ( inst_data_ok2 ),
     .flush_all                 ( D_master_flush_all    ),
@@ -333,6 +337,7 @@ inst_fifo u_inst_fifo(
     .D_ena                        ( D_ena                  ),
     .master_is_branch             ( (|D_master_branch_type)), // D阶段的branch
     .delay_rst                    (E_branch_taken && ~E_slave_ena), // next_master_is_in_delayslot
+	.FD_wait_stall				  ( FD_wait_stall			),
     
     .read_en1                     ( D_ena                  ),
     .read_en2                     ( D_slave_ena              ), // D阶段的发射结果
@@ -447,7 +452,7 @@ regfile u_regfile(
     .rd1_a             ( D_master_rs_value_tmp  ),
     .ra1_b             ( D_master_rt            ),
     .rd1_b             ( D_master_rt_value_tmp  ),
-    .wen1              ( W_master_reg_wen & W_ena), // 跟踪异常，该指令出现异常，则不
+    .wen1              ( W_master_reg_wen & W_ena & ~(|W_master_except)), // 跟踪异常，该指令出现异常，则不
     .wa1               ( W_master_reg_waddr     ),
     .wd1               ( W_master_reg_wdata     ),
     
@@ -455,7 +460,7 @@ regfile u_regfile(
     .rd2_a             ( D_slave_rs_value_tmp   ),
     .ra2_b             ( D_slave_rt             ),
     .rd2_b             ( D_slave_rt_value_tmp   ),
-    .wen2              ( W_slave_reg_wen & W_ena),
+    .wen2              ( W_slave_reg_wen & W_ena & ~(|W_slave_except) & ~(|W_master_except)),
     .wa2               ( W_slave_reg_waddr      ),
     .wd2               ( W_slave_reg_wdata      )
 );
@@ -1046,31 +1051,31 @@ mem_wb u_mem_wb(
 	//ports
 	.clk                		( clk                		),
 	.rst                		( rst                		),
-	.clear1             		( |M_master_except			),
-	.clear2             		( (|M_master_except) | (|M_slave_except)),
+	.clear1             		( W_flush					),
+	.clear2             		( W_flush					),
 	.ena1                		( W_ena               		),
 	.ena2               		( W_ena               		),
 	.M_master_reg_wen   		( M_master_reg_wen   		),
 	.M_master_reg_waddr 		( M_master_reg_waddr 		),
-	// .M_master_except    		( M_master_except    		),
+	.M_master_except    		( M_master_except    		),
 	.M_master_inst      		( M_master_inst      		),
 	.M_master_pc        		( M_master_pc        		),
 	.M_master_reg_wdata 		( M_master_reg_wdata 		),
 	.M_slave_reg_wen    		( M_slave_reg_wen    		),
 	.M_slave_reg_waddr  		( M_slave_reg_waddr  		),
-	// .M_slave_except     		( M_slave_except     		),
+	.M_slave_except     		( M_slave_except     		),
 	.M_slave_inst       		( M_slave_inst       		),
 	.M_slave_pc         		( M_slave_pc         		),
 	.M_slave_reg_wdata  		( M_slave_reg_wdata  		),
 	.W_master_reg_wen   		( W_master_reg_wen   		),
 	.W_master_reg_waddr 		( W_master_reg_waddr 		),
-	// .W_master_except    		( W_master_except    		),
+	.W_master_except    		( W_master_except    		),
 	.W_master_inst      		( W_master_inst      		),
 	.W_master_pc        		( W_master_pc        		),
 	.W_master_reg_wdata 		( W_master_reg_wdata 		),
 	.W_slave_reg_wen    		( W_slave_reg_wen    		),
 	.W_slave_reg_waddr  		( W_slave_reg_waddr  		),
-	// .W_slave_except     		( W_slave_except     		),
+	.W_slave_except     		( W_slave_except     		),
 	.W_slave_inst       		( W_slave_inst       		),
 	.W_slave_pc         		( W_slave_pc         		),
 	.W_slave_reg_wdata  		( W_slave_reg_wdata  		)

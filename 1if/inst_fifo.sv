@@ -7,6 +7,8 @@ module inst_fifo(
         input                       fifo_rst,                 // fifo读写指针重置位
         input                       flush_delay_slot,
         input                       delay_rst,                // 下一条master指令是延迟槽指令，要存起来
+        input                       FD_wait_stall,
+        input                       FD_conflict_stall,
         input                       D_ena,
         input                       master_is_branch,         // 延迟槽判断
         output logic                master_is_in_delayslot_o, // 延迟槽判断结果
@@ -59,7 +61,24 @@ module inst_fifo(
         else 
             master_is_in_delayslot_o <= 1'b0;
     end
+        
+    always_ff @(posedge clk) begin
+        if(fifo_rst && delay_rst & FD_wait_stall) begin // !read_en1 当前指令是延迟槽，但是没有读
+            delayslot_enable <= 1'b1;
+            delayslot_data  <= (read_pointer + 4'd1 == write_pointer || read_pointer == write_pointer)? write_data1 : data[read_pointer + 4'd1];
+            delayslot_addr  <= (read_pointer + 4'd1 == write_pointer || read_pointer == write_pointer)? write_address1 : address[read_pointer + 4'd1];
+        end
+        else if(FD_wait_stall && write_en1) begin // 要写的数据回来了
+            delayslot_data    <= write_data1;
+        end
+        else if(!FD_wait_stall && read_en1) begin // 清空
+            delayslot_enable <= 1'b0;
+            delayslot_data   <= 32'd0;
+            delayslot_addr   <= 32'd0;
+        end
+    end
 
+    /*
     // E阶段跳转判断
     always_ff @(posedge clk) begin  // 当前指令在需要执行的延迟槽中
         if(fifo_rst && delay_rst && ~read_en1) begin // 初步判断
@@ -73,6 +92,7 @@ module inst_fifo(
             delayslot_addr   <= 32'd0;
         end
     end
+    */
 
     // fifo读
     always_comb begin  // 取指限制：注意需要保证fifo中至少有一条指令
