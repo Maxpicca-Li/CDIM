@@ -315,12 +315,12 @@ always_ff @(posedge clk) begin // note: mtc0 should be done in exec stage.
             entrylo0_reg.G <= tlb[index_reg.index].G;
             entrylo0_reg.V <= tlb[index_reg.index].V0;
             entrylo0_reg.D <= tlb[index_reg.index].D0;
-            entrylo0_reg.C <= {2'd0,tlb[index_reg.index].C0};
+            entrylo0_reg.C <= {2'd1,tlb[index_reg.index].C0};
             entrylo0_reg.PFN <= tlb[index_reg.index].PFN0;
             entrylo1_reg.G <= tlb[index_reg.index].G;
             entrylo1_reg.V <= tlb[index_reg.index].V1;
             entrylo1_reg.D <= tlb[index_reg.index].D1;
-            entrylo1_reg.C <= {2'd0,tlb[index_reg.index].C1};
+            entrylo1_reg.C <= {2'd1,tlb[index_reg.index].C1};
             entrylo1_reg.PFN <= tlb[index_reg.index].PFN1;
             entryhi_reg.VPN2 <= tlb[index_reg.index].VPN2;
             entryhi_reg.ASID <= tlb[index_reg.index].ASID;
