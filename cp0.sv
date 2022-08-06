@@ -43,8 +43,6 @@ logic [31:0] badva_in;
 assign use_if_badva = except.if_adel | except.if_tlbl;
 assign badva_in = use_if_badva ? except_pc : M_mem_va;
 
-tlb_entry tlb[NR_TLB_ENTRY-1:0];
-
 // CP0 regfile {
 cp0_index       index_reg;
 logic [31:0]    random_reg;
@@ -67,6 +65,9 @@ logic [31:0]    taglo_reg;
 logic [31:0]    taghi_reg;
 logic [31:0]    errorepc_reg;
 // CP0 regfile }
+
+
+tlb_entry tlb[NR_TLB_ENTRY-1:0] = '{default: '0};
 
 assign M_next_kernel = (status_reg.EXL & (!(except.id_eret&status_reg.ERL))) | (status_reg.ERL & (!except.id_eret)) | (~status_reg.UM) | ((|except) & (!except.id_eret));
 assign M_cp0_useable = M_next_kernel | status_reg.CU0;
@@ -134,6 +135,20 @@ always_comb begin // except_target
     end
 end
 
+logic tlbp_ok;
+logic [$clog2(NR_TLB_ENTRY):0] tlbp_index;
+logic [$clog2(NR_TLB_ENTRY)-1:0] tlbp_i;
+always_comb begin : tlbp_matcher
+    tlbp_ok = 1'b0;
+    for (tlbp_index=0;tlbp_index<=NR_TLB_ENTRY-1;tlbp_index++) begin
+        tlbp_i = tlbp_index[$clog2(NR_TLB_ENTRY)-1:0];
+        if ((tlb[tlbp_i].G || tlb[tlbp_i].ASID == entryhi_reg.ASID) && entryhi_reg.VPN2 == tlb[tlbp_i].VPN2) begin
+            tlbp_ok = 1'b1;
+            break;
+        end
+    end
+end
+
 cp0_entrylo entrylo0_wdata;
 assign entrylo0_wdata = E_mtc0_wdata;
 cp0_entrylo entrylo1_wdata;
@@ -165,6 +180,7 @@ always_ff @(posedge clk) begin // note: mtc0 should be done in exec stage.
         taglo_reg <= 0;
         taghi_reg <= 0;
         errorepc_reg <= 0;
+        tlb <= '{default: '0};
     end
     else begin
         count_reg <= count_reg + 1;
@@ -256,6 +272,59 @@ always_ff @(posedge clk) begin // note: mtc0 should be done in exec stage.
                 end
             endcase
         end // mtc0 }
+        else if (E_cop0_info.TLBWI) begin
+            tlb[index_reg.index] <= '{
+                default: '0,
+                G: (entrylo0_reg.G & entrylo1_reg.G),
+                V0: entrylo0_reg.V,
+                V1: entrylo1_reg.V,
+                D0: entrylo0_reg.D,
+                D1: entrylo1_reg.D,
+                C0: entrylo0_reg.C[0],
+                C1: entrylo1_reg.C[0],
+                PFN0: entrylo0_reg.PFN,
+                PFN1: entrylo1_reg.PFN,
+                VPN2: entryhi_reg.VPN2,
+                ASID: entryhi_reg.ASID
+            };
+        end
+        else if (E_cop0_info.TLBWR) begin
+            tlb[random_reg[$clog2(NR_TLB_ENTRY)-1:0]] <= '{
+                default: '0,
+                G: (entrylo0_reg.G & entrylo1_reg.G),
+                V0: entrylo0_reg.V,
+                V1: entrylo1_reg.V,
+                D0: entrylo0_reg.D,
+                D1: entrylo1_reg.D,
+                C0: entrylo0_reg.C[0],
+                C1: entrylo1_reg.C[0],
+                PFN0: entrylo0_reg.PFN,
+                PFN1: entrylo1_reg.PFN,
+                VPN2: entryhi_reg.VPN2,
+                ASID: entryhi_reg.ASID
+            };
+        end
+        else if (E_cop0_info.TLBP) begin
+            if (tlbp_ok) begin
+                index_reg.index <= tlbp_i;
+                index_reg.p <= 1'b0;
+            end
+            else index_reg.p <= 1'b1;
+        end
+        else if (E_cop0_info.TLBR) begin
+            entrylo0_reg.G <= tlb[index_reg.index].G;
+            entrylo0_reg.V <= tlb[index_reg.index].V0;
+            entrylo0_reg.D <= tlb[index_reg.index].D0;
+            entrylo0_reg.C <= {2'd0,tlb[index_reg.index].C0};
+            entrylo0_reg.PFN <= tlb[index_reg.index].PFN0;
+            entrylo1_reg.G <= tlb[index_reg.index].G;
+            entrylo1_reg.V <= tlb[index_reg.index].V1;
+            entrylo1_reg.D <= tlb[index_reg.index].D1;
+            entrylo1_reg.C <= {2'd0,tlb[index_reg.index].C1};
+            entrylo1_reg.PFN <= tlb[index_reg.index].PFN1;
+            entryhi_reg.VPN2 <= tlb[index_reg.index].VPN2;
+            entryhi_reg.ASID <= tlb[index_reg.index].ASID;
+        end
     end
 end
 
