@@ -1008,7 +1008,13 @@ cp0 cp0_inst(
     .M_cp0_jump     ( M_cp0_jump                ),
     .D_cp0_useable  ( D_cp0_useable             ),
     .F_mmu_info     (                           ),
-    .D_int_info     ( D_int_info                )
+    .D_int_info     ( D_int_info                ),
+    .tlb1_vpn2      ( 19'd0                     ),
+    .tlb1_found     (                           ),
+    .tlb1_entry     (                           ),
+    .tlb2_vpn2      ( 19'd0                     ),
+    .tlb2_found     (                           ),
+    .tlb2_entry     (                           )
 );
 
 wire [31:0] M_master_reg_wdata, M_slave_reg_wdata;

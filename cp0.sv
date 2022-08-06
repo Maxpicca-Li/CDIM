@@ -23,8 +23,15 @@ module cp0(
     output              D_cp0_useable,
     output mmu_info     F_mmu_info,
     // int out
-    output int_info     D_int_info
-    // TODO: TLB read port and TLB fence out
+    output int_info     D_int_info,
+    // I-TLB read port
+    input  [31:13]      tlb1_vpn2,
+    output logic        tlb1_found,
+    output tlb_entry    tlb1_entry,
+    // D-TLB read port
+    input  [31:13]      tlb2_vpn2,
+    output logic        tlb2_found,
+    output tlb_entry    tlb2_entry
 );
 
 // ERRATA: eret with ERL=1 and pipeline is stalling will cause jump to epc, but it will not used by this CPU with linux.
@@ -148,6 +155,34 @@ always_comb begin : tlbp_matcher
         if ((tlb[tlbp_i].G || tlb[tlbp_i].ASID == entryhi_reg.ASID) && entryhi_reg.VPN2 == tlb[tlbp_i].VPN2) begin
             tlbp_ok = 1'b1;
             break;
+        end
+    end
+end
+
+logic [$clog2(NR_TLB_ENTRY):0] tlb1_index;
+logic [$clog2(NR_TLB_ENTRY)-1:0] tlb1_i;
+always_comb begin : tlb1_match
+    tlb1_found = 1'b0;
+    tlb1_entry = 0;
+    for (tlb1_index=0;tlb1_index<=NR_TLB_ENTRY-1;tlb1_index++) begin
+        tlb1_i = tlb1_index[$clog2(NR_TLB_ENTRY)-1:0];
+        if ((tlb[tlb1_i].G || tlb[tlb1_i].ASID == entryhi_reg.ASID) && tlb1_vpn2 == tlb[tlb1_i].VPN2) begin
+            tlb1_found = 1'b1;
+            tlb1_entry = tlb[tlb1_i];
+        end
+    end
+end
+
+logic [$clog2(NR_TLB_ENTRY):0] tlb2_index;
+logic [$clog2(NR_TLB_ENTRY)-1:0] tlb2_i;
+always_comb begin : tlb2_match
+    tlb2_found = 1'b0;
+    tlb2_entry = 0;
+    for (tlb2_index=0;tlb2_index<=NR_TLB_ENTRY-1;tlb2_index++) begin
+        tlb2_i = tlb2_index[$clog2(NR_TLB_ENTRY)-1:0];
+        if ((tlb[tlb2_i].G || tlb[tlb2_i].ASID == entryhi_reg.ASID) && tlb2_vpn2 == tlb[tlb2_i].VPN2) begin
+            tlb2_found = 1'b1;
+            tlb2_entry = tlb[tlb1_i];
         end
     end
 end

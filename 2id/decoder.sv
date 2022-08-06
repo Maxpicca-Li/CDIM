@@ -512,52 +512,47 @@ module  decoder(
             // special
             `OP_COP0_INST:begin
                 signsD.only_one_issue = 1'b1;
-                // signsD.flush_all = 1'b1;
-                if (c0_useable) begin
-                    case (rs)
-                        `RS_MFC0: begin
-                            signsD.aluop = `ALUOP_MFC0;
-                            signsD.reg_write = 1'b1;
-                            signsD.cp0_read = 1'b1;
-                        end
-                        `RS_MTC0: begin
-                            signsD.read_rt = 1'b1;
-                            signsD.cp0_write = 1'b1; // TODO: delete this signal
-                            cop0_info_out.mtc0_en = 1'b1;
-                        end
-                        `RS_CO: begin
-                            case(funct)
-                                `FUN_TLBR: begin
-                                    cop0_info_out.TLBR = 1'b1;
-                                end
-                                `FUN_TLBWI: begin
-                                    cop0_info_out.TLBWI = 1'b1;
-                                end
-                                `FUN_TLBWR: begin
-                                    cop0_info_out.TLBWR = 1'b1;
-                                end
-                                `FUN_TLBP: begin
-                                    cop0_info_out.TLBP = 1'b1;
-                                end
-                                `FUN_ERET: begin
-                                    eret_inst = 1'b1;
-                                end
-                                `FUN_WAIT: begin
-                                    // wait as nop
-                                end
-                                default: begin
-                                    undefined_inst = 1'b1;
-                                end
-                            endcase
-                        end
-                        default: begin
-                            undefined_inst = 1'b1;
-                        end
-                    endcase
-                end
-                else begin
-                    id_cpu = 1'b1;
-                end
+                id_cpu = !c0_useable;
+                case (rs)
+                    `RS_MFC0: begin
+                        signsD.aluop = `ALUOP_MFC0;
+                        signsD.reg_write = 1'b1;
+                        signsD.cp0_read = 1'b1;
+                    end
+                    `RS_MTC0: begin
+                        signsD.read_rt = 1'b1;
+                        signsD.cp0_write = 1'b1; // TODO: delete this signal
+                        cop0_info_out.mtc0_en = 1'b1;
+                    end
+                    `RS_CO: begin
+                        case(funct)
+                            `FUN_TLBR: begin
+                                cop0_info_out.TLBR = 1'b1;
+                            end
+                            `FUN_TLBWI: begin
+                                cop0_info_out.TLBWI = 1'b1;
+                            end
+                            `FUN_TLBWR: begin
+                                cop0_info_out.TLBWR = 1'b1;
+                            end
+                            `FUN_TLBP: begin
+                                cop0_info_out.TLBP = 1'b1;
+                            end
+                            `FUN_ERET: begin
+                                eret_inst = 1'b1;
+                            end
+                            `FUN_WAIT: begin
+                                // wait as nop
+                            end
+                            default: begin
+                                undefined_inst = 1'b1;
+                            end
+                        endcase
+                    end
+                    default: begin
+                        undefined_inst = 1'b1;
+                    end
+                endcase
             end
             default: begin
                 undefined_inst = 1'b1;
