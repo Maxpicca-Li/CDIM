@@ -23,7 +23,7 @@ module cp0(
     output              D_cp0_useable,
     output mmu_info     F_mmu_info,
     // int out
-    output int_info     D_int_info,
+    output int_info     D_int_info, // TODO: move to IF and pass to ID
     // I-TLB read port
     input  [31:13]      tlb1_vpn2,
     output logic        tlb1_found,
