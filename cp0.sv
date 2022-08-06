@@ -18,10 +18,10 @@ module cp0(
     input               M_slave_bd,
     input  [31:0]       M_mem_va,
     // except out
-    output              M_next_kernel,
     output logic [31:0] M_cp0_jump_pc,
     output logic        M_cp0_jump,
-    output              M_cp0_useable,
+    output              D_cp0_useable,
+    output mmu_info     F_mmu_info,
     // int out
     output int_info     D_int_info
     // TODO: TLB read port and TLB fence out
@@ -69,8 +69,11 @@ logic [31:0]    errorepc_reg;
 
 tlb_entry tlb[NR_TLB_ENTRY-1:0] = '{default: '0};
 
-assign M_next_kernel = (status_reg.EXL & (!(except.id_eret&status_reg.ERL))) | (status_reg.ERL & (!except.id_eret)) | (~status_reg.UM) | ((|except) & (!except.id_eret));
-assign M_cp0_useable = M_next_kernel | status_reg.CU0;
+wire is_kernel_mode = (status_reg.EXL & (!(except.id_eret&status_reg.ERL))) | (status_reg.ERL & (!except.id_eret)) | (~status_reg.UM) | ((|except) & (!except.id_eret));
+assign D_cp0_useable = is_kernel_mode | status_reg.CU0;
+
+assign F_mmu_info.ASID = entryhi_reg.ASID;
+assign F_mmu_info.usermode = !is_kernel_mode;
 
 
 assign D_int_info.IM = status_reg.IM;
