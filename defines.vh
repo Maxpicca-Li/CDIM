@@ -111,6 +111,14 @@
 `define FUN_MSUB        6'b000100
 `define FUN_MSUBU       6'b000101
 
+// COP0 CO FUNCT
+`define FUN_TLBR        6'b000001
+`define FUN_TLBWI       6'b000010
+`define FUN_TLBWR       6'b000110
+`define FUN_TLBP        6'b001000
+`define FUN_ERET        6'b011000
+`define FUN_WAIT        6'b100000
+
 // ## branch op
 `define OP_BEQ          6'b000100
 `define OP_BNE          6'b000101
@@ -138,7 +146,6 @@
 `define RT_BGEZ         5'b00001
 `define RT_BLTZAL       5'b10000
 `define RT_BGEZAL       5'b10001
-`define RT_SYNCI        5'b11111
 `define RT_TEQI         5'b01100
 `define RT_TNEI         5'b01110
 `define RT_TGEI         5'b01000
@@ -197,20 +204,6 @@
 `define ALUOP_SWR       8'b11101110
 `define ALUOP_SYNC      8'b00001111
 `define ALUOP_MFC0      8'b01011101
-`define ALUOP_MTC0      8'b01100000
-`define ALUOP_SYSCALL   8'b00001100
-`define ALUOP_BREAK     8'b00001011
-`define ALUOP_TEQ       8'b00110100
-`define ALUOP_TEQI      8'b01001000
-`define ALUOP_TGE       8'b00110000
-`define ALUOP_TGEI      8'b01000100
-`define ALUOP_TGEIU     8'b01000101
-`define ALUOP_TGEU      8'b00110001
-`define ALUOP_TLT       8'b00110010
-`define ALUOP_TLTI      8'b01000110
-`define ALUOP_TLTIU     8'b01000111
-`define ALUOP_TLTU      8'b00110011
-`define ALUOP_TNE       8'b00110110
 `define ALUOP_ROTR      8'b00000101
 `define ALUOP_MOV       8'b00001010 // GPR[rd] <= GPR[rs]
 // ## special2
@@ -236,13 +229,7 @@
 // `define EXE_LWL  6'b100010
 `define RS_MTC0 5'b00100
 `define RS_MFC0 5'b00000
-`define EXE_TYPE_INT =  32'h00000001
-`define EXC_TYPE_ADEL = 32'h00000004
-`define EXC_TYPE_ADES = 32'h00000005
-`define EXC_TYPE_SYS =  32'h00000008
-`define EXC_TYPE_BP =   32'h00000009
-`define EXC_TYPE_RI =   32'h0000000a
-`define EXC_TYPE_OV =   32'h0000000c
+`define RS_CO   5'b10000
 // `define EXE_TEQ    6'b110100
 // `define EXE_TEQI   5'b01100
 // `define EXE_TGE    6'b110000
@@ -271,14 +258,39 @@
 `define EXE_RES_NOP 3'b000
 
 //CP0
-`define CP0_REG_BADVADDR    5'b01000       //只读
-`define CP0_REG_COUNT    5'b01001        //可读写
-`define CP0_REG_COMPARE    5'b01011      //可读写
-`define CP0_REG_STATUS    5'b01100       //可读写
-`define CP0_REG_CAUSE    5'b01101        //只读
-`define CP0_REG_EPC    5'b01110          //可读写
-`define CP0_REG_PRID    5'b01111         //只读
-`define CP0_REG_CONFIG    5'b10000       //只读
+`define CP0_REG_INDEX       5'd0
+`define CP0_REG_RANDOM      5'd1
+`define CP0_REG_ENTRYLO0    5'd2
+`define CP0_REG_ENTRYLO1    5'd3
+`define CP0_REG_CONTEXT     5'd4
+`define CP0_REG_PAGEMASK    5'd5
+`define CP0_REG_WIRED       5'd6
+`define CP0_REG_BADVADDR    5'd8
+`define CP0_REG_COUNT       5'd9
+`define CP0_REG_ENTRYHI     5'd10
+`define CP0_REG_COMPARE     5'd11
+`define CP0_REG_STATUS      5'd12
+`define CP0_REG_CAUSE       5'd13
+`define CP0_REG_EPC         5'd14
+`define CP0_REG_PRID        5'd15   // Note: ebase is optional, so we didn't implement it.
+`define CP0_REG_CONFIG      5'd16
+`define CP0_REG_TAGLO       5'd28
+`define CP0_REG_TAGHI       5'd29
+`define CP0_REG_ERREPC      5'd30
+
+// EXCCODE
+`define EXC_INT     5'd0    // Interrupt
+`define EXC_MOD     5'd1    // TLB modification
+`define EXC_TLBL    5'd2    // TLB exception (load or instruction fetch)
+`define EXC_TLBS    5'd3    // TLB exception (store)
+`define EXC_ADEL    5'd4    // Address error exception (load or instruction fetch)
+`define EXC_ADES    5'd5    // Address error exception (store)
+`define EXC_SYS     5'd8    // Syscall exception
+`define EXC_BP      5'd9    // Breakpoint exception
+`define EXC_RI      5'd10   // Reserved instruction exception
+`define EXC_CPU     5'd11   // Coprocessor Unusable exception
+`define EXC_OV      5'd12   // Arithmetic Overflow exception
+`define EXC_TR      5'd13   // Trap exception
 
 //div
 `define DivFree 2'b00
@@ -412,65 +424,63 @@ typedef struct packed{
     logic only_one_issue;  // such as
 } ctrl_sign;
 
-//                    {aluop     ,fa  ,rdrs,rdrt,rw  ,men ,mwr ,mr  ,mw  ,cp0r,cp0w,hlr ,hlw ,mbf ,ooi }
-`define CTRL_SIGN_NOP {`ALUOP_NOP,1'd0,1'd0,1'd0,1'd0,1'd0,1'd0,1'd0,1'd0,1'd0,1'd0,1'd0,1'd0,1'd0,1'd0}
-
 typedef struct packed {
     logic           mtc0_en;
+    logic           TLBP;
+    logic           TLBR;
+    logic           TLBWI;
+    logic           TLBWR;
     logic [4:0]     reg_addr;
     logic [2:0]     sel_addr;
-    logic [31:0]    data;
-} mtc0_info;
-
-/*
+} cop0_info;
 
 typedef struct packed {
-    logic       IE;     // Interrupt Enable
-    logic       EXL;    // Exception Level
-    logic       ERL;    // Error Level
-    logic       R0;
-    logic       UM;     // 0: Kernel, 1: User
-    logic [2:0] blank0;
-    logic [7:0] IM;     // Interrupt Mask
-    logic [5:0] blank1;
-    logic       BEV;    // bootstrap exception vector
-    logic [4:0] blank2;
-    logic       CU0;    // cp0 useable
     logic [2:0] blank3;
+    logic       CU0;    // cp0 useable
+    logic [4:0] blank2;
+    logic       BEV;    // bootstrap exception vector
+    logic [5:0] blank1;
+    logic [7:0] IM;     // Interrupt Mask
+    logic [2:0] blank0;
+    logic       UM;     // 0: Kernel, 1: User
+    logic       R0;
+    logic       ERL;    // Error Level
+    logic       EXL;    // Exception Level
+    logic       IE;     // Interrupt Enable
 } cp0_status;
 
 typedef struct packed {
-    logic [1:0] blank0;
-    logic [4:0] exccode;// exception code
-    logic       blank1;
-    logic [7:0] IP;     // interrupt pending
-    logic [6:0] blank2;
-    logic       IV;     // special interrupt vector
-    logic [6:0] blank3;
     logic       BD;     // in a branch delay slot
+    logic [6:0] blank3;
+    logic       IV;     // special interrupt vector
+    logic [6:0] blank2;
+    logic [7:0] IP;     // interrupt pending
+    logic       blank1;
+    logic [4:0] exccode;// exception code
+    logic [1:0] blank0;
 } cp0_cause;
 
 typedef struct packed {
-    logic       G;
-    logic       V;
-    logic       D;
-    logic [2:0] C;
+    logic [5:0] F; // for 32 bit PALEN, F is 6 bit.
     logic [19:0]PFN;
-    logic [5:0] F;
+    logic [2:0] C;
+    logic       D;
+    logic       V;
+    logic       G;
 } cp0_entrylo;
 
 typedef struct packed {
-    logic [12:0] blank;
-    logic [18:0] badvpn2;
     logic [8:0] ptebase;
+    logic [18:0] badvpn2;
+    logic [3:0] blank;
 } cp0_context;
 
 typedef struct packed {
-    logic [7:0] ASID;
-    logic [4:0] blank0;
     logic [18:0]VPN2;
+    logic [4:0] blank0;
+    logic [7:0] ASID;
 } cp0_entryhi;
-*/
+
 typedef struct packed {
     logic [7:0] ASID;
     logic       usermode;
@@ -498,39 +508,40 @@ typedef struct packed {
     logic       ex_tlbl;    // tlb load
     logic       ex_tlbs;    // tlb store
     logic       ex_tlbm;    // tlb modified
+    logic       ex_tlbrf;   // 1: goto tlb refill, 0: goto tlb invalid
     logic       ex_trap;    // trap
 } except_bus;
 
 typedef struct packed {
-    logic [2:0] k0; // Kseg0 cacheability and coherency
-    logic       VI; // Virtual instruction cache
-    logic [2:0] blank0;
-    logic [2:0] MT; // MMU Type: 1: Standard TLB
-    logic [2:0] AR; // MIPS32 Architecture revision level. 0: Release 1
-    logic [1:0] AT; // Architecture Type 1: MIPS32
-    logic       BE; // 0: Little endian
-    logic [8:0] Impl;   // 0
-    logic [2:0] KU; // 0
-    logic [2:0] K23;// 0
     logic       M;  // 1: Conﬁg1 register is implemented
+    logic [2:0] K23;// 0
+    logic [2:0] KU; // 0
+    logic [8:0] Impl;   // 0
+    logic       BE; // 0: Little endian
+    logic [1:0] AT; // Architecture Type 1: MIPS32
+    logic [2:0] AR; // MIPS32 Architecture revision level. 0: Release 1
+    logic [2:0] MT; // MMU Type: 1: Standard TLB
+    logic [2:0] blank0;
+    logic       VI; // Virtual instruction cache
+    logic [2:0] k0; // Kseg0 cacheability and coherency
 } cp0_config0;
 
 typedef struct packed {
-    logic       FP; // no FPU: 0
-    logic       EP; // no EJTAG : 0
-    logic       CA; // no Code compression: 0
-    logic       WR; // no Watch registers: 0
-    logic       PC; // no performance counter: 0
-    logic       MD; // no MDMX: 0
-    logic       C2; // no CP2: 0
-    logic [2:0] DA; // Dcache associativity: 1: 2-way 3: 4-way
-    logic [2:0] DL; // Dcache line size: 3: 16bytes, 4: 32bytes, 5: 64bytes
-    logic [2:0] DS; // Dcache sets per way: 0:64, 1:128, 2:256, 3: 512
-    logic [2:0] IA; // Icache associativity
-    logic [2:0] IL; // Icache line size
-    logic [2:0] IS; // Icache sets per way
-    logic [5:0] MS; // MMU Size - 1
     logic       M;  // Config2 is present: 0
+    logic [5:0] MS; // MMU Size - 1
+    logic [2:0] IS; // Icache sets per way
+    logic [2:0] IL; // Icache line size
+    logic [2:0] IA; // Icache associativity
+    logic [2:0] DS; // Dcache sets per way: 0:64, 1:128, 2:256, 3: 512
+    logic [2:0] DL; // Dcache line size: 3: 16bytes, 4: 32bytes, 5: 64bytes
+    logic [2:0] DA; // Dcache associativity: 1: 2-way 3: 4-way
+    logic       C2; // no CP2: 0
+    logic       MD; // no MDMX: 0
+    logic       PC; // no performance counter: 0
+    logic       WR; // no Watch registers: 0
+    logic       CA; // no Code compression: 0
+    logic       EP; // no EJTAG : 0
+    logic       FP; // no FPU: 0
 } cp0_config1;
 
 typedef struct packed {
@@ -548,5 +559,11 @@ typedef struct packed {
 } tlb_entry;
 
 parameter NR_TLB_ENTRY = 16;
+
+typedef struct packed {
+    logic p;
+    logic [30-$clog2(NR_TLB_ENTRY):0] blank;
+    logic [$clog2(NR_TLB_ENTRY)-1:0] index;
+} cp0_index;
 
 `endif

@@ -4,6 +4,7 @@
 // 代码优化的事情，以后再说
 module  decoder(
     input [31:0] instr,
+    input        c0_useable,
 
     //per part
     output logic [5:0]          op,
@@ -40,7 +41,9 @@ module  decoder(
     output logic				undefined_inst,  // 1 as received a unknown operation.
     output logic                syscall_inst,
     output logic                break_inst,
-    output logic                eret_inst
+    output logic                eret_inst,
+    output logic                id_cpu,
+    output cop0_info            cop0_info_out
 );
 
     assign op = instr[31:26];
@@ -52,7 +55,6 @@ module  decoder(
     assign imm = instr[15:0];
     assign j_target = instr[25:0];
     assign sign_extend_imm_value = (instr[29:28]==2'b11) ? {{16{1'b0}},instr[15:0]}:{{16{instr[15]}},instr[15:0]}; //op[3:2] for logic_imm type
-    assign eret_inst = (instr == 32'b01000010000000000000000000011000);
     
     ctrl_sign signsD;
     assign aluop = signsD.aluop;
@@ -75,9 +77,12 @@ module  decoder(
         undefined_inst = 1'b0;
         syscall_inst = 1'b0;
         break_inst = 1'b0;
+        eret_inst = 1'b0;
+        id_cpu = 1'b0;
         trap_type = `TT_NOP;
         cmov_type = `C_MOVNOP;
-        signsD = `CTRL_SIGN_NOP;
+        signsD = '{default: '0};
+        cop0_info_out = '{default: '0, reg_addr: rd, sel_addr: instr[2:0]};
         case(op)
             `OP_SPECIAL_INST:begin
                 case (funct)
@@ -346,6 +351,9 @@ module  decoder(
                         signsD.read_rt = 1'b1;
                         signsD.hilo_write = 1'b1;
                     end
+                    default: begin
+                        undefined_inst = 1'b1;
+                    end
                 endcase
             end
             // lsmen
@@ -472,10 +480,6 @@ module  decoder(
                         signsD.read_rs = 1'b1;
                         signsD.read_rt = 1'b1;
                     end
-                    `RT_SYNCI: begin
-                        signsD.flush_all = 1'b1;
-                        signsD.read_rs = 1'b1;
-                    end
                     `RT_TEQI: begin
                         trap_type = `TT_TEQ;
                         signsD.read_rs = 1'b1;
@@ -500,23 +504,60 @@ module  decoder(
                         trap_type = `TT_TLTU;
                         signsD.read_rs = 1'b1;
                     end
+                    default: begin
+                        undefined_inst = 1'b1;
+                    end
                 endcase
             end
             // special
             `OP_COP0_INST:begin
                 signsD.only_one_issue = 1'b1;
-                case (rs)
-                    `RS_MFC0: begin
-                        signsD.aluop = `ALUOP_MFC0;
-                        signsD.reg_write = 1'b1;
-                        signsD.cp0_read = 1'b1;
-                    end
-                    `RS_MTC0: begin
-                        signsD.aluop = `ALUOP_MTC0;
-                        signsD.read_rt = 1'b1;
-                        signsD.cp0_write = 1'b1;
-                    end
-                endcase
+                // signsD.flush_all = 1'b1;
+                if (c0_useable) begin
+                    case (rs)
+                        `RS_MFC0: begin
+                            signsD.aluop = `ALUOP_MFC0;
+                            signsD.reg_write = 1'b1;
+                            signsD.cp0_read = 1'b1;
+                        end
+                        `RS_MTC0: begin
+                            signsD.read_rt = 1'b1;
+                            signsD.cp0_write = 1'b1; // TODO: delete this signal
+                            cop0_info_out.mtc0_en = 1'b1;
+                        end
+                        `RS_CO: begin
+                            case(funct)
+                                `FUN_TLBR: begin
+                                    cop0_info_out.TLBR = 1'b1;
+                                end
+                                `FUN_TLBWI: begin
+                                    cop0_info_out.TLBWI = 1'b1;
+                                end
+                                `FUN_TLBWR: begin
+                                    cop0_info_out.TLBWR = 1'b1;
+                                end
+                                `FUN_TLBP: begin
+                                    cop0_info_out.TLBP = 1'b1;
+                                end
+                                `FUN_ERET: begin
+                                    eret_inst = 1'b1;
+                                end
+                                `FUN_WAIT: begin
+                                    // wait as nop
+                                end
+                                default: begin
+                                    undefined_inst = 1'b1;
+                                end
+                            endcase
+                        end
+                        default: begin
+                            undefined_inst = 1'b1;
+                        end
+                    endcase
+                end
+                else begin
+                    id_cpu = 1'b1;
+                end
             end
             default: begin
                 undefined_inst = 1'b1;

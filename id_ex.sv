@@ -36,6 +36,7 @@ module id_ex(
     input wire [31:0]D_master_rs_value,
     input wire [31:0]D_master_rt_value,
     input wire [31:0]D_master_imm_value,
+    input cop0_info D_master_cop0_info,
 
     input wire D_slave_reg_wen,
     input wire D_slave_read_rs,
@@ -62,6 +63,7 @@ module id_ex(
     input wire [31:0]D_slave_rt_value,
     input wire [31:0]D_slave_imm_value,
     input wire [31:0]D_slave_pc,
+    input cop0_info D_slave_cop0_info,
 
     output reg E_master_memtoReg,
     output reg E_master_reg_wen,
@@ -91,6 +93,7 @@ module id_ex(
     output reg [31:0]E_master_rs_value,
     output reg [31:0]E_master_rt_value,
     output reg [31:0]E_master_imm_value,
+    output cop0_info E_master_cop0_info,
 
     output reg E_slave_ena,
     output reg E_slave_reg_wen,
@@ -117,7 +120,8 @@ module id_ex(
     output reg [31:0]E_slave_rs_value,
     output reg [31:0]E_slave_rt_value,
     output reg [31:0]E_slave_imm_value,
-    output reg [31:0]E_slave_pc
+    output reg [31:0]E_slave_pc,
+    output cop0_info E_slave_cop0_info
 ); 
 
     always @(posedge clk) begin
@@ -150,6 +154,7 @@ module id_ex(
             E_master_imm_value <= 0;
             E_master_trap_type <= 0;
             E_master_cmov_type <= 0;
+            E_master_cop0_info <= 0;
         end
         else if (ena1) begin
             E_master_memtoReg <= D_master_memtoReg;
@@ -180,6 +185,7 @@ module id_ex(
             E_master_imm_value <= D_master_imm_value;
             E_master_trap_type <= D_master_trap_type;
             E_master_cmov_type <= D_master_cmov_type;
+            E_master_cop0_info <= D_master_cop0_info;
         end
     end
 
@@ -211,6 +217,7 @@ module id_ex(
             E_slave_mem_en <= 0;
             E_slave_memWrite <= 0;
             E_slave_memRead <= 0;
+            E_slave_cop0_info <= 0;
         end
         else if (ena2) begin
             E_slave_reg_wen <= D_slave_reg_wen;
@@ -239,6 +246,7 @@ module id_ex(
             E_slave_mem_en <= D_slave_mem_en;
             E_slave_memWrite <= D_slave_memWrite;
             E_slave_memRead <= D_slave_memRead;
+            E_slave_cop0_info <= D_slave_cop0_info;
         end
     end
 

@@ -66,5 +66,5 @@ module struct_conflict(
     assign E_mem_wdata = ({32{E_mem_en1}} & E_mem_wdata1) | ({32{E_mem_en2}} & E_mem_wdata2);
     assign M_mem_rdata1 = {32{M_mem_sel1}} & M_mem_rdata;
     assign M_mem_rdata2 = {32{M_mem_sel2}} & M_mem_rdata;
-    
+
 endmodule

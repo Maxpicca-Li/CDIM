@@ -125,8 +125,6 @@ module alu_master(
             `ALUOP_MFLO: y = hilo[31:0];
             `ALUOP_MFC0: y = cp0_data;
             `ALUOP_MOV : y = a;
-            // 旋转指令
-            `ALUOP_ROTR  : y = (b << (32 - a[4:0])) + (b >> a[4:0]);
             // 前导计数指令
             `ALUOP_CLO: begin
                 y = 32;
