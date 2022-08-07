@@ -58,24 +58,10 @@ wire            E_flush;
 wire            M_flush;
 wire            W_flush;
 wire            E_alu_stall;
-// except
-wire [31:0]     M_bad_addr;
-wire            M_except;
-wire [31:0]     M_excepttype;
-wire [31:0]     M_except_inst_addr;
-wire            M_except_in_delayslot;
-wire [31:0]     M_pc_except_target;
 // cp0
-wire 			cp0_timer_int;
-wire [31:0]     cp0_data;
-wire [31:0]     cp0_count;
-wire [31:0]     cp0_compare;
-wire [31:0]     cp0_status;
-wire [31:0]     cp0_cause;
-wire [31:0]     cp0_epc;
-wire [31:0]     cp0_config;
-wire [31:0]     cp0_prid;
-wire [31:0]     badvaddr;
+wire [31:0]     E_cp0_rdata;
+wire            M_cp0_jump;
+wire [31:0]     M_cp0_jump_pc;
 // hilo
 wire [63:0]     hilo;
 
@@ -84,6 +70,7 @@ wire            F_pc_except                 ;
 
 // ===== D =====
 wire [31:0]     D_master_inst     ,D_slave_inst    ;
+wire            D_cp0_useable;
 wire [31:0]     D_master_pc       ,D_slave_pc      ;
 wire            D_master_is_in_delayslot ,D_slave_is_in_delayslot ;
 // inst
@@ -95,6 +82,8 @@ wire [31:0]     D_master_imm_value       ,D_slave_imm_value       ;
 wire            D_master_break_inst      ,D_slave_break_inst      ;
 wire            D_master_syscall_inst    ,D_slave_syscall_inst    ;
 wire            D_master_eret_inst       ,D_slave_eret_inst       ;
+wire            D_master_id_cpu          ,D_slave_id_cpu          ;
+cop0_info       D_master_cop0_info       ,D_slave_cop0_info       ;
 wire            D_master_undefined_inst  ,D_slave_undefined_inst  ;
 wire            D_master_memRead         ,D_slave_memRead         ;
 wire            D_master_flush_all       ,D_slave_flush_all       ;
@@ -128,15 +117,11 @@ wire            D_master_cp0write        ,D_slave_cp0write        ;
 wire            D_master_cp0read         ,D_slave_cp0read         ;
 wire            D_master_hilowrite       ,D_slave_hilowrite       ;
 wire            D_master_hiloread        ,D_slave_hiloread        ;
-except_bus		D_master_except			 ,D_slave_except		  ;
+except_bus      D_master_except          ,D_slave_except          ;
 wire            D_master_is_pc_except    ,D_slave_is_pc_except    ;
 wire [`CmovBus] D_master_cmov_type       ,D_slave_cmov_type       ;
 wire            D_interrupt;
 int_info        D_int_info;
-
-assign D_int_info.int_allowed = (~cp0_status[1]) & (cp0_status[0]) & (!fifo_empty);// D_ena;
-assign D_int_info.IM = cp0_status[15:8];
-assign D_int_info.IP = cp0_cause[15:8];
 
 assign D_master_except.if_adel      = (|D_master_pc[1:0]); // TODO: move to if
 assign D_master_except.if_tlbl      = 1'b0;
@@ -146,13 +131,14 @@ assign D_master_except.id_syscall   = D_master_syscall_inst;
 assign D_master_except.id_break     = D_master_break_inst;
 assign D_master_except.id_eret      = D_master_eret_inst;
 assign D_master_except.id_int       = D_interrupt;
-assign D_master_except.id_cpu       = 1'b0;
+assign D_master_except.id_cpu       = D_master_id_cpu;
 assign D_master_except.ex_ov        = 1'b0;
 assign D_master_except.ex_adel      = 1'b0;
 assign D_master_except.ex_ades      = 1'b0;
 assign D_master_except.ex_tlbl      = 1'b0;
 assign D_master_except.ex_tlbs      = 1'b0;
 assign D_master_except.ex_tlbm      = 1'b0;
+assign D_master_except.ex_tlbrf     = 1'b0;
 assign D_master_except.ex_trap      = 1'b0;
 
 assign D_slave_except.if_adel       = (|D_slave_pc[1:0]); // TODO: move to if
@@ -163,20 +149,21 @@ assign D_slave_except.id_syscall    = D_slave_syscall_inst;
 assign D_slave_except.id_break      = D_slave_break_inst;
 assign D_slave_except.id_eret       = D_slave_eret_inst;
 assign D_slave_except.id_int        = 1'b0;
-assign D_slave_except.id_cpu        = 1'b0;
+assign D_slave_except.id_cpu        = D_slave_id_cpu;
 assign D_slave_except.ex_ov         = 1'b0;
 assign D_slave_except.ex_adel       = 1'b0;
 assign D_slave_except.ex_ades       = 1'b0;
 assign D_slave_except.ex_tlbl       = 1'b0;
 assign D_slave_except.ex_tlbs       = 1'b0;
 assign D_slave_except.ex_tlbm       = 1'b0;
+assign D_slave_except.ex_tlbrf      = 1'b0;
 assign D_slave_except.ex_trap       = 1'b0;
 
 // ===== E =====
 wire            E_master_memWrite;
 wire            E_master_memRead ;
 wire [4 :0]     E_master_rs,E_master_rt,E_slave_rs,E_slave_rt;
-wire 	        E_master_exp_trap ,E_slave_exp_trap;
+wire            E_master_exp_trap ,E_slave_exp_trap;
 wire [3 :0]     E_master_trap_type,E_slave_trap_type;
 wire            E_slave_ena;
 wire [31:0]     E_master_inst     ,E_slave_inst    ;
@@ -210,6 +197,7 @@ wire            E_slave_hilowrite       ;
 wire            E_master_is_in_delayslot,E_slave_is_in_delayslot;
 except_bus      E_master_except_temp    ,E_slave_except_temp    ;
 except_bus      E_master_except         ,E_slave_except         ;
+cop0_info       E_master_cop0_info      ,E_slave_cop0_info      ,E_cop0_info;
 wire [`CmovBus] E_master_cmov_type      ,E_slave_cmov_type      ;
 wire            E_master_cp0write, E_slave_cp0write ;
 wire [ 4:0]     E_master_rd             ;
@@ -259,8 +247,6 @@ wire [63:0]     W_master_alu_out64;
 
 
 // 异常数据从上至下传递
-// _except = [8trap, 7pc_exp, 6syscall, 5break, 4eret, 3undefined, 2overflow, 1adel, 0ades]
-assign M_except = (|M_excepttype);
 assign D_master_is_pc_except  = (|D_master_pc[1:0]); // 2'b00
 assign D_slave_is_pc_except   = (|D_slave_pc[1:0]);
 
@@ -269,9 +255,9 @@ hazard u_hazard(
     //ports
     .i_stall                        ( i_stall                        ),
     .d_stall                        ( d_stall                        ),
-    .D_master_read_rs				( D_master_read_rs				 ),
-	.D_master_read_rt				( D_master_read_rt				 ),
-	.D_master_rs                    ( D_master_rs                    ),
+    .D_master_read_rs               ( D_master_read_rs               ),
+    .D_master_read_rt               ( D_master_read_rt               ),
+    .D_master_rs                    ( D_master_rs                    ),
     .D_master_rt                    ( D_master_rt                    ),
     .E_master_memtoReg              ( E_master_memtoReg              ),
     .E_master_reg_waddr             ( E_master_reg_waddr             ),
@@ -281,7 +267,7 @@ hazard u_hazard(
     .E_alu_stall                    ( E_alu_stall                    ),
     .D_flush_all                    ( D_master_flush_all             ),
     .fifo_empty                     ( fifo_empty                     ),
-    .M_except                       ( M_except                       ),
+    .M_except                       ( M_cp0_jump                     ),
 	.pc_en                          ( pc_en                          ),
     .F_ena                          ( F_ena                          ),
     .D_ena                          ( D_ena                          ),
@@ -314,8 +300,8 @@ pc_reg u_pc_reg(
     .flush_all                 ( D_master_flush_all    ),
     .flush_all_addr            ( D_master_pc + 4       ), 
     .fifo_full                 ( fifo_full             ), // fifo_full pc不变
-    .is_except                 ( M_except     ),
-    .except_addr               ( M_pc_except_target    ),       
+    .is_except                 ( M_cp0_jump            ),
+    .except_addr               ( M_cp0_jump_pc         ),       
     .branch_taken              ( E_branch_taken        ),
     .branch_addr               ( E_pc_branch_target    ),
     
@@ -328,7 +314,7 @@ inst_fifo u_inst_fifo(
     .clk                          ( clk                    ),
     .rst                          ( rst                    ),
     .fifo_rst                     ( rst | D_flush | D_master_flush_all ),
-    .flush_delay_slot             ( M_except | D_master_flush_all ),
+    .flush_delay_slot             ( M_cp0_jump | D_master_flush_all ),
     .D_ena                        ( D_ena                  ),
     .master_is_branch             ( (|D_master_branch_type)), // D阶段的branch
     .delay_rst                    (E_branch_taken && ~E_slave_ena), // next_master_is_in_delayslot
@@ -356,84 +342,91 @@ inst_fifo u_inst_fifo(
 
 // ====================================== Decode ======================================
 int_raiser d_int(
-    .info_i(D_int_info),
-    .int_o(D_interrupt)
+    .info_i ( D_int_info    ),
+    .id_ena ( !fifo_empty   ),
+    .int_o  ( D_interrupt   )
 );
 
 decoder u_decoder_master(
-	//ports
-	.instr                 		( D_master_inst                 		),
-	.op                    		( D_master_op                    		),
-	.rs                    		( D_master_rs                    		),
-	.rt                    		( D_master_rt                    		),
-	.rd                    		( D_master_rd                    		),
-	.shamt                 		( D_master_shamt                 		),
-	.funct                 		( D_master_funct                 		),
-	.imm                   		( D_master_imm                   		),
-	.j_target              		( D_master_j_target              		),
-	.sign_extend_imm_value 		( D_master_imm_value			 		),
-	.is_link_pc8           		( D_master_is_link_pc8           		),
-	.branch_type           		( D_master_branch_type           		),
-	.trap_type             		( D_master_trap_type             		),
-	.cmov_type             		( D_master_cmov_type             		),
-	.reg_waddr             		( D_master_reg_waddr             		),
-	.aluop                 		( D_master_aluop                 		),
-	.flush_all             		( D_master_flush_all             		),
-	.read_rs               		( D_master_read_rs               		),
-	.read_rt               		( D_master_read_rt               		),
-	.reg_write             		( D_master_reg_wen	             		),
-	.mem_en                		( D_master_mem_en                		),
-	.mem_write_reg         		( D_master_memtoReg		         		),
-	.mem_read              		( D_master_memRead              		),
-	.mem_write             		( D_master_memWrite             		),
-	.cp0_read              		( D_master_cp0read              		),
-	.cp0_write             		( D_master_cp0write             		),
-	.hilo_read             		( D_master_hiloread             		),
-	.hilo_write            		( D_master_hilowrite            		),
-	.may_bring_flush       		( D_master_may_bring_flush       		),
-    .only_one_issue       		( D_master_only_one_issue       		),
-	.undefined_inst        		( D_master_undefined_inst        		),
-	.syscall_inst          		( D_master_syscall_inst          		),
-	.break_inst            		( D_master_break_inst            		),
-	.eret_inst             		( D_master_eret_inst             		)
+    //ports
+    .instr                      ( D_master_inst                         ),
+    .c0_useable                 ( D_cp0_useable                         ),
+    .op                         ( D_master_op                           ),
+    .rs                         ( D_master_rs                           ),
+    .rt                         ( D_master_rt                           ),
+    .rd                         ( D_master_rd                           ),
+    .shamt                      ( D_master_shamt                        ),
+    .funct                      ( D_master_funct                        ),
+    .imm                        ( D_master_imm                          ),
+    .j_target                   ( D_master_j_target                     ),
+    .sign_extend_imm_value      ( D_master_imm_value                    ),
+    .is_link_pc8                ( D_master_is_link_pc8                  ),
+    .branch_type                ( D_master_branch_type                  ),
+    .trap_type                  ( D_master_trap_type                    ),
+    .cmov_type                  ( D_master_cmov_type                    ),
+    .reg_waddr                  ( D_master_reg_waddr                    ),
+    .aluop                      ( D_master_aluop                        ),
+    .flush_all                  ( D_master_flush_all                    ),
+    .read_rs                    ( D_master_read_rs                      ),
+    .read_rt                    ( D_master_read_rt                      ),
+    .reg_write                  ( D_master_reg_wen                      ),
+    .mem_en                     ( D_master_mem_en                       ),
+    .mem_write_reg              ( D_master_memtoReg                     ),
+    .mem_read                   ( D_master_memRead                      ),
+    .mem_write                  ( D_master_memWrite                     ),
+    .cp0_read                   ( D_master_cp0read                      ),
+    .cp0_write                  ( D_master_cp0write                     ),
+    .hilo_read                  ( D_master_hiloread                     ),
+    .hilo_write                 ( D_master_hilowrite                    ),
+    .may_bring_flush            ( D_master_may_bring_flush              ),
+    .only_one_issue             ( D_master_only_one_issue               ),
+    .undefined_inst             ( D_master_undefined_inst               ),
+    .syscall_inst               ( D_master_syscall_inst                 ),
+    .break_inst                 ( D_master_break_inst                   ),
+    .eret_inst                  ( D_master_eret_inst                    ),
+    .id_cpu                     ( D_master_id_cpu                       ),
+    .cop0_info_out              ( D_master_cop0_info                    )
 );
 
 decoder u_decoder_slave(
-	//ports
-	.instr                 		( D_slave_inst                  		),
-	.op                    		( D_slave_op                     		),
-	.rs                    		( D_slave_rs                     		),
-	.rt                    		( D_slave_rt                     		),
-	.rd                    		( D_slave_rd                     		),
-	.shamt                 		( D_slave_shamt                  		),
-	.funct                 		( D_slave_funct                  		),
-	.imm                   		( D_slave_imm                    		),
-	.j_target              		( D_slave_j_target               		),
-	.sign_extend_imm_value 		( D_slave_imm_value 			 		),
-	.is_link_pc8           		( D_slave_is_link_pc8            		),
-	.branch_type           		( D_slave_branch_type            		),
-	.trap_type             		( D_slave_trap_type              		),
-	.cmov_type             		( D_slave_cmov_type              		),
-	.reg_waddr             		( D_slave_reg_waddr              		),
-	.aluop                 		( D_slave_aluop                  		),
-	.flush_all             		( D_slave_flush_all              		),
-	.read_rs               		( D_slave_read_rs                		),
-	.read_rt               		( D_slave_read_rt                		),
-	.reg_write             		( D_slave_reg_wen 	             		),
-	.mem_en                		( D_slave_mem_en                 		),
-	.mem_write_reg         		( D_slave_memtoReg 		         		),
-	.mem_read              		( D_slave_memRead               		),
-	.mem_write             		( D_slave_memWrite              		),
-	.cp0_read              		( D_slave_cp0read               		),
-	.cp0_write             		( D_slave_cp0write              		),
-	.hilo_read             		( D_slave_hiloread              		),
-	.hilo_write            		( D_slave_hilowrite             		),
-	.may_bring_flush       		( D_slave_may_bring_flush        		),
-    .only_one_issue       		( D_slave_only_one_issue        		),
-	.undefined_inst        		( D_slave_undefined_inst         		),
-	.syscall_inst          		( D_slave_syscall_inst           		),
-	.break_inst            		( D_slave_break_inst             		),
-	.eret_inst             		( D_slave_eret_inst              		)
+    //ports
+    .instr                      ( D_slave_inst                          ),
+    .c0_useable                 ( D_cp0_useable                         ),
+    .op                         ( D_slave_op                            ),
+    .rs                         ( D_slave_rs                            ),
+    .rt                         ( D_slave_rt                            ),
+    .rd                         ( D_slave_rd                            ),
+    .shamt                      ( D_slave_shamt                         ),
+    .funct                      ( D_slave_funct                         ),
+    .imm                        ( D_slave_imm                           ),
+    .j_target                   ( D_slave_j_target                      ),
+    .sign_extend_imm_value      ( D_slave_imm_value                     ),
+    .is_link_pc8                ( D_slave_is_link_pc8                   ),
+    .branch_type                ( D_slave_branch_type                   ),
+    .trap_type                  ( D_slave_trap_type                     ),
+    .cmov_type                  ( D_slave_cmov_type                     ),
+    .reg_waddr                  ( D_slave_reg_waddr                     ),
+    .aluop                      ( D_slave_aluop                         ),
+    .flush_all                  ( D_slave_flush_all                     ),
+    .read_rs                    ( D_slave_read_rs                       ),
+    .read_rt                    ( D_slave_read_rt                       ),
+    .reg_write                  ( D_slave_reg_wen                       ),
+    .mem_en                     ( D_slave_mem_en                        ),
+    .mem_write_reg              ( D_slave_memtoReg                      ),
+    .mem_read                   ( D_slave_memRead                       ),
+    .mem_write                  ( D_slave_memWrite                      ),
+    .cp0_read                   ( D_slave_cp0read                       ),
+    .cp0_write                  ( D_slave_cp0write                      ),
+    .hilo_read                  ( D_slave_hiloread                      ),
+    .hilo_write                 ( D_slave_hilowrite                     ),
+    .may_bring_flush            ( D_slave_may_bring_flush               ),
+    .only_one_issue             ( D_slave_only_one_issue                ),
+    .undefined_inst             ( D_slave_undefined_inst                ),
+    .syscall_inst               ( D_slave_syscall_inst                  ),
+    .break_inst                 ( D_slave_break_inst                    ),
+    .eret_inst                  ( D_slave_eret_inst                     ),
+    .id_cpu                     ( D_slave_id_cpu                        ),
+    .cop0_info_out              ( D_slave_cop0_info                     )
 );
 
 
@@ -442,7 +435,7 @@ regfile u_regfile(
     .clk               ( clk                    ),
     .rst               ( rst                    ),
     
-	.ra1_a             ( D_master_rs            ),
+    .ra1_a             ( D_master_rs            ),
     .rd1_a             ( D_master_rs_value_tmp  ),
     .ra1_b             ( D_master_rt            ),
     .rd1_b             ( D_master_rt_value_tmp  ),
@@ -461,186 +454,190 @@ regfile u_regfile(
 
 // 前推计算结果和访存结果 EM->D
 forward_top u_forward_top(
-	//ports
-	.alu_wen1            		( E_slave_reg_wen & (!E_slave_memtoReg)),
-	.alu_waddr1          		( E_slave_reg_waddr   		),
-	.alu_wdata1          		( E_slave_alu_res   		),
-	.alu_wen2            		( E_master_reg_wen & (!E_master_memtoReg)),
-	.alu_waddr2          		( E_master_reg_waddr  		),
-	.alu_wdata2          		( E_master_alu_res  		),
-	.alu_wen3            		( M_slave_reg_wen           ), // 计算结果和访存结果
-	.alu_waddr3          		( M_slave_reg_waddr   		),
-	.alu_wdata3          		( M_slave_reg_wdata   		),
-	.alu_wen4            		( M_master_reg_wen          ),
-	.alu_waddr4          		( M_master_reg_waddr  		),
-	.alu_wdata4          		( M_master_reg_wdata  		),
-	// .memtoReg            		( M_master_memtoReg   		),
-	// .mem_waddr           		( M_master_reg_waddr  		),
-	// .mem_rdata           		( M_master_mem_rdata  		),
-	.master_rs           		( D_master_rs         		),
-	.master_rs_value_tmp 		( D_master_rs_value_tmp 	),
-	.master_rs_value     		( D_master_rs_value   		),
-	.master_rt           		( D_master_rt         		),
-	.master_rt_value_tmp 		( D_master_rt_value_tmp 	),
-	.master_rt_value     		( D_master_rt_value   		),
-	.slave_rs            		( D_slave_rs          		),
-	.slave_rs_value_tmp  		( D_slave_rs_value_tmp		),
-	.slave_rs_value      		( D_slave_rs_value    		),
-	.slave_rt            		( D_slave_rt          		),
-	.slave_rt_value_tmp  		( D_slave_rt_value_tmp		),
-	.slave_rt_value      		( D_slave_rt_value    		)
+    //ports
+    .alu_wen1                   ( E_slave_reg_wen & (!E_slave_memtoReg)),
+    .alu_waddr1                 ( E_slave_reg_waddr         ),
+    .alu_wdata1                 ( E_slave_alu_res           ),
+    .alu_wen2                   ( E_master_reg_wen & (!E_master_memtoReg)),
+    .alu_waddr2                 ( E_master_reg_waddr        ),
+    .alu_wdata2                 ( E_master_alu_res          ),
+    .alu_wen3                   ( M_slave_reg_wen           ), // 计算结果和访存结果
+    .alu_waddr3                 ( M_slave_reg_waddr         ),
+    .alu_wdata3                 ( M_slave_reg_wdata         ),
+    .alu_wen4                   ( M_master_reg_wen          ),
+    .alu_waddr4                 ( M_master_reg_waddr        ),
+    .alu_wdata4                 ( M_master_reg_wdata        ),
+    // .memtoReg                    ( M_master_memtoReg         ),
+    // .mem_waddr                   ( M_master_reg_waddr        ),
+    // .mem_rdata                   ( M_master_mem_rdata        ),
+    .master_rs                  ( D_master_rs               ),
+    .master_rs_value_tmp        ( D_master_rs_value_tmp     ),
+    .master_rs_value            ( D_master_rs_value         ),
+    .master_rt                  ( D_master_rt               ),
+    .master_rt_value_tmp        ( D_master_rt_value_tmp     ),
+    .master_rt_value            ( D_master_rt_value         ),
+    .slave_rs                   ( D_slave_rs                ),
+    .slave_rs_value_tmp         ( D_slave_rs_value_tmp      ),
+    .slave_rs_value             ( D_slave_rs_value          ),
+    .slave_rt                   ( D_slave_rt                ),
+    .slave_rt_value_tmp         ( D_slave_rt_value_tmp      ),
+    .slave_rt_value             ( D_slave_rt_value          )
 );
 
 issue_ctrl u_issue_ctrl(
-	//ports
-	.D_master_ena            		( D_ena  		          		),
-	.D_master_mem_en         		( D_master_mem_en         		),
-	.D_slave_mem_en          		( D_slave_mem_en          		),
-	.E_master_memtoReg       		( E_master_memtoReg       		),
-	.E_master_reg_waddr      		( E_master_reg_waddr      		),
-	.E_slave_memtoReg        		( E_slave_memtoReg        		),
-	.E_slave_reg_waddr       		( E_slave_reg_waddr       		),
-	.D_master_reg_wen        		( D_master_reg_wen        		),
-	.D_master_reg_waddr      		( D_master_reg_waddr      		),
-	.D_slave_read_rs         		( D_slave_read_rs         		),
-	.D_slave_read_rt         		( D_slave_read_rt         		),
-	.D_slave_rs              		( D_slave_rs              		),
-	.D_slave_rt              		( D_slave_rt              		),
-	.D_master_hilowrite      		( D_master_hilowrite      		),
-	.D_slave_hiloread        		( D_slave_hiloread        		),
-	.D_master_cp0write       		( D_master_cp0write       		),
-	.D_slave_cp0read         		( D_slave_cp0read         		),
-	.D_master_is_branch      		( (|D_master_branch_type) 		),
-	.D_master_only_one_issue 		( D_master_only_one_issue 		),
-	.D_slave_only_one_issue  		( D_slave_only_one_issue  		),
-	.D_slave_may_bring_flush 		( D_slave_may_bring_flush 		),
-	.fifo_empty              		( fifo_empty              		),
-	.fifo_almost_empty       		( fifo_almost_empty       		),
-	.D_slave_is_in_delayslot 		( D_slave_is_in_delayslot 		),
-	.D_slave_ena             		( D_slave_ena             		)
+    //ports
+    .D_master_ena               ( D_ena                     ),
+    .D_master_mem_en            ( D_master_mem_en           ),
+    .D_slave_mem_en             ( D_slave_mem_en            ),
+    .E_master_memtoReg          ( E_master_memtoReg         ),
+    .E_master_reg_waddr         ( E_master_reg_waddr        ),
+    .E_slave_memtoReg           ( E_slave_memtoReg          ),
+    .E_slave_reg_waddr          ( E_slave_reg_waddr         ),
+    .D_master_reg_wen           ( D_master_reg_wen          ),
+    .D_master_reg_waddr         ( D_master_reg_waddr        ),
+    .D_slave_read_rs            ( D_slave_read_rs           ),
+    .D_slave_read_rt            ( D_slave_read_rt           ),
+    .D_slave_rs                 ( D_slave_rs                ),
+    .D_slave_rt                 ( D_slave_rt                ),
+    .D_master_hilowrite         ( D_master_hilowrite        ),
+    .D_slave_hiloread           ( D_slave_hiloread          ),
+    .D_master_cp0write          ( D_master_cp0write         ),
+    .D_slave_cp0read            ( D_slave_cp0read           ),
+    .D_master_is_branch         ( (|D_master_branch_type)   ),
+    .D_master_only_one_issue    ( D_master_only_one_issue   ),
+    .D_slave_only_one_issue     ( D_slave_only_one_issue    ),
+    .D_slave_may_bring_flush    ( D_slave_may_bring_flush   ),
+    .fifo_empty                 ( fifo_empty                ),
+    .fifo_almost_empty          ( fifo_almost_empty         ),
+    .D_slave_is_in_delayslot    ( D_slave_is_in_delayslot   ),
+    .D_slave_ena                ( D_slave_ena               )
 );
 
 // ====================================== Execute ======================================
 wire D2E_clear1,D2E_clear2;
 // wire [31:0] E_master_rs_value_tmp,E_master_rt_value_tmp,E_slave_rs_value_tmp,E_slave_rt_value_tmp;
 // 在使能的情况下跳转清空才成立
-assign D2E_clear1 = M_except | (!D_master_is_in_delayslot & E_flush & E_ena) | (!D_ena & E_ena);
-assign D2E_clear2 = M_except | (E_flush & D_slave_ena) || (E_ena & !D_slave_ena);
+assign D2E_clear1 = M_cp0_jump | (!D_master_is_in_delayslot & E_flush & E_ena) | (!D_ena & E_ena);
+assign D2E_clear2 = M_cp0_jump | (E_flush & D_slave_ena) || (E_ena & !D_slave_ena);
 id_ex u_id_ex(
-	//ports
-	.clk                      		( clk                      		),
-	.rst                      		( rst                      		),
-	.clear1                   		( D2E_clear1              		),
-	.clear2                   		( D2E_clear2               		),
-	.ena1                     		( E_ena                  		),
-    .ena2                     		( D_slave_ena                   ),
-	.D_master_memtoReg        		( D_master_memtoReg        		),
-	.D_master_reg_wen         		( D_master_reg_wen         		),
-	.D_master_read_rs        		( D_master_read_rs        		),
-	.D_master_read_rt        		( D_master_read_rt        		),
-	.D_master_is_link_pc8     		( D_master_is_link_pc8     		),
-	.D_master_mem_en          		( D_master_mem_en          		),
-	.D_master_memWrite        		( D_master_memWrite        		),
-	.D_master_memRead         		( D_master_memRead         		),
-	.D_master_hilowrite       		( D_master_hilowrite       		),
-	.D_master_cp0write        		( D_master_cp0write        		),
-	.D_master_is_in_delayslot 		( D_master_is_in_delayslot 		),
-	.D_master_branch_type     		( D_master_branch_type     		),
-	.D_master_shamt           		( D_master_shamt           		),
-	.D_master_reg_waddr       		( D_master_reg_waddr       		),
-	.D_master_rd              		( D_master_rd              		),
-	.D_master_aluop           		( D_master_aluop           		),
-	.D_master_op              		( D_master_op              		),
-	.D_master_except          		( D_master_except              ),
-	.D_master_j_target        		( D_master_j_target        		),
-	.D_master_pc              		( D_master_pc              		),
-	.D_master_inst            		( D_master_inst            		),
-	.D_master_rs_value        		( D_master_rs_value        		),
-	.D_master_rt_value        		( D_master_rt_value        		),
-	.D_master_imm_value       		( D_master_imm_value       		),
+    //ports
+    .clk                            ( clk                           ),
+    .rst                            ( rst                           ),
+    .clear1                         ( D2E_clear1                    ),
+    .clear2                         ( D2E_clear2                    ),
+    .ena1                           ( E_ena                         ),
+    .ena2                           ( D_slave_ena                   ),
+    .D_master_memtoReg              ( D_master_memtoReg             ),
+    .D_master_reg_wen               ( D_master_reg_wen              ),
+    .D_master_read_rs               ( D_master_read_rs              ),
+    .D_master_read_rt               ( D_master_read_rt              ),
+    .D_master_is_link_pc8           ( D_master_is_link_pc8          ),
+    .D_master_mem_en                ( D_master_mem_en               ),
+    .D_master_memWrite              ( D_master_memWrite             ),
+    .D_master_memRead               ( D_master_memRead              ),
+    .D_master_hilowrite             ( D_master_hilowrite            ),
+    .D_master_cp0write              ( D_master_cp0write             ),
+    .D_master_is_in_delayslot       ( D_master_is_in_delayslot      ),
+    .D_master_branch_type           ( D_master_branch_type          ),
+    .D_master_shamt                 ( D_master_shamt                ),
+    .D_master_reg_waddr             ( D_master_reg_waddr            ),
+    .D_master_rd                    ( D_master_rd                   ),
+    .D_master_aluop                 ( D_master_aluop                ),
+    .D_master_op                    ( D_master_op                   ),
+    .D_master_except                ( D_master_except               ),
+    .D_master_j_target              ( D_master_j_target             ),
+    .D_master_pc                    ( D_master_pc                   ),
+    .D_master_inst                  ( D_master_inst                 ),
+    .D_master_rs_value              ( D_master_rs_value             ),
+    .D_master_rt_value              ( D_master_rt_value             ),
+    .D_master_imm_value             ( D_master_imm_value            ),
     .D_master_trap_type             ( D_master_trap_type            ),
     .D_master_cmov_type             ( D_master_cmov_type            ),
     .D_master_rs                    ( D_master_rs                   ),
     .D_master_rt                    ( D_master_rt                   ),
-	.D_slave_reg_wen          		( D_slave_reg_wen          		),
-	.D_slave_read_rs         		( D_slave_read_rs         		),
-	.D_slave_read_rt         		( D_slave_read_rt         		),
-	.D_slave_is_link_pc8      		( D_slave_is_link_pc8      		),
-	.D_slave_op              		( D_slave_op              		),
-    .D_slave_mem_en          		( D_slave_mem_en          		),
-	.D_slave_memWrite        		( D_slave_memWrite        		),
-	.D_slave_memRead         		( D_slave_memRead         		),
-    .D_slave_memtoReg         		( D_slave_memtoReg         		),
-	.D_slave_hilowrite				( D_slave_hilowrite				),
-	.D_slave_cp0write         		( D_slave_cp0write         		),
-	.D_slave_is_in_delayslot  		( D_slave_is_in_delayslot  		),
-	.D_slave_shamt            		( D_slave_shamt            		),
-	.D_slave_reg_waddr        		( D_slave_reg_waddr        		),
-	.D_slave_aluop            		( D_slave_aluop            		),
-	.D_slave_except           		( D_slave_except               ),
-	.D_slave_inst             		( D_slave_inst             		),
-	.D_slave_rs_value         		( D_slave_rs_value         		),
-	.D_slave_rt_value         		( D_slave_rt_value         		),
-	.D_slave_imm_value        		( D_slave_imm_value        		),
-	.D_slave_pc               		( D_slave_pc               		),
+    .D_master_cop0_info             ( D_master_cop0_info            ),
+    .D_slave_reg_wen                ( D_slave_reg_wen               ),
+    .D_slave_read_rs                ( D_slave_read_rs               ),
+    .D_slave_read_rt                ( D_slave_read_rt               ),
+    .D_slave_is_link_pc8            ( D_slave_is_link_pc8           ),
+    .D_slave_op                     ( D_slave_op                    ),
+    .D_slave_mem_en                 ( D_slave_mem_en                ),
+    .D_slave_memWrite               ( D_slave_memWrite              ),
+    .D_slave_memRead                ( D_slave_memRead               ),
+    .D_slave_memtoReg               ( D_slave_memtoReg              ),
+    .D_slave_hilowrite              ( D_slave_hilowrite             ),
+    .D_slave_cp0write               ( D_slave_cp0write              ),
+    .D_slave_is_in_delayslot        ( D_slave_is_in_delayslot       ),
+    .D_slave_shamt                  ( D_slave_shamt                 ),
+    .D_slave_reg_waddr              ( D_slave_reg_waddr             ),
+    .D_slave_aluop                  ( D_slave_aluop                 ),
+    .D_slave_except                 ( D_slave_except                ),
+    .D_slave_inst                   ( D_slave_inst                  ),
+    .D_slave_rs_value               ( D_slave_rs_value              ),
+    .D_slave_rt_value               ( D_slave_rt_value              ),
+    .D_slave_imm_value              ( D_slave_imm_value             ),
+    .D_slave_pc                     ( D_slave_pc                    ),
     .D_slave_trap_type              ( D_slave_trap_type             ),
     .D_slave_cmov_type              ( D_slave_cmov_type             ),
     .D_slave_rs                     ( D_slave_rs                    ),
     .D_slave_rt                     ( D_slave_rt                    ),
-	.E_master_memtoReg        		( E_master_memtoReg        		),
-	.E_master_reg_wen         		( E_master_reg_wen_a       		),
-	.E_master_read_rs        		( E_master_read_rs        		),
-	.E_master_read_rt        		( E_master_read_rt        		),
-	.E_master_is_link_pc8     		( E_master_is_link_pc8     		),
-	.E_master_mem_en          		( E_master_mem_en          		),
-	.E_master_memWrite        		( E_master_memWrite        		),
-	.E_master_memRead         		( E_master_memRead         		),
-	.E_master_hilowrite       		( E_master_hilowrite       		),
-	.E_master_cp0write        		( E_master_cp0write        		),
-	.E_master_is_in_delayslot 		( E_master_is_in_delayslot 		),
-	.E_master_branch_type     		( E_master_branch_type     		),
-	.E_master_shamt           		( E_master_shamt           		),
-	.E_master_reg_waddr       		( E_master_reg_waddr       		),
-	.E_master_rd              		( E_master_rd              		),
-	.E_master_aluop           		( E_master_aluop           		),
-	.E_master_op              		( E_master_op              		),
-	.E_master_except_temp           ( E_master_except_temp          ),
-	.E_master_j_target        		( E_master_j_target        		),
-	.E_master_pc              		( E_master_pc              		),
-	.E_master_inst            		( E_master_inst            		),
-	.E_master_rs_value        		( E_master_rs_value      		),
-	.E_master_rt_value        		( E_master_rt_value      		),
-	.E_master_imm_value       		( E_master_imm_value       		),
+    .D_slave_cop0_info              ( D_slave_cop0_info             ),
+    .E_master_memtoReg              ( E_master_memtoReg             ),
+    .E_master_reg_wen               ( E_master_reg_wen_a            ),
+    .E_master_read_rs               ( E_master_read_rs              ),
+    .E_master_read_rt               ( E_master_read_rt              ),
+    .E_master_is_link_pc8           ( E_master_is_link_pc8          ),
+    .E_master_mem_en                ( E_master_mem_en               ),
+    .E_master_memWrite              ( E_master_memWrite             ),
+    .E_master_memRead               ( E_master_memRead              ),
+    .E_master_hilowrite             ( E_master_hilowrite            ),
+    .E_master_cp0write              ( E_master_cp0write             ),
+    .E_master_is_in_delayslot       ( E_master_is_in_delayslot      ),
+    .E_master_branch_type           ( E_master_branch_type          ),
+    .E_master_shamt                 ( E_master_shamt                ),
+    .E_master_reg_waddr             ( E_master_reg_waddr            ),
+    .E_master_rd                    ( E_master_rd                   ),
+    .E_master_aluop                 ( E_master_aluop                ),
+    .E_master_op                    ( E_master_op                   ),
+    .E_master_except_temp           ( E_master_except_temp          ),
+    .E_master_j_target              ( E_master_j_target             ),
+    .E_master_pc                    ( E_master_pc                   ),
+    .E_master_inst                  ( E_master_inst                 ),
+    .E_master_rs_value              ( E_master_rs_value             ),
+    .E_master_rt_value              ( E_master_rt_value             ),
+    .E_master_imm_value             ( E_master_imm_value            ),
     .E_master_trap_type             ( E_master_trap_type            ),
     .E_master_cmov_type             ( E_master_cmov_type            ),
     .E_master_rs                    ( E_master_rs                   ),
     .E_master_rt                    ( E_master_rt                   ),
-	.E_slave_ena                    ( E_slave_ena            		),
-    .E_slave_reg_wen          		( E_slave_reg_wen_a        		),
-	.E_slave_read_rs         		( E_slave_read_rs         		),
-	.E_slave_read_rt         		( E_slave_read_rt         		),
-	.E_slave_is_link_pc8      		( E_slave_is_link_pc8      		),
-	.E_slave_op              		( E_slave_op              		),
-    .E_slave_mem_en          		( E_slave_mem_en          		),
-	.E_slave_memWrite        		( E_slave_memWrite        		),
-	.E_slave_memRead         		( E_slave_memRead         		),
-    .E_slave_memtoReg         		( E_slave_memtoReg         		),
-	.E_slave_hilowrite				( E_slave_hilowrite				),
-	.E_slave_cp0write         		( E_slave_cp0write         		),
-	.E_slave_is_in_delayslot  		( E_slave_is_in_delayslot  		),
-	.E_slave_shamt            		( E_slave_shamt            		),
-	.E_slave_reg_waddr        		( E_slave_reg_waddr        		),
-	.E_slave_aluop            		( E_slave_aluop            		),
-	.E_slave_except_temp            ( E_slave_except_temp           ),
-	.E_slave_inst             		( E_slave_inst             		),
-	.E_slave_rs_value         		( E_slave_rs_value       		),
-	.E_slave_rt_value         		( E_slave_rt_value       		),
+    .E_master_cop0_info             ( E_master_cop0_info            ),
+    .E_slave_ena                    ( E_slave_ena                   ),
+    .E_slave_reg_wen                ( E_slave_reg_wen_a             ),
+    .E_slave_read_rs                ( E_slave_read_rs               ),
+    .E_slave_read_rt                ( E_slave_read_rt               ),
+    .E_slave_is_link_pc8            ( E_slave_is_link_pc8           ),
+    .E_slave_op                     ( E_slave_op                    ),
+    .E_slave_mem_en                 ( E_slave_mem_en                ),
+    .E_slave_memWrite               ( E_slave_memWrite              ),
+    .E_slave_memRead                ( E_slave_memRead               ),
+    .E_slave_memtoReg               ( E_slave_memtoReg              ),
+    .E_slave_hilowrite              ( E_slave_hilowrite             ),
+    .E_slave_cp0write               ( E_slave_cp0write              ),
+    .E_slave_is_in_delayslot        ( E_slave_is_in_delayslot       ),
+    .E_slave_shamt                  ( E_slave_shamt                 ),
+    .E_slave_reg_waddr              ( E_slave_reg_waddr             ),
+    .E_slave_aluop                  ( E_slave_aluop                 ),
+    .E_slave_except_temp            ( E_slave_except_temp           ),
+    .E_slave_inst                   ( E_slave_inst                  ),
+    .E_slave_rs_value               ( E_slave_rs_value              ),
+    .E_slave_rt_value               ( E_slave_rt_value              ),
     .E_slave_rs                     ( E_slave_rs                    ),
     .E_slave_rt                     ( E_slave_rt                    ),
-	.E_slave_imm_value        		( E_slave_imm_value        		),
-	.E_slave_pc               		( E_slave_pc               		),
+    .E_slave_imm_value              ( E_slave_imm_value             ),
+    .E_slave_pc                     ( E_slave_pc                    ),
     .E_slave_trap_type              ( E_slave_trap_type             ),
-    .E_slave_cmov_type              ( E_slave_cmov_type             )
+    .E_slave_cmov_type              ( E_slave_cmov_type             ),
+    .E_slave_cop0_info              ( E_slave_cop0_info             )
 );
 
 assign E_master_except.if_adel      = E_master_except_temp.if_adel;
@@ -658,6 +655,7 @@ assign E_master_except.ex_ades      = E_master_mem_ades;
 assign E_master_except.ex_tlbl      = 1'b0;
 assign E_master_except.ex_tlbs      = 1'b0;
 assign E_master_except.ex_tlbm      = 1'b0;
+assign E_master_except.ex_tlbrf     = 1'b0;
 assign E_master_except.ex_trap      = E_master_exp_trap;
 
 assign E_slave_except.if_adel       = E_slave_except_temp.if_adel;
@@ -675,38 +673,41 @@ assign E_slave_except.ex_ades       = E_slave_mem_ades;
 assign E_slave_except.ex_tlbl       = 1'b0;
 assign E_slave_except.ex_tlbs       = 1'b0;
 assign E_slave_except.ex_tlbm       = 1'b0;
+assign E_slave_except.ex_tlbrf      = 1'b0;
 assign E_slave_except.ex_trap       = 1'b0;
+
+assign E_cop0_info = E_master_cop0_info & {$bits(E_master_cop0_info){~(|E_master_except)}};
 
 // 前推计算结果和访存结果 MW->E
 // forwardE_top u_forwardE_top(
-// 	//ports
-// 	.M_slave_alu_wen     		( M_slave_reg_wen & (!M_slave_memtoReg)),
-// 	.M_slave_alu_waddr   		( M_slave_reg_waddr   		),
-// 	.M_slave_alu_wdata   		( M_slave_alu_res   		),
-// 	.M_master_alu_wen    		( M_master_reg_wen & (!M_master_memtoReg)),
-// 	.M_master_alu_waddr  		( M_master_reg_waddr  		),
-// 	.M_master_alu_wdata  		( M_master_alu_res  		),
-// 	.W_slave_alu_wen     		( W_slave_reg_wen & (!W_slave_memtoReg)),
-// 	.W_slave_alu_waddr   		( W_slave_reg_waddr   		),
-// 	.W_slave_alu_wdata   		( W_slave_alu_res   		),
-// 	.W_master_alu_wen    		( W_master_reg_wen & (!W_master_memtoReg)),
-// 	.W_master_alu_waddr  		( W_master_reg_waddr  		),
-// 	.W_master_alu_wdata  		( W_master_alu_res  		),
-// 	.W_master_memtoReg   		( W_master_memtoReg   		),
-// 	.W_master_mem_waddr  		( W_master_reg_waddr  		),
-// 	.W_master_mem_rdata  		( W_master_mem_rdata  		),
-// 	.E_master_rs         		( E_master_rs         		),
-// 	.E_master_rs_value_a 		( E_master_rs_value_a 		),
-// 	.E_master_rs_value   		( E_master_rs_value   		),
-// 	.E_master_rt         		( E_master_rt         		),
-// 	.E_master_rt_value_a 		( E_master_rt_value_a 		),
-// 	.E_master_rt_value   		( E_master_rt_value   		),
-// 	.E_slave_rs          		( E_slave_rs          		),
-// 	.E_slave_rs_value_a  		( E_slave_rs_value_a  		),
-// 	.E_slave_rs_value    		( E_slave_rs_value    		),
-// 	.E_slave_rt          		( E_slave_rt          		),
-// 	.E_slave_rt_value_a  		( E_slave_rt_value_a  		),
-// 	.E_slave_rt_value    		( E_slave_rt_value    		)
+//  //ports
+//  .M_slave_alu_wen            ( M_slave_reg_wen & (!M_slave_memtoReg)),
+//  .M_slave_alu_waddr          ( M_slave_reg_waddr         ),
+//  .M_slave_alu_wdata          ( M_slave_alu_res           ),
+//  .M_master_alu_wen           ( M_master_reg_wen & (!M_master_memtoReg)),
+//  .M_master_alu_waddr         ( M_master_reg_waddr        ),
+//  .M_master_alu_wdata         ( M_master_alu_res          ),
+//  .W_slave_alu_wen            ( W_slave_reg_wen & (!W_slave_memtoReg)),
+//  .W_slave_alu_waddr          ( W_slave_reg_waddr         ),
+//  .W_slave_alu_wdata          ( W_slave_alu_res           ),
+//  .W_master_alu_wen           ( W_master_reg_wen & (!W_master_memtoReg)),
+//  .W_master_alu_waddr         ( W_master_reg_waddr        ),
+//  .W_master_alu_wdata         ( W_master_alu_res          ),
+//  .W_master_memtoReg          ( W_master_memtoReg         ),
+//  .W_master_mem_waddr         ( W_master_reg_waddr        ),
+//  .W_master_mem_rdata         ( W_master_mem_rdata        ),
+//  .E_master_rs                ( E_master_rs               ),
+//  .E_master_rs_value_a        ( E_master_rs_value_a       ),
+//  .E_master_rs_value          ( E_master_rs_value         ),
+//  .E_master_rt                ( E_master_rt               ),
+//  .E_master_rt_value_a        ( E_master_rt_value_a       ),
+//  .E_master_rt_value          ( E_master_rt_value         ),
+//  .E_slave_rs                 ( E_slave_rs                ),
+//  .E_slave_rs_value_a         ( E_slave_rs_value_a        ),
+//  .E_slave_rs_value           ( E_slave_rs_value          ),
+//  .E_slave_rt                 ( E_slave_rt                ),
+//  .E_slave_rt_value_a         ( E_slave_rt_value_a        ),
+//  .E_slave_rt_value           ( E_slave_rt_value          )
 // );
 
 // select_alusrc: 所有的pc要加8的，都在alu执行，进行电路复用
@@ -736,11 +737,11 @@ branch_judge u_branch_judge(
 );
 
 trap_judge u_trap_judge_master(
-	//ports
-	.trap_type 		( E_master_trap_type 		),
-	.value1  		( E_master_alu_srca   		),
-	.value2  		( E_master_alu_srcb   		),
-	.exp_trap  		( E_master_exp_trap  		)
+    //ports
+    .trap_type      ( E_master_trap_type        ),
+    .value1         ( E_master_alu_srca         ),
+    .value2         ( E_master_alu_srcb         ),
+    .exp_trap       ( E_master_exp_trap         )
 );
 
 wire E_master_alu_stall, E_slave_alu_stall;
@@ -748,11 +749,11 @@ wire [63:0] E_slave_alu_out64;
 alu_master u_aluA(
     //ports
     .clk                   ( clk                    ),
-    .rst                   ( rst | M_except         ),
+    .rst                   ( rst | M_cp0_jump       ),
     .aluop                 ( E_master_aluop         ),
     .a                     ( E_master_alu_srca      ),
     .b                     ( E_master_alu_srcb      ),
-    .cp0_data              ( cp0_data               ),
+    .cp0_data              ( E_cp0_rdata            ),
     .hilo                  ( hilo                   ),
     .stall_alu             ( E_master_alu_stall     ),
     .y                     ( E_master_alu_res_tmp   ),
@@ -763,11 +764,11 @@ alu_master u_aluA(
 alu_master u_aluB(
     //ports
     .clk                   ( clk                    ),
-    .rst                   ( rst | M_except         ),
+    .rst                   ( rst | M_cp0_jump       ),
     .aluop                 ( E_slave_aluop          ),
     .a                     ( E_slave_alu_srca       ),
     .b                     ( E_slave_alu_srcb       ),
-    .cp0_data              ( cp0_data               ),
+    .cp0_data              ( E_cp0_rdata            ),
     .hilo                  ( hilo                   ),
     .stall_alu             ( E_slave_alu_stall      ),
     .y                     ( E_slave_alu_res        ),
@@ -796,26 +797,26 @@ hilo_reg u_hilo_reg(
 );
 
 /*alu_res_select u_alu_res_select_master(
-	//ports
-	.aluop       		( E_master_aluop       		),
-	.is_link_pc8        ( E_master_is_link_pc8      ),
+    //ports
+    .aluop       		( E_master_aluop       		),
+    .is_link_pc8        ( E_master_is_link_pc8      ),
     .cp0_data    		( cp0_data    		        ),
-	.pc8                ( E_master_pc + 32'd8       ),
+    .pc8                ( E_master_pc + 32'd8       ),
     .alu_res_tmp 		( E_master_alu_res_tmp 		),
-	.hilo        		( hilo        		        ),
-	.alu_res     		( E_master_alu_res     		)
+    .hilo        		( hilo        		        ),
+    .alu_res     		( E_master_alu_res     		)
 );
 
 // E阶段写，M阶段出结果
 hilo_reg u_hilo_reg(
-	//ports
-	.clk      		( clk      		    ),
-	.rst      		( rst      		    ),
-	.wen            ( E_master_hilowrite & M_ena & ~M_flush), // 保证E_master_hilowrite能成功送到M
-	.aluop    		( E_master_aluop    ),
-	.rs_value 		( E_master_rs_value ),
-	.hilo_i   		( E_master_alu_out64),
-	.hilo_o   		( hilo   		    )
+    //ports
+    .clk            ( clk               ),
+    .rst            ( rst               ),
+    .wen            ( E_master_hilowrite & M_ena & ~M_flush), // 保证E_master_hilowrite能成功送到M
+    .aluop          ( E_master_aluop    ),
+    .rs_value       ( E_master_rs_value ),
+    .hilo_i         ( E_master_alu_out64),
+    .hilo_o         ( hilo              )
 );*/
 
 // mem_addr && 提前访存
@@ -830,9 +831,9 @@ wire [5 :0] mem_opE;
 wire        mem_enE;
 wire [31:0] mem_wdataE;
 wire [31:0] mem_rdataM;
-wire 		mem_enM;
-wire 		mem_renM;
-wire 		mem_wenM;
+wire        mem_enM;
+wire        mem_renM;
+wire        mem_wenM;
 wire [5 :0] mem_opM;
 wire [31:0] mem_addrM;
 wire [31:0] mem_wdataM;
@@ -847,57 +848,57 @@ assign E_slave_mem_addr = E_slave_rs_value + E_slave_imm_value;
 
 // Note: only care about except signals from D for load/store.
 struct_conflict u_struct_conflict(
-	// datapath ctrl
-	.E_exp1       		( |E_master_except_temp ),
-	.E_exp2       		( |E_slave_except_temp  ),
-	.M_flush      		( M_flush           ),
-	.M_ena        		( M_ena             ),
+    // datapath ctrl
+    .E_exp1             ( |E_master_except_temp ),
+    .E_exp2             ( |E_slave_except_temp  ),
+    .M_flush            ( M_flush           ),
+    .M_ena              ( M_ena             ),
     // master
-	.E_mem_en1    		( E_master_mem_en	),
-	.E_mem_ren1   		( E_master_memRead  ),
-	.E_mem_wen1   		( E_master_memWrite ),
-	.E_mem_op1    		( E_master_op 		),
-	.E_mem_addr1  		( E_master_mem_addr	),
-	.E_mem_wdata1 		( E_master_rt_value ),
-	.M_mem_sel1   		( M_master_mem_sel  ),
-	.E_mem_adel1		( E_master_mem_adel ),
-	.E_mem_ades1		( E_master_mem_ades ),
-	.E_mem_sel1   		( E_master_mem_sel  ),
-	.M_mem_rdata1 		( M_master_mem_rdata),
-	// slave
-    .E_mem_en2    		( E_slave_mem_en 	),
-	.E_mem_ren2   		( E_slave_memRead   ),
-	.E_mem_wen2   		( E_slave_memWrite  ),
-	.E_mem_op2    		( E_slave_op  		),
-	.E_mem_addr2  		( E_slave_mem_addr 	),
-	.E_mem_wdata2 		( E_slave_rt_value  ),
-	.M_mem_sel2   		( M_slave_mem_sel   ),
-	.E_mem_adel2		( E_slave_mem_adel ),
-	.E_mem_ades2		( E_slave_mem_ades ),
-	.E_mem_sel2   		( E_slave_mem_sel   ),
-	.M_mem_rdata2 		( M_slave_mem_rdata ),
-	// mem
-    .E_mem_en     		( mem_enE     		),
-	.E_mem_ren    		( mem_read_enE		),
-	.E_mem_wen    		( mem_write_enE     ),
-	.E_mem_op     		( mem_opE     		),
-	.E_mem_addr   		( mem_addrE 		),
-	.E_mem_wdata  		( mem_wdataE  		),
-	.M_mem_rdata  		( mem_rdataM 		)
+    .E_mem_en1          ( E_master_mem_en   ),
+    .E_mem_ren1         ( E_master_memRead  ),
+    .E_mem_wen1         ( E_master_memWrite ),
+    .E_mem_op1          ( E_master_op       ),
+    .E_mem_addr1        ( E_master_mem_addr ),
+    .E_mem_wdata1       ( E_master_rt_value ),
+    .M_mem_sel1         ( M_master_mem_sel  ),
+    .E_mem_adel1        ( E_master_mem_adel ),
+    .E_mem_ades1        ( E_master_mem_ades ),
+    .E_mem_sel1         ( E_master_mem_sel  ),
+    .M_mem_rdata1       ( M_master_mem_rdata),
+    // slave
+    .E_mem_en2          ( E_slave_mem_en    ),
+    .E_mem_ren2         ( E_slave_memRead   ),
+    .E_mem_wen2         ( E_slave_memWrite  ),
+    .E_mem_op2          ( E_slave_op        ),
+    .E_mem_addr2        ( E_slave_mem_addr  ),
+    .E_mem_wdata2       ( E_slave_rt_value  ),
+    .M_mem_sel2         ( M_slave_mem_sel   ),
+    .E_mem_adel2        ( E_slave_mem_adel ),
+    .E_mem_ades2        ( E_slave_mem_ades ),
+    .E_mem_sel2         ( E_slave_mem_sel   ),
+    .M_mem_rdata2       ( M_slave_mem_rdata ),
+    // mem
+    .E_mem_en           ( mem_enE           ),
+    .E_mem_ren          ( mem_read_enE      ),
+    .E_mem_wen          ( mem_write_enE     ),
+    .E_mem_op           ( mem_opE           ),
+    .E_mem_addr         ( mem_addrE         ),
+    .E_mem_wdata        ( mem_wdataE        ),
+    .M_mem_rdata        ( mem_rdataM        )
 );
 
 
 // ====================================== Memory ======================================
 // wire [31:0] M_master_alu_res_tmp, M_slave_alu_res_tmp;
 ex_mem u_ex_mem(
-	//ports
-	.clk                      		( clk                      		),
-	.rst                      		( rst                      		),
-	.clear1                   		( M_flush                   	),
-	.clear2                   		( M_flush                   	),
-	.ena1                     		( M_ena                     	),
-	.ena2                     		( M_ena                     	),
-	.E_mem_en                       ( mem_enE                       ),
+    //ports
+    .clk                            ( clk                           ),
+    .rst                            ( rst                           ),
+    .clear1                         ( M_flush                       ),
+    .clear2                         ( M_flush                       ),
+    .ena1                           ( M_ena                         ),
+    .ena2                           ( M_ena                         ),
+    .E_mem_en                       ( mem_enE                       ),
     .E_mem_ren                      ( mem_read_enE                  ),
     .E_mem_wen                      ( mem_write_enE                 ),
     .E_mem_op                       ( mem_opE                       ),
@@ -909,132 +910,110 @@ ex_mem u_ex_mem(
     .M_mem_op                       ( mem_opM                       ),
     .M_mem_addr                     ( mem_addrM                     ),
     .M_mem_wdata                    ( mem_wdataM                    ),
-    .E_master_mem_sel          		( E_master_mem_sel          	),
-	.E_master_hilowrite       		( E_master_hilowrite       		),
-	.E_master_memtoReg        		( E_master_memtoReg        		),
-	.E_master_reg_wen         		( E_master_reg_wen         		),
-	.E_master_cp0write        		( E_master_cp0write        		),
-	.E_master_is_in_delayslot 		( E_master_is_in_delayslot 		),
-	.E_master_reg_waddr       		( E_master_reg_waddr       		),
+    .E_master_mem_sel               ( E_master_mem_sel              ),
+    .E_master_hilowrite             ( E_master_hilowrite            ),
+    .E_master_memtoReg              ( E_master_memtoReg             ),
+    .E_master_reg_wen               ( E_master_reg_wen              ),
+    .E_master_cp0write              ( E_master_cp0write             ),
+    .E_master_is_in_delayslot       ( E_master_is_in_delayslot      ),
+    .E_master_reg_waddr             ( E_master_reg_waddr            ),
     .E_master_aluop                 ( E_master_aluop                ),
-	.E_master_rd              		( E_master_rd              		),
-	.E_master_op              		( E_master_op              		),
-	.E_master_except        		( E_master_except               ),
-	.E_master_inst            		( E_master_inst            		),
-	.E_master_rt_value        		( E_master_rt_value        		),
-	.E_master_alu_res         		( E_master_alu_res         		),
-	.E_master_pc              		( E_master_pc              		),
-	.E_master_alu_out64       		( E_master_alu_out64       		),
+    .E_master_rd                    ( E_master_rd                   ),
+    .E_master_op                    ( E_master_op                   ),
+    .E_master_except                ( E_master_except               ),
+    .E_master_inst                  ( E_master_inst                 ),
+    .E_master_rt_value              ( E_master_rt_value             ),
+    .E_master_alu_res               ( E_master_alu_res              ),
+    .E_master_pc                    ( E_master_pc                   ),
+    .E_master_alu_out64             ( E_master_alu_out64            ),
     .E_master_mem_addr              ( E_master_mem_addr             ),
-	.E_slave_reg_wen          		( E_slave_reg_wen          		),
-	.E_slave_memtoReg         		( E_slave_memtoReg         		),
+    .E_slave_reg_wen                ( E_slave_reg_wen               ),
+    .E_slave_memtoReg               ( E_slave_memtoReg              ),
     .E_slave_mem_sel                ( E_slave_mem_sel               ),
-	.E_slave_cp0write         		( E_slave_cp0write         		),
-	.E_slave_is_in_delayslot  		( E_slave_is_in_delayslot  		),
-	.E_slave_reg_waddr        		( E_slave_reg_waddr        		),
+    .E_slave_cp0write               ( E_slave_cp0write              ),
+    .E_slave_is_in_delayslot        ( E_slave_is_in_delayslot       ),
+    .E_slave_reg_waddr              ( E_slave_reg_waddr             ),
     .E_slave_aluop                  ( E_slave_aluop                 ),
-	.E_slave_except           		( E_slave_except                ),
-	.E_slave_pc               		( E_slave_pc               		),
-	.E_slave_inst             		( E_slave_inst             		),
-	.E_slave_alu_res          		( E_slave_alu_res          		),
-	.M_master_mem_sel         		( M_master_mem_sel         		),
-	.M_master_hilowrite       		( M_master_hilowrite       		),
-	.M_master_memtoReg        		( M_master_memtoReg        		),
-	.M_master_reg_wen         		( M_master_reg_wen         		),
-	.M_master_cp0write        		( M_master_cp0write        		),
-	.M_master_is_in_delayslot 		( M_master_is_in_delayslot 		),
-	.M_master_reg_waddr       		( M_master_reg_waddr       		),
+    .E_slave_except                 ( E_slave_except                ),
+    .E_slave_pc                     ( E_slave_pc                    ),
+    .E_slave_inst                   ( E_slave_inst                  ),
+    .E_slave_alu_res                ( E_slave_alu_res               ),
+    .M_master_mem_sel               ( M_master_mem_sel              ),
+    .M_master_hilowrite             ( M_master_hilowrite            ),
+    .M_master_memtoReg              ( M_master_memtoReg             ),
+    .M_master_reg_wen               ( M_master_reg_wen              ),
+    .M_master_cp0write              ( M_master_cp0write             ),
+    .M_master_is_in_delayslot       ( M_master_is_in_delayslot      ),
+    .M_master_reg_waddr             ( M_master_reg_waddr            ),
     .M_master_aluop                 ( M_master_aluop                ),
-	.M_master_rd              		( M_master_rd              		),
-	.M_master_op              		( M_master_op              		),
-	.M_master_except                ( M_master_except               ),
-	.M_master_inst            		( M_master_inst            		),
-	.M_master_rt_value        		( M_master_rt_value        		),
-	.M_master_alu_res         		( M_master_alu_res    		    ),
-	.M_master_pc              		( M_master_pc              		),
-	.M_master_alu_out64       		( M_master_alu_out64       		),
+    .M_master_rd                    ( M_master_rd                   ),
+    .M_master_op                    ( M_master_op                   ),
+    .M_master_except                ( M_master_except               ),
+    .M_master_inst                  ( M_master_inst                 ),
+    .M_master_rt_value              ( M_master_rt_value             ),
+    .M_master_alu_res               ( M_master_alu_res              ),
+    .M_master_pc                    ( M_master_pc                   ),
+    .M_master_alu_out64             ( M_master_alu_out64            ),
     .M_master_mem_addr              ( M_master_mem_addr             ),
-	.M_slave_reg_wen          		( M_slave_reg_wen          		),
-	.M_slave_mem_sel                ( M_slave_mem_sel               ),
-    .M_slave_memtoReg         		( M_slave_memtoReg         		),
-	.M_slave_cp0write         		( M_slave_cp0write         		),
-	.M_slave_is_in_delayslot  		( M_slave_is_in_delayslot  		),
-	.M_slave_reg_waddr        		( M_slave_reg_waddr        		),
+    .M_slave_reg_wen                ( M_slave_reg_wen               ),
+    .M_slave_mem_sel                ( M_slave_mem_sel               ),
+    .M_slave_memtoReg               ( M_slave_memtoReg              ),
+    .M_slave_cp0write               ( M_slave_cp0write              ),
+    .M_slave_is_in_delayslot        ( M_slave_is_in_delayslot       ),
+    .M_slave_reg_waddr              ( M_slave_reg_waddr             ),
     .M_slave_aluop                  ( M_slave_aluop                 ),
-	.M_slave_except                 ( M_slave_except                ),
-	.M_slave_pc               		( M_slave_pc               		),
-	.M_slave_inst             		( M_slave_inst             		),
-	.M_slave_alu_res          		( M_slave_alu_res      		    )
+    .M_slave_except                 ( M_slave_except                ),
+    .M_slave_pc                     ( M_slave_pc                    ),
+    .M_slave_inst                   ( M_slave_inst                  ),
+    .M_slave_alu_res                ( M_slave_alu_res               )
 );
 
 mem_access u_mem_access(
-	//ports
-	.mem_en            		( mem_enM            		),
-	.mem_op            		( mem_opM            		),
-	.mem_wdata         		( mem_wdataM         		),
-	.mem_addr          		( mem_addrM          		),
-	.mem_rdata         		( mem_rdataM         		),
-	.data_sram_rdata   		( data_sram_rdataM   		),
-	.data_sram_en      		( data_sram_enM      		),
-	.data_sram_rlen    		( data_sram_rlenM    		),
-	.data_sram_wen     		( data_sram_wenM     		),
-	.data_sram_addr    		( data_sram_addrM    		),
-	.data_sram_wdata   		( data_sram_wdataM   		),
-	// 异常处理及其选择
-    .M_master_mem_sel  		( M_master_mem_sel  		),
-	.M_slave_mem_sel   		( M_slave_mem_sel   		),
-	.M_master_except   		( M_master_except   		),
-	.M_slave_except    		( M_slave_except    		)
+    //ports
+    .mem_en                 ( mem_enM                   ),
+    .mem_op                 ( mem_opM                   ),
+    .mem_wdata              ( mem_wdataM                ),
+    .mem_addr               ( mem_addrM                 ),
+    .mem_rdata              ( mem_rdataM                ),
+    .data_sram_rdata        ( data_sram_rdataM          ),
+    .data_sram_en           ( data_sram_enM             ),
+    .data_sram_rlen         ( data_sram_rlenM           ),
+    .data_sram_wen          ( data_sram_wenM            ),
+    .data_sram_addr         ( data_sram_addrM           ),
+    .data_sram_wdata        ( data_sram_wdataM          ),
+    // 异常处理及其选择
+    .M_master_mem_sel       ( M_master_mem_sel          ),
+    .M_slave_mem_sel        ( M_slave_mem_sel           ),
+    .M_master_except        ( M_master_except           ),
+    .M_slave_except         ( M_slave_except            )
 );
 
-// master的异常优先级更高，故异常处理阶段先选择master异常
-exception u_exp(
-    //ports
-    .rst            ( rst            ),
-    .master_except  ( M_master_except),
-    .master_pc      ( M_master_pc    ),
-    .mem_addr       ( mem_addrM      ), // 虚地址
-    .slave_except   ( M_slave_except ),
-    .slave_pc       ( M_slave_pc     ),
-    .cp0_status     ( cp0_status      ),
-    .cp0_cause      ( cp0_cause       ),
-    .cp0_epc        ( cp0_epc         ),
-    .master_is_in_delayslot( M_master_is_in_delayslot),
-    .slave_is_in_delayslot ( M_slave_is_in_delayslot ),
-    
-    .except_inst_addr   ( M_except_inst_addr),
-    .except_in_delayslot( M_except_in_delayslot),
-    .except_target      ( M_pc_except_target),
-    .except_bad_addr    ( M_bad_addr        ),
-    .excepttype         ( M_excepttype   )
-);
-
-// FIXME: CP0改成E写，M出结果，1.减少前推；2.减少因为例外导致的刷新数
-cp0_reg u_cp0_reg(
-    //ports
-    .clk                    ( clk                        ),
-    .rst                    ( rst                        ),
-    
-    .we_i                   ( M_master_cp0write  & M_ena ),  // 只有master访问cp0_reg
-    .waddr_i                ( M_master_rd                ),  // M阶段写入CP0  // MTCP0 CP0[rd, sel] ← GPR[rt] 
-    .wdata_i                ( M_master_rt_value          ),
-    .raddr_i                ( E_master_rd                ),  // E阶段读取CP0，这两步可以避免数据冒险处理 // MFCP0 GPR[rt] ← CP0[rd, sel] 写寄存器
-    .rdata_o                ( cp0_data                   ),
-    
-    .int_i                  ( ext_int                    ),
-    .excepttype_i           ( M_excepttype               ),
-    .current_inst_addr_i    ( M_except_inst_addr         ),
-    .is_in_delayslot_i      ( M_except_in_delayslot      ),
-    .bad_addr_i             ( M_bad_addr                 ),
-    .count_o                ( cp0_count                  ),
-    .compare_o              ( cp0_compare                ),
-    .status_o               ( cp0_status                 ),
-    .cause_o                ( cp0_cause                  ),
-    .epc_o                  ( cp0_epc                    ),
-    .config_o               ( cp0_config                 ),
-    .prid_o                 ( cp0_prid                   ),
-    .badvaddr_o             ( badvaddr                   ),
-    .timer_int_o            ( cp0_timer_int              )
+// new CP0
+cp0 cp0_inst(
+    .clk            ( clk                       ),
+    .rst            ( rst                       ),
+    .E_cop0_info    ( E_cop0_info               ),
+    .E_mfc0_rdata   ( E_cp0_rdata               ),
+    .E_mtc0_wdata   ( E_master_rt_value         ),
+    .ext_int        ( ext_int[4:0]              ),    // ext_int async
+    .M_master_except( M_master_except           ),
+    .M_slave_except ( M_slave_except            ),
+    .M_master_pc    ( M_master_pc               ),
+    .M_slave_pc     ( M_slave_pc                ),
+    .M_master_bd    ( M_master_is_in_delayslot  ), // bd => branch delay slot
+    .M_slave_bd     ( M_slave_is_in_delayslot   ),
+    .M_mem_va       ( mem_addrM                 ),
+    .M_cp0_jump_pc  ( M_cp0_jump_pc             ),
+    .M_cp0_jump     ( M_cp0_jump                ),
+    .D_cp0_useable  ( D_cp0_useable             ),
+    .F_mmu_info     (                           ),
+    .D_int_info     ( D_int_info                ),
+    .tlb1_vpn2      ( 19'd0                     ),
+    .tlb1_found     (                           ),
+    .tlb1_entry     (                           ),
+    .tlb2_vpn2      ( 19'd0                     ),
+    .tlb2_found     (                           ),
+    .tlb2_entry     (                           )
 );
 
 wire [31:0] M_master_reg_wdata, M_slave_reg_wdata;
@@ -1042,37 +1021,37 @@ assign M_master_reg_wdata = M_master_memtoReg ? M_master_mem_rdata : M_master_al
 assign M_slave_reg_wdata = M_slave_memtoReg ? M_slave_mem_rdata : M_slave_alu_res;
 // ====================================== WriteBack ======================================
 mem_wb u_mem_wb(
-	//ports
-	.clk                		( clk                		),
-	.rst                		( rst                		),
-	.clear1             		( W_flush					),
-	.clear2             		( W_flush					),
-	.ena1                		( W_ena               		),
-	.ena2               		( W_ena               		),
-	.M_master_reg_wen   		( M_master_reg_wen   		),
-	.M_master_reg_waddr 		( M_master_reg_waddr 		),
-	.M_master_except    		( M_master_except    		),
-	.M_master_inst      		( M_master_inst      		),
-	.M_master_pc        		( M_master_pc        		),
-	.M_master_reg_wdata 		( M_master_reg_wdata 		),
-	.M_slave_reg_wen    		( M_slave_reg_wen    		),
-	.M_slave_reg_waddr  		( M_slave_reg_waddr  		),
-	.M_slave_except     		( M_slave_except     		),
-	.M_slave_inst       		( M_slave_inst       		),
-	.M_slave_pc         		( M_slave_pc         		),
-	.M_slave_reg_wdata  		( M_slave_reg_wdata  		),
-	.W_master_reg_wen   		( W_master_reg_wen   		),
-	.W_master_reg_waddr 		( W_master_reg_waddr 		),
-	.W_master_except    		( W_master_except    		),
-	.W_master_inst      		( W_master_inst      		),
-	.W_master_pc        		( W_master_pc        		),
-	.W_master_reg_wdata 		( W_master_reg_wdata 		),
-	.W_slave_reg_wen    		( W_slave_reg_wen    		),
-	.W_slave_reg_waddr  		( W_slave_reg_waddr  		),
-	.W_slave_except     		( W_slave_except     		),
-	.W_slave_inst       		( W_slave_inst       		),
-	.W_slave_pc         		( W_slave_pc         		),
-	.W_slave_reg_wdata  		( W_slave_reg_wdata  		)
+    //ports
+    .clk                        ( clk                       ),
+    .rst                        ( rst                       ),
+    .clear1                     ( W_flush                   ),
+    .clear2                     ( W_flush                   ),
+    .ena1                       ( W_ena                     ),
+    .ena2                       ( W_ena                     ),
+    .M_master_reg_wen           ( M_master_reg_wen          ),
+    .M_master_reg_waddr         ( M_master_reg_waddr        ),
+    .M_master_except            ( M_master_except           ),
+    .M_master_inst              ( M_master_inst             ),
+    .M_master_pc                ( M_master_pc               ),
+    .M_master_reg_wdata         ( M_master_reg_wdata        ),
+    .M_slave_reg_wen            ( M_slave_reg_wen           ),
+    .M_slave_reg_waddr          ( M_slave_reg_waddr         ),
+    .M_slave_except             ( M_slave_except            ),
+    .M_slave_inst               ( M_slave_inst              ),
+    .M_slave_pc                 ( M_slave_pc                ),
+    .M_slave_reg_wdata          ( M_slave_reg_wdata         ),
+    .W_master_reg_wen           ( W_master_reg_wen          ),
+    .W_master_reg_waddr         ( W_master_reg_waddr        ),
+    .W_master_except            ( W_master_except           ),
+    .W_master_inst              ( W_master_inst             ),
+    .W_master_pc                ( W_master_pc               ),
+    .W_master_reg_wdata         ( W_master_reg_wdata        ),
+    .W_slave_reg_wen            ( W_slave_reg_wen           ),
+    .W_slave_reg_waddr          ( W_slave_reg_waddr         ),
+    .W_slave_except             ( W_slave_except            ),
+    .W_slave_inst               ( W_slave_inst              ),
+    .W_slave_pc                 ( W_slave_pc                ),
+    .W_slave_reg_wdata          ( W_slave_reg_wdata         )
 );
 
 // debug
