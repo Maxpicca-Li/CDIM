@@ -109,7 +109,7 @@ logic fence_i_ready;
 logic fence_tlb_ready;
 
 
-assign istall = icache_status == IDLE ? cache_hit_available : (icache_status != SAVE_RESULT);
+assign istall = icache_status == IDLE ? !cache_hit_available : (icache_status != SAVE_RESULT);
 
 logic [31:0] saved_inst0;
 logic [31:0] saved_inst1;
