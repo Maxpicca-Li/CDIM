@@ -7,8 +7,6 @@ module inst_fifo(
         input                       fifo_rst,                 // fifo读写指针重置位
         input                       flush_delay_slot,
         input                       delay_rst,                // 下一条master指令是延迟槽指令，要存起来
-        input                       FD_wait_stall,
-        input                       FD_conflict_stall,
         input                       D_ena,
         input                       master_is_branch,         // 延迟槽判断
         output logic                master_is_in_delayslot_o, // 延迟槽判断结果
@@ -55,7 +53,9 @@ module inst_fifo(
     always_ff @(posedge clk)begin
         if(rst | flush_delay_slot) 
             master_is_in_delayslot_o <= 1'b0;
-        else if(!read_en1 | empty)
+        else if(delayslot_stall) // Taken 特判 (当read_en1 & write_en1 & delay_rst时延迟槽执行)
+            master_is_in_delayslot_o <= !read_en1;
+        else if(!read_en1 | empty) // NotTaken 维持原数据
             master_is_in_delayslot_o <= master_is_in_delayslot_o;
         else if(master_is_branch && !read_en2)
             master_is_in_delayslot_o <= 1'b1;
@@ -69,21 +69,18 @@ module inst_fifo(
             delayslot_sel <= delayslot_sel;
         end
         else begin
-            delayslot_stall <= fifo_rst && delay_rst && FD_wait_stall;
+            delayslot_stall <= fifo_rst && delay_rst && !read_en1;
             delayslot_sel   <= fifo_rst && delay_rst && empty;  // 是否等待write数据
         end
     end
+    
     always_ff @(posedge clk) begin
-        // FD_wait_stall 取的不一定是延迟槽的指令
-        if(fifo_rst && delay_rst & FD_wait_stall) begin // !read_en1 当前指令是延迟槽，但是没有读
+        if(fifo_rst && delay_rst & !read_en1) begin // !read_en1 当前指令是延迟槽，但是没有读
             delayslot_enable <= 1'b1;
             delayslot_data  <= delayslot_sel ? write_data1 : read_data1;
             delayslot_addr  <= delayslot_sel ? write_address1 : read_address1;
         end
-        else if(FD_wait_stall && write_en1) begin // 要写的数据回来了
-            delayslot_data    <= write_data1;
-        end
-        else if(!FD_wait_stall && read_en1) begin // 清空
+        else if(read_en1) begin // 清空
             delayslot_enable <= 1'b0;
             delayslot_data   <= 32'd0;
             delayslot_addr   <= 32'd0;

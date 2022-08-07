@@ -17,8 +17,7 @@ module hazard (
     
     //except
     input wire M_except,
-    output wire FD_conflict_stall,
-    output wire FD_wait_stall,
+    output wire pc_en,
     output wire F_ena, 
     output wire D_ena, 
     output wire E_ena, 
@@ -34,7 +33,7 @@ module hazard (
 );
     
     // 阻塞
-    wire lwstall, longest_stall,is_flush;
+    wire lwstall, longest_stall,is_flush,M_except_ok;
     // FIXME: lwstall优化问题
     /*
     如下情况
@@ -42,27 +41,33 @@ module hazard (
         lbu  $1,0x2($0)       ## $1 = 0x000000ee
     这种情况感觉不用stall lbu（会导致3个周期的延迟）
     */
-    // FIXME: 这里没有考虑 D_slave_rs 和 D_slave_rt 
+    // D后影响PC变化的因素
     assign is_flush = M_except | E_branch_taken | D_flush_all;
+    // D前stall: i_stall
+    // D时stall
     assign lwstall = (E_master_memtoReg & (|E_master_reg_waddr) & ((D_master_read_rs & D_master_rs == E_master_reg_waddr) | (D_master_read_rt & D_master_rt == E_master_reg_waddr))) || 
                      (E_slave_memtoReg  & (|E_slave_reg_waddr)  & ((D_master_read_rs & D_master_rs == E_slave_reg_waddr)  | (D_master_read_rt & D_master_rt == E_slave_reg_waddr)));
-    assign FD_conflict_stall = !i_stall & is_flush;
+    // D后stall
+    assign longest_stall = E_alu_stall | d_stall;
+    // FD冲突信号（会导致各个部件耦合性太强，使其成为关键路径 ==> 如果FD没能带来太大提升，不推荐这样做）
+    assign FD_conflict_stall = longest_stall & is_flush;
     assign FD_wait_stall = i_stall & is_flush;
-    assign longest_stall = E_alu_stall | d_stall | FD_wait_stall;
+    assign M_except_ok = M_except & !FD_wait_stall;
+    // pc_en
+    assign pc_en = !FD_wait_stall;
     
-    
-    assign F_ena = ~i_stall; // 存在fifo情况下，d_stall不影响取指
-    assign D_ena = ~(lwstall | longest_stall); //  | fifo_empty  一旦此时I_stall的是延迟槽，|fifo_empty会让D_ena一直拉低，导致延迟槽穿不下去
-    assign E_ena = ~longest_stall;
-    assign M_ena = ~longest_stall;
-    assign W_ena = ~longest_stall | (M_except & !FD_wait_stall);
+    assign F_ena = ~(i_stall | FD_conflict_stall); // 存在fifo情况下，d_stall不影响取指
+    assign D_ena = ~(lwstall | longest_stall | FD_wait_stall); //  | fifo_empty  一旦此时I_stall的是延迟槽，|fifo_empty会让D_ena一直拉低，导致延迟槽穿不下去
+    assign E_ena = ~(longest_stall | FD_wait_stall);
+    assign M_ena = ~(longest_stall | FD_wait_stall);
+    assign W_ena = ~(longest_stall | FD_wait_stall) | M_except_ok;
 
     assign F_flush = 1'b0;
-    assign D_flush = (M_except & !FD_wait_stall) | E_branch_taken;
-    assign E_flush = (M_except & !FD_wait_stall) | E_branch_taken; // pclk-fifo, nclk-ibram
-    // assign E_flush = M_except;                     // nclk-fifo, pclk-ibram
-    assign M_flush = (M_except & !FD_wait_stall);
-    assign W_flush = 1'b0; // TODO:0xbfc7cbe8 异常绑定
+    assign D_flush = M_except_ok | E_branch_taken;
+    assign E_flush = M_except_ok | E_branch_taken; // pclk-fifo, nclk-ibram
+    // assign E_flush = M_except_ok;                     // nclk-fifo, pclk-ibram
+    assign M_flush = M_except_ok;
+    assign W_flush = 1'b0;
 
 
 endmodule

@@ -264,7 +264,6 @@ assign M_except = (|M_excepttype);
 assign D_master_is_pc_except  = (|D_master_pc[1:0]); // 2'b00
 assign D_slave_is_pc_except   = (|D_slave_pc[1:0]);
 
-wire FD_conflict_stall, FD_wait_stall;
 // 冒险处理
 hazard u_hazard(
     //ports
@@ -283,8 +282,7 @@ hazard u_hazard(
     .D_flush_all                    ( D_master_flush_all             ),
     .fifo_empty                     ( fifo_empty                     ),
     .M_except                       ( M_except                       ),
-	.FD_conflict_stall				( FD_conflict_stall			     ),
-	.FD_wait_stall					( FD_wait_stall					 ),
+	.pc_en                          ( pc_en                          ),
     .F_ena                          ( F_ena                          ),
     .D_ena                          ( D_ena                          ),
     .E_ena                          ( E_ena                          ),
@@ -299,28 +297,25 @@ hazard u_hazard(
 
 // ====================================== Fetch ======================================
 assign F_pc_except = (|F_pc[1:0]); // 必须是2'b00
-// FIXME: 注意，这里如果是i_stall导致的F_ena=0，inst_sram_en仍然使能(不太确定这个逻辑)
-// assign inst_sram_en =  !(rst | M_except | F_pc_except | fifo_full);  // assign inst_sram_en =  !(rst | M_except | F_pc_except | fifo_full);  // fifo_full 不取指
-assign inst_sram_en =  !(rst | fifo_full | FD_conflict_stall);
+// NOTE: 与i_stall有关的cache disable，一般修改stallF（即F_ena），而不是inst_sram_en，否则会loop
+// assign inst_sram_en =  !(rst | M_except | F_pc_except | fifo_full);
+assign inst_sram_en =  !(rst | fifo_full);
 assign stallF = ~F_ena;
 assign stallM = ~M_ena;
 wire pc_en;
-assign pc_en = F_ena | M_except; // 异常的优先级最高，必须使能
 
 pc_reg u_pc_reg(
     //ports
     .clk                       ( clk                   ),
     .rst                       ( rst                   ),
     .pc_en                     ( pc_en                 ), 
-	.FD_wait_stall			   ( FD_wait_stall		   ),
-    .inst_data_ok1             ( inst_data_ok1 ),
-    .inst_data_ok2             ( inst_data_ok2 ),
+    .inst_data_ok1             ( inst_data_ok1         ),
+    .inst_data_ok2             ( inst_data_ok2         ),
     .flush_all                 ( D_master_flush_all    ),
     .flush_all_addr            ( D_master_pc + 4       ), 
     .fifo_full                 ( fifo_full             ), // fifo_full pc不变
-    .is_except                 ( M_except              ),
+    .is_except                 ( M_except     ),
     .except_addr               ( M_pc_except_target    ),       
-    .branch_en                 ( E_ena                 ),
     .branch_taken              ( E_branch_taken        ),
     .branch_addr               ( E_pc_branch_target    ),
     
@@ -337,7 +332,6 @@ inst_fifo u_inst_fifo(
     .D_ena                        ( D_ena                  ),
     .master_is_branch             ( (|D_master_branch_type)), // D阶段的branch
     .delay_rst                    (E_branch_taken && ~E_slave_ena), // next_master_is_in_delayslot
-	.FD_wait_stall				  ( FD_wait_stall			),
     
     .read_en1                     ( D_ena                  ),
     .read_en2                     ( D_slave_ena              ), // D阶段的发射结果
@@ -681,7 +675,7 @@ assign E_slave_except.ex_ades       = E_slave_mem_ades;
 assign E_slave_except.ex_tlbl       = 1'b0;
 assign E_slave_except.ex_tlbs       = 1'b0;
 assign E_slave_except.ex_tlbm       = 1'b0;
-assign E_slave_except.ex_trap       = E_slave_exp_trap;
+assign E_slave_except.ex_trap       = 1'b0;
 
 // 前推计算结果和访存结果 MW->E
 // forwardE_top u_forwardE_top(
