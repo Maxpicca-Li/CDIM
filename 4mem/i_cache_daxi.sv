@@ -31,7 +31,7 @@ module i_cache_daxi (
 
 //变量声明
     //cache configure
-    parameter TAG_WIDTH = 19, INDEX_WIDTH = 8, OFFSET_WIDTH = 5;    //[WARNING]: OFFSET_WIDTH不能�?2
+    parameter TAG_WIDTH = 20, INDEX_WIDTH = 6, OFFSET_WIDTH = 6;    //[WARNING]: OFFSET_WIDTH不能�?2
     parameter WAY_NUM = 2;
     localparam BLOCK_NUM= 1<<(OFFSET_WIDTH-2);
     localparam CACHE_LINE_NUM = 1<<INDEX_WIDTH;
@@ -181,7 +181,7 @@ module i_cache_daxi (
         //data bank
     wire [BLOCK_NUM-1:0] wena_data_mask;
         //解码�?
-    decoder38 decoder0(cnt, wena_data_mask);
+    decoder416 decoder0(cnt, wena_data_mask);
     
     assign data_wdata[0] = wena_data_mask & {BLOCK_NUM{data_back & evict_mask[0]}};
     assign data_wdata[1] = wena_data_mask & {BLOCK_NUM{data_back & evict_mask[1]}};
@@ -189,7 +189,7 @@ module i_cache_daxi (
     genvar i, j;
     generate
         for(i = 0; i < WAY_NUM; i=i+1) begin: way
-            i_tag_ram tag_ram (
+            i_tag_ram #(.LEN_DATA(TAG_WIDTH+1),.LEN_ADDR(INDEX_WIDTH)) tag_ram (
                 .clka(clk), 
                 .ena(~no_cache),  
                 .wea(wena_tag_ram_way[i]),  
@@ -201,7 +201,7 @@ module i_cache_daxi (
                 .doutb(tag_way[i])  
             );
             for(j = 0; j < BLOCK_NUM; j=j+1) begin: bank
-                i_data_bank data_bank (
+                i_data_bank #(.LEN_ADDR(INDEX_WIDTH)) data_bank (
                     .clka(clk),  
                     .ena(~no_cache),    
                     .wea({4{data_wdata[i][j]}}),  
@@ -219,7 +219,7 @@ module i_cache_daxi (
 //DATAPATH OUTPUT
     assign stall = ~(state==IDLE || (state==HitJudge) && ~miss && ~no_cache) & inst_en;
     assign inst_data_ok1 = state==HitJudge & hit & ~no_cache & ~stallF ? 1'b1 : read_finish_save;              // 控制信号，需要受限制
-    assign inst_data_ok2 = no_cache ? 1'b0 : (state==HitJudge & hit & ~no_cache & ~stallF ? 1'b1: read_finish_save) & available; // 控制信号，需要受限制
+    assign inst_data_ok2 = no_cache ? 1'b0 : (state==HitJudge & hit & ~no_cache & ~stallF ? 1'b1: read_finish_save) & available /* & (!pcF[3]) */ ; // 控制信号，需要受限制
     assign inst_rdata1 = hit & ~no_cache ? block_sel_way1[sel] : saved_rdata1;
     assign inst_rdata2 = hit & ~no_cache ? block_sel_way2[sel] : saved_rdata2;
 //AXI OUTPUT

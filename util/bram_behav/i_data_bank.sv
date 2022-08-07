@@ -9,6 +9,6 @@ module i_data_bank #(
     input [LEN_DATA-1:0] dina;
     output [LEN_DATA-1:0] doutb;
 
-    dual_port_bram_bw8 bram_inst(clka,clkb,ena,enb,wea,addra,addrb,dina,doutb);
+    dual_port_bram_bw8 #(.LEN_ADDR(LEN_ADDR)) bram_inst(clka,clkb,ena,enb,wea,addra,addrb,dina,doutb);
 
 endmodule
