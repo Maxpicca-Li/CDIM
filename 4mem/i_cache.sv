@@ -302,8 +302,10 @@ always_ff @(posedge clk) begin // Cache FSM
                             rready <= 0;
                             data_wea[LRU[va_line_addr]] <= 0;
                             tag_wea[LRU[va_line_addr]] <= 0;
-                            icache_status <= IDLE;
                         end
+                    end
+                    else if (!rready) begin // wait the final data write to bram.
+                        icache_status <= IDLE;
                     end
                 end
             end
