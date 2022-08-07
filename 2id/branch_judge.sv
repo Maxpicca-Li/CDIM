@@ -2,6 +2,7 @@
 `include "defines.vh"
 
 module branch_judge(
+        input               branch_ena,
         input [ 3:0]        branch_type,
         input [31:0]        offset,
         input [25:0]        j_target,
@@ -22,13 +23,15 @@ module branch_judge(
                                 {32{branch_type == `BT_BLTZ_ &&  rs_value[31]==1'b1}}                       & pc_branch |
                                 {32{branch_type == `BT_JREG}}                                               & rs_value  |
                                 {32{branch_type == `BT_J}}                                                  & {pc_plus4[31:28], j_target, 2'b00};
-    assign branch_taken =   (branch_type == `BT_BEQ   && rs_value==rt_value) |
+    assign branch_taken =   branch_ena & (
+                            (branch_type == `BT_BEQ   && rs_value==rt_value) |
                             (branch_type == `BT_BNE   && rs_value!=rt_value) |
                             (branch_type == `BT_BGTZ  && ((rs_value[31]==1'b0)&&(rs_value!=32'h0))) |
                             (branch_type == `BT_BLEZ  && ((rs_value[31]==1'b1)||(rs_value==32'h0))) |
                             (branch_type == `BT_BGEZ_ &&  rs_value[31]==1'b0) |
                             (branch_type == `BT_BLTZ_ &&  rs_value[31]==1'b1) |
                             (branch_type == `BT_JREG) |
-                            (branch_type == `BT_J) ;
+                            (branch_type == `BT_J) 
+                            );
 
 endmodule

@@ -167,8 +167,8 @@ wire            E_master_exp_trap ,E_slave_exp_trap;
 wire [3 :0]     E_master_trap_type,E_slave_trap_type;
 wire            E_slave_ena;
 wire [31:0]     E_master_inst     ,E_slave_inst    ;
-wire            E_branch_taken;
-wire [31:0]     E_pc_branch_target;
+wire            D_branch_taken;
+wire [31:0]     D_pc_branch_target;
 wire [ 3:0]     E_master_branch_type;
 wire [ 4:0]     E_master_shamt          ;
 wire [31:0]     E_master_rs_value       ;
@@ -263,7 +263,7 @@ hazard u_hazard(
     .E_master_reg_waddr             ( E_master_reg_waddr             ),
     .E_slave_memtoReg               ( E_slave_memtoReg               ),
     .E_slave_reg_waddr              ( E_slave_reg_waddr              ),
-    .E_branch_taken                 ( E_branch_taken                 ),
+    .D_branch_taken                 ( D_branch_taken                 ),
     .E_alu_stall                    ( E_alu_stall                    ),
     .D_flush_all                    ( D_master_flush_all             ),
     .fifo_empty                     ( fifo_empty                     ),
@@ -302,9 +302,9 @@ pc_reg u_pc_reg(
     .fifo_full                 ( fifo_full             ), // fifo_full pc不变
     .is_except                 ( M_cp0_jump            ),
     .except_addr               ( M_cp0_jump_pc         ),       
-    .branch_en                 ( E_ena                 ),
-    .branch_taken              ( E_branch_taken        ),
-    .branch_addr               ( E_pc_branch_target    ),
+    .branch_en                 ( D_ena                 ),
+    .branch_taken              ( D_branch_taken        ),
+    .branch_addr               ( D_pc_branch_target    ),
     
     .pc_next                   ( F_pc_next             ),
     .pc_curr                   ( F_pc                  )
@@ -318,7 +318,7 @@ inst_fifo u_inst_fifo(
     .flush_delay_slot             ( M_cp0_jump | D_master_flush_all ),
     .D_ena                        ( D_ena                  ),
     .master_is_branch             ( (|D_master_branch_type)), // D阶段的branch
-    .delay_rst                    (E_branch_taken && ~E_slave_ena), // next_master_is_in_delayslot
+    .delay_rst                    (D_branch_taken && ~D_slave_ena), // next_master_is_in_delayslot
     
     .read_en1                     ( D_ena                  ),
     .read_en2                     ( D_slave_ena              ), // D阶段的发射结果
@@ -344,7 +344,7 @@ inst_fifo u_inst_fifo(
 // ====================================== Decode ======================================
 int_raiser d_int(
     .info_i ( D_int_info    ),
-    .id_ena ( D_ena         ),
+    .id_ena ( !fifo_empty   ),
     .int_o  ( D_interrupt   )
 );
 
@@ -727,14 +727,15 @@ assign E_slave_reg_wen  =   E_slave_cmov_type==`C_MOVN ? (|E_slave_rt_value):   
 
 branch_judge u_branch_judge(
     //ports
-    .branch_type                   ( E_master_branch_type                   ),
-    .offset                        ( {E_master_imm_value[29:0],2'b00}  ),
-    .j_target                      ( E_master_j_target                      ),
-    .rs_value                      ( E_master_rs_value                       ),
-    .rt_value                      ( E_master_rt_value                       ),
-    .pc_plus4                      ( E_master_pc + 32'd4                      ),
-    .branch_taken                  ( E_branch_taken                  ),
-    .pc_branch_address             ( E_pc_branch_target             )
+    .branch_ena                    ( D_ena                             ),
+    .branch_type                   ( D_master_branch_type                   ),
+    .offset                        ( {D_master_imm_value[29:0],2'b00}  ),
+    .j_target                      ( D_master_j_target                      ),
+    .rs_value                      ( D_master_rs_value                       ),
+    .rt_value                      ( D_master_rt_value                       ),
+    .pc_plus4                      ( D_master_pc + 32'd4                      ),
+    .branch_taken                  ( D_branch_taken                  ),
+    .pc_branch_address             ( D_pc_branch_target             )
 );
 
 trap_judge u_trap_judge_master(

@@ -10,7 +10,7 @@ module hazard (
     input wire [4:0] E_master_reg_waddr,
     input wire       E_slave_memtoReg,
     input wire [4:0] E_slave_reg_waddr,
-    input wire       E_branch_taken,
+    input wire       D_branch_taken,
     input wire       E_alu_stall,
     input wire       D_flush_all, // 暂时用不上这个信号
     input wire       fifo_empty,
@@ -47,15 +47,15 @@ module hazard (
     assign longest_stall = E_alu_stall | i_stall | d_stall;
     
     assign F_ena = ~i_stall; // 存在fifo情况下，d_stall不影响取指
-    assign D_ena = ~(lwstall | longest_stall | fifo_empty );
+    assign D_ena = ~(lwstall | longest_stall);
     assign E_ena = ~longest_stall;
     assign M_ena = ~longest_stall;
     assign W_ena = ~longest_stall | M_except;
 
     assign F_flush = 1'b0;
-    assign D_flush = M_except | E_branch_taken;
-    assign E_flush = M_except | E_branch_taken; // pclk-fifo, nclk-ibram
-    // assign E_flush = M_except;                     // nclk-fifo, pclk-ibram
+    assign D_flush = M_except | D_branch_taken;
+    // assign E_flush = M_except | D_branch_taken; // E branch
+    assign E_flush = M_except;                     // D branch
     assign M_flush = M_except;
     assign W_flush = 1'b0; // TODO:0xbfc7cbe8 异常绑定
 
