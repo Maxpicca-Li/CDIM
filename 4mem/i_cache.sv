@@ -68,7 +68,7 @@ logic l1_itlb_valid;
 
 // iTLB Translation
 wire direct_mapped = inst_va[31:30] == 2'b10; // kseg0 and kseg1
-wire uncached = 1'b0;//direct_mapped ? inst_va[29] : l1_itlb_uncached;
+wire uncached = direct_mapped ? inst_va[29] : l1_itlb_uncached;
 wire [31:12] inst_tag = direct_mapped ? {3'b000, inst_va[28:12]} : l1_itlb_ppn;
 wire [31:12] inst_vpn = inst_va[31:12];
 wire [31: 0] inst_pa = {inst_tag,inst_va[11:0]};
@@ -314,6 +314,8 @@ always_ff @(posedge clk) begin // Cache FSM
                     inst_tlb_invalid <= 1'b0;
                     inst_tlb_refill <= 1'b0;
                     icache_status <= IDLE;
+                    saved_inst_ok0 <= 1'b0;
+                    saved_inst_ok1 <= 1'b0;
                 end
             end
         endcase
