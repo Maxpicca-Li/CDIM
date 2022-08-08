@@ -1,8 +1,8 @@
 `include "defines.vh"
 // I Cache and L1 I TLB
 module i_cache #(
-    parameter LEN_LINE = 8,  // 256 Bytes
-    parameter LEN_INDEX = 4, // 16 lines
+    parameter LEN_LINE = 6,  // 64 Bytes
+    parameter LEN_INDEX = 6, // 64 lines
     parameter NR_WAYS = 2
 ) (
     input               clk,
