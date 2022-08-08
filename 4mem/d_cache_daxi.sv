@@ -49,7 +49,8 @@ module d_cache_daxi (
 ); 
 
     //16KB,2路组相联
-    parameter TAG_WIDTH = 19, INDEX_WIDTH = 8, OFFSET_WIDTH = 5;
+    // parameter TAG_WIDTH = 19, INDEX_WIDTH = 8, OFFSET_WIDTH = 5;
+    parameter TAG_WIDTH = 20, INDEX_WIDTH = 6, OFFSET_WIDTH = 6;
     parameter WAY_NUM = 2;
     localparam BLOCK_NUM= 1<<(OFFSET_WIDTH-2);
     localparam CACHE_LINE_NUM = 1<<INDEX_WIDTH;
@@ -210,7 +211,7 @@ module d_cache_daxi (
     assign write_finish = waddr_rcv & wdata_rcv & (bvalid & bready);
     //AXI signal
     //read
-    assign araddr = {tag,index,5'b0}; //如果是可以cache的数据,就把8个字的起始地址传过去,否则只传一个字的地址
+    assign araddr = {tag,index,6'b0}; //如果是可以cache的数据,就把8个字的起始地址传过去,否则只传一个字的地址
     assign arlen = BLOCK_NUM-1;
     assign arsize = 3'd2 ;
     assign arvalid = read_req & ~raddr_rcv & ~cfg_writting;  //assign arvalid = read_req & ~raddr_rcv;
@@ -228,7 +229,7 @@ module d_cache_daxi (
     assign awvalid = write_req & ~waddr_rcv & ~cfg_writting;  //assign awvalid = write_req & ~waddr_rcv;
     assign wdata = block_way[evict_way][wcnt];
     assign wstrb = 4'b1111;
-    assign wlast = {5'd0,wcnt}==awlen;
+    assign wlast = {4'd0,wcnt}==awlen;
     assign wvalid = waddr_rcv & ~wdata_rcv;
     assign bready = waddr_rcv;
 //LRU
@@ -273,7 +274,7 @@ module d_cache_daxi (
     assign tag_ram_dina = {tag, 1'b1}; //末位是valid位
     wire [BLOCK_NUM-1:0] wena_data_bank_mask;
 
-    decoder38 decoder0(cnt, wena_data_bank_mask); //三八译码器,根据返回回来的数据次数,选择写入到哪一个字
+    decoder416 decoder0(cnt, wena_data_bank_mask); //三八译码器,根据返回回来的数据次数,选择写入到哪一个字
     genvar i;
     generate
         for(i = 0; i< BLOCK_NUM; i=i+1) begin: wena_data_bank
@@ -290,7 +291,7 @@ module d_cache_daxi (
     genvar j;
     generate
         for(i = 0; i < WAY_NUM; i=i+1) begin: way
-            d_tag_ram tag_ram (
+            d_tag_ram #(.LEN_DATA(TAG_WIDTH+1),.LEN_ADDR(INDEX_WIDTH)) tag_ram (
                 .clka(clk),  
                 .ena(1'b1),   
                 .wea(wena_tag_ram_way[i]),   
@@ -303,7 +304,7 @@ module d_cache_daxi (
                 .doutb(tag_way[i]) 
             );
             for(j = 0; j < BLOCK_NUM; j=j+1) begin: bank
-                d_data_bank data_bank (
+                d_data_bank #(.LEN_ADDR(INDEX_WIDTH)) data_bank (
                     .clka(clk), 
                     .ena(1'b1),  
                     .wea(wena_data_bank_way[i][j]),   
