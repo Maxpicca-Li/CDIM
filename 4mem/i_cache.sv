@@ -195,19 +195,19 @@ always_ff @(posedge clk) begin // Cache FSM
     else begin
         case (icache_status)
             IDLE: begin
-                if (inst_en) begin
-                    if (fence_i & !fence_i_ready) begin
-                        tag_ram_wdata <= 0;
-                        replace_line_addr <= fence_addr[LEN_PER_WAY-1:LEN_LINE];
-                        tag_wea <= '{default: '1};
-                        l1_itlb_valid <= 1'b0;
-                        icache_status <= FENCE;
-                    end
-                    else if (fence_tlb & !fence_tlb_ready) begin
-                        l1_itlb_valid <= 1'b0;
-                        icache_status <= FENCE;
-                    end
-                    else if (!translation_ok) begin
+                if (fence_i & !fence_i_ready) begin
+                    tag_ram_wdata <= 0;
+                    replace_line_addr <= fence_addr[LEN_PER_WAY-1:LEN_LINE];
+                    tag_wea <= '{default: '1};
+                    l1_itlb_valid <= 1'b0;
+                    icache_status <= FENCE;
+                end
+                else if (fence_tlb & !fence_tlb_ready) begin
+                    l1_itlb_valid <= 1'b0;
+                    icache_status <= FENCE;
+                end
+                else if (inst_en) begin
+                    if (!translation_ok) begin
                         icache_status <= TLB_FILL;
                         itlb_vpn2 <= inst_vpn[31:13];
                     end
