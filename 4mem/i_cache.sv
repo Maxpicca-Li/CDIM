@@ -187,9 +187,9 @@ always_ff @(posedge clk) begin // Cache FSM
     end
     else begin
         // assume istall will stop the whole pipeline
-        // wait !istall to avoid fence dead-lock
-        if (fence_tlb && !istall) itlb.valid <= 1'b0; 
-        if (fence_i && !istall) meta[fence_index].valid <= 0;
+        // wait !istall && !stallF to avoid fence dead-lock
+        if (fence_tlb && !istall && !stallF) itlb.valid <= 1'b0; 
+        if (fence_i && !istall && !stallF) meta[fence_index].valid <= 0;
         case (icache_status)
             IDLE: begin
                 if (inst_en) begin
