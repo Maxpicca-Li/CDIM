@@ -176,7 +176,7 @@ module mycpu_top (
         .no_cache_E(no_cache_E),
         .no_cache_i(no_cache_i)
     );
-
+    /*
     i_cache_daxi u_i_cache_daxi(
         .clk(clk), .rst(rst),
 
@@ -206,7 +206,37 @@ module mycpu_top (
         .rvalid          (i_rvalid),
         .rready          (i_rready)
     );
-
+    */
+    i_cache i_cache_inst (
+        .clk                ( clk           ),
+        .rst                ( rst           ),
+        .inst_en            ( inst_en       ),
+        .inst_va            ( pcF_dp        ),
+        .inst_va_next       ( pc_next_dp    ),
+        .inst_rdata0        ( inst_rdata1   ),
+        .inst_rdata1        ( inst_rdata2   ),
+        .inst_ok0           ( inst_data_ok1 ),
+        .inst_ok1           ( inst_data_ok2 ),
+        .inst_tlb_refill    (               ), // TODO: connect tlb exception to fifo
+        .inst_tlb_invalid   (               ),
+        .stallF             ( stallF        ),
+        .istall             ( i_cache_stall ),
+        .fence_i            ( 1'b0          ),
+        .fence_addr         ( 32'd0         ),
+        .fence_tlb          ( 1'b0          ),
+        .itlb_vpn2          (               ),
+        .itlb_found         ( 1'b0          ),
+        .itlb_entry         ( 0             ),
+        .araddr             ( i_araddr      ),
+        .arlen              ( i_arlen       ),
+        .arsize             ( i_arsize      ),
+        .arvalid            ( i_arvalid     ),
+        .arready            ( i_arready     ),
+        .rdata              ( i_rdata       ),
+        .rlast              ( i_rlast       ),
+        .rvalid             ( i_rvalid      ),
+        .rready             ( i_rready      )
+    );
     d_arbitrater u_d_arbitrater(
         .clk(clk), .rst(rst),
 

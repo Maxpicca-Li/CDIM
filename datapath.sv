@@ -742,7 +742,7 @@ assign E_slave_except.ex_tlbm       = 1'b0;
 assign E_slave_except.ex_tlbrf      = 1'b0;
 assign E_slave_except.ex_trap       = 1'b0;
 
-assign E_cop0_info = E_master_cop0_info & {$bits(E_master_cop0_info){~(|E_master_except)}};
+assign E_cop0_info = E_master_cop0_info & {$bits(E_master_cop0_info){~(|E_master_except_temp)}};
 
 // 前推计算结果和访存结果 MW->E
 // forwardE_top u_forwardE_top(
@@ -835,7 +835,7 @@ alu_master u_aluB(
     .aluop                 ( E_slave_aluop          ),
     .a                     ( E_slave_alu_srca       ),
     .b                     ( E_slave_alu_srcb       ),
-    .cp0_data              ( E_cp0_rdata            ),
+    .cp0_data              ( 0                      ),
     .hilo                  ( hilo                   ),
     .stall_alu             ( E_slave_alu_stall      ),
     .y                     ( E_slave_alu_res        ),
