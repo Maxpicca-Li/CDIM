@@ -77,7 +77,7 @@ module mycpu_top (
     wire        fence_i;
     wire [31:0] fence_addr;
     wire        fence_tlb;
-    wire [31:0] itlb_vpn2;
+    wire [31:13]itlb_vpn2;
     wire        itlb_found;
     tlb_entry   itlb_entry;
 

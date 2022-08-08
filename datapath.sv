@@ -21,7 +21,7 @@ module datapath (
     output wire        fence_i,
     output wire [31:0] fence_addr,
     output wire        fence_tlb,
-    input  wire [31:0] itlb_vpn2,
+    input  wire [31:13]itlb_vpn2,
     output wire        itlb_found,
     output tlb_entry   itlb_entry,
     // data
