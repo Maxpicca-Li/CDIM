@@ -41,7 +41,6 @@ module i_cache #(
 // defines
 
 typedef struct packed {
-    logic   valid;
     logic [LEN_TAG-1:0] tag;
 } icache_tag;
 
@@ -58,6 +57,8 @@ logic LRU [NR_LINES-1:0];
 wire [LEN_PER_WAY-1:LEN_LINE] va_line_addr = inst_va[LEN_PER_WAY-1:LEN_LINE];
 // Note: If NR_WAYS > 2, we should implement pseudo-LRU or LFSR.
 
+// Cache Valid
+logic [NR_WAYS-1:0] valid [NR_LINES-1:0];
 
 // iTLB registers
 logic [31:12] l1_itlb_vpn;
@@ -153,7 +154,7 @@ generate
             .addrb  (bram_line_addr),
             .doutb  (cache_tag[i])
         );
-        assign tag_compare_valid[i] = cache_tag[i].tag == inst_tag;
+        assign tag_compare_valid[i] = cache_tag[i].tag == inst_tag && valid[va_line_addr][i];
     end
 endgenerate
 
@@ -191,6 +192,8 @@ always_ff @(posedge clk) begin // Cache FSM
         saved_inst_ok1 <= 0;
         // clear LRU
         LRU <= '{default: '0};
+        // clear valid
+        valid <= '{default: '0};
     end
     else begin
         case (icache_status)
@@ -226,7 +229,8 @@ always_ff @(posedge clk) begin // Cache FSM
                         replace_line_addr <= va_line_addr;
                         data_wea[LRU[va_line_addr]] <= 8'h0f;
                         tag_wea[LRU[va_line_addr]] <= 1'b1;
-                        tag_ram_wdata <= '{valid: 1, tag: inst_tag};
+                        tag_ram_wdata <= '{tag: inst_tag};
+                        valid[va_line_addr][LRU[va_line_addr]] <= 1'b1;
                         icache_status <= CACHE_REPLACE;
                         axi_cnt <= 0;
                     end
