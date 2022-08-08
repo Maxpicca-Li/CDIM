@@ -70,6 +70,8 @@ module mycpu_top (
     wire stallM             ;
     wire inst_data_ok1      ;
     wire inst_data_ok2      ;
+    wire inst_tlb_refill    ;
+    wire inst_tlb_invalid   ;
     wire [31:0] inst_rdata1 ;
     wire [31:0] inst_rdata2 ;
 
@@ -139,6 +141,8 @@ module mycpu_top (
         .F_pc_next         		( pc_next_dp         		),
         .inst_data_ok1     		( inst_data_ok1     		),
         .inst_data_ok2     		( inst_data_ok2     		),
+        .inst_tlb_refill        ( inst_tlb_refill           ),
+        .inst_tlb_invalid       ( inst_tlb_invalid          ),
         .inst_rdata1       		( inst_rdata1       		),
         .inst_rdata2       		( inst_rdata2       		),
         // data
@@ -217,8 +221,8 @@ module mycpu_top (
         .inst_rdata1        ( inst_rdata2   ),
         .inst_ok0           ( inst_data_ok1 ),
         .inst_ok1           ( inst_data_ok2 ),
-        .inst_tlb_refill    (               ), // TODO: connect tlb exception to fifo
-        .inst_tlb_invalid   (               ),
+        .inst_tlb_refill    (inst_tlb_refill  ),
+        .inst_tlb_invalid   (inst_tlb_invalid ),
         .stallF             ( stallF        ),
         .istall             ( i_cache_stall ),
         .fence_i            ( 1'b0          ),

@@ -558,6 +558,13 @@ typedef struct packed {
     logic  [7:0] ASID;
 } tlb_entry;
 
+typedef struct packed {
+    logic       refill;
+    logic       invalid;
+    logic [31:0]addr;
+    logic [31:0]data;
+} fifo_entry;
+
 parameter NR_TLB_ENTRY = 16;
 
 typedef struct packed {
