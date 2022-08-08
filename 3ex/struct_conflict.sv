@@ -56,9 +56,11 @@ module struct_conflict(
     assign E_mem_ades2= E_mem_op2 == `OP_SW  & (|E_mem_addr2[1:0]) ? 1'b1 : 
                         E_mem_op2 == `OP_SH  & E_mem_addr2[0]      ? 1'b1 : 
                         1'b0;
-
-    assign E_mem_sel1 = E_mem_en1 & !E_exp1 & !M_flush;// & E_mem_addr1 != 32'hbfaffff0; // & M_ena;
-    assign E_mem_sel2 = E_mem_en2 & !E_exp1 & !E_exp2 & !M_flush;// & E_mem_addr2 != 32'hbfaffff0; // & M_ena;
+    // & E_mem_addr1 != 32'hbfaffff0; (the trick of accesssing confreg ==> Commented for that we don't use it) 
+    // & M_ena;    (Guarantee that mem_en can flow from E to M ==> Commented for that d_stall is used to control mem_en which will cause a combination loop)
+    // & !M_flush; (Guarantee that mem_en can flow from E to M ==> Commented for reducing the control signal)
+    assign E_mem_sel1 = E_mem_en1 & !E_exp1;
+    assign E_mem_sel2 = E_mem_en2 & !E_exp1 & !E_exp2;
     assign E_mem_en = E_mem_sel1 | E_mem_sel2; // & M_ena;
     assign E_mem_ren = (E_mem_sel1 & E_mem_ren1) | (E_mem_sel2 & E_mem_ren2);
     assign E_mem_wen = (E_mem_sel1 & E_mem_wen1) | (E_mem_sel2 & E_mem_wen2);
