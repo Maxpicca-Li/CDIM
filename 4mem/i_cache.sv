@@ -1,12 +1,8 @@
 `include "defines.vh"
 // I Cache and L1 I TLB
-// 4KB * 2 Line = 64 is enough
 module i_cache #(
-    parameter LEN_LINE = 6, // 64 Bytes
-    parameter LEN_INDEX = 6,
-    parameter LEN_PER_WAY = LEN_LINE + LEN_INDEX,
-    parameter LEN_TAG = 32 - LEN_LINE - LEN_INDEX,
-    parameter LEN_BRAM_ADDR = LEN_LINE - 3 + LEN_INDEX,
+    parameter LEN_LINE = 8,  // 256 Bytes
+    parameter LEN_INDEX = 4, // 16 lines
     parameter NR_WAYS = 2
 ) (
     input               clk,
@@ -51,6 +47,9 @@ typedef struct packed {
 
 enum { IDLE, FENCE, TLB_FILL, UNCACHED, CACHE_REPLACE, SAVE_RESULT } icache_status;
 
+localparam LEN_PER_WAY = LEN_LINE + LEN_INDEX;
+localparam LEN_TAG = 32 - LEN_LINE - LEN_INDEX;
+localparam LEN_BRAM_ADDR = LEN_LINE - 3 + LEN_INDEX;
 localparam NR_LINES = 1 << LEN_INDEX;
 localparam NR_WORDS = 1 << (LEN_LINE - 2);
 
