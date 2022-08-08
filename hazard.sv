@@ -1,7 +1,6 @@
 `timescale 1ns/1ps
 module hazard (
-    input wire       i_stall,
-    input wire       d_stall,
+    // judge
     input wire       D_master_read_rs,
     input wire       D_master_read_rt,
     input wire [4:0] D_master_rs,
@@ -10,20 +9,23 @@ module hazard (
     input wire [4:0] E_master_reg_waddr,
     input wire       E_slave_memtoReg,
     input wire [4:0] E_slave_reg_waddr,
-    input wire       D_branch_taken,
+    // stall
+    input wire       i_stall,
     input wire       E_alu_stall,
+    input wire       d_stall,
+    // flush: phase越靠后越先处理
+    input wire       M_except,
+    input wire       E_pred_fail,
+    input wire       E_jump_conflict,
+    input wire       D_pred_take,
+    input wire       D_jump_take,
     input wire       D_flush_all, // 暂时用不上这个信号
-    input wire       fifo_empty,
-    
-    //except
-    input wire M_except,
-
+    // out
     output wire F_ena, 
     output wire D_ena, 
     output wire E_ena, 
     output wire M_ena, 
     output wire W_ena,
-
     output wire F_flush, 
     output wire D_flush, 
     output wire E_flush, 
@@ -31,17 +33,8 @@ module hazard (
     output wire W_flush
 
 );
-    
-    // 阻塞
     wire lwstall, longest_stall;
-    // FIXME: lwstall优化问题
-    /*
-    如下情况
-        lb   $1,0x3($0)       ## $1 = 0xffffffff
-        lbu  $1,0x2($0)       ## $1 = 0x000000ee
-    这种情况感觉不用stall lbu（会导致3个周期的延迟）
-    */
-    // FIXME: 这里没有考虑 D_slave_rs 和 D_slave_rt 
+    // D阶段的
     assign lwstall = (E_master_memtoReg & (|E_master_reg_waddr) & ((D_master_read_rs & D_master_rs == E_master_reg_waddr) | (D_master_read_rt & D_master_rt == E_master_reg_waddr))) || 
                      (E_slave_memtoReg  & (|E_slave_reg_waddr)  & ((D_master_read_rs & D_master_rs == E_slave_reg_waddr)  | (D_master_read_rt & D_master_rt == E_slave_reg_waddr)));
     assign longest_stall = E_alu_stall | i_stall | d_stall;
@@ -53,11 +46,18 @@ module hazard (
     assign W_ena = ~longest_stall | M_except;
 
     assign F_flush = 1'b0;
-    assign D_flush = M_except | D_branch_taken;
-    // assign E_flush = M_except | D_branch_taken; // E branch
-    assign E_flush = M_except;                     // D branch
+    assign D_flush = M_except | E_pred_fail | E_jump_conflict | D_pred_take | D_jump_take | D_flush_all; // D\E branch
+    assign E_flush = M_except | E_pred_fail | E_jump_conflict ;    // E branch
     assign M_flush = M_except;
     assign W_flush = 1'b0; // TODO:0xbfc7cbe8 异常绑定
 
-
+    /* 
+    // TODO: 需要好好涉及hazard的信号和刷新逻辑
+    其他的刷新信号
+    fifo_rst = rst | D_flush | D_master_flush_all
+    flush_delay_slot = M_cp0_jump | D_master_flush_all
+    delay_rst = D_branch_taken && ~D_slave_ena  // 跳转时没带延迟槽
+    assign D2E_clear1 = M_cp0_jump | (!D_master_is_in_delayslot & E_flush & E_ena) | (!D_ena & E_ena);
+    assign D2E_clear2 = M_cp0_jump | (E_flush & D_slave_ena) || (E_ena & !D_slave_ena);
+    */
 endmodule

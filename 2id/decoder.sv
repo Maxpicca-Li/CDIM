@@ -53,8 +53,7 @@ module  decoder(
     assign shamt = instr[10:6];
     assign funct = instr[5:0];
     assign imm = instr[15:0];
-    assign j_target = instr[25:0];
-    assign sign_extend_imm_value = (instr[29:28]==2'b11) ? {{16{1'b0}},instr[15:0]}:{{16{instr[15]}},instr[15:0]}; //op[3:2] for logic_imm type
+    assign sign_extend_imm_value = (instr[29:28]==2'b11) ? {{16{1'b0}},instr[15:0]}:{{16{instr[15]}},instr[15:0]}; //op[3:2] for logic_imm type ==> andi, xori, lui, ori为无符号拓展，其它为有符号拓展
     
     ctrl_sign signsD;
     assign aluop = signsD.aluop;
