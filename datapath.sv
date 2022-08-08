@@ -37,7 +37,7 @@ module datapath (
     output wire [ 1:0] data_sram_rlenM,
     output wire [ 3:0] data_sram_wenM,
     output wire [31:0] M_mem_pa,
-    output wire [31:0] M_mem_uncached,
+    output wire        M_mem_uncached,
     output wire [31:0] data_sram_addrM, // TODO: delete
     output wire [31:0] data_sram_wdataM,
     //debug
