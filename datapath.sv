@@ -29,12 +29,16 @@ module datapath (
     output wire        stallM,
     output wire        mem_read_enE,
     output wire        mem_write_enE,
-    output wire [31:0] mem_addrE,
+    output wire [31:0] E_mem_pa,
+    output wire        E_mem_uncached,
+    output wire [31:0] mem_addrE, // TODO: delete
     input  wire [31:0] data_sram_rdataM,
     output wire        data_sram_enM,
     output wire [ 1:0] data_sram_rlenM,
     output wire [ 3:0] data_sram_wenM,
-    output wire [31:0] data_sram_addrM,
+    output wire [31:0] M_mem_pa,
+    output wire [31:0] M_mem_uncached,
+    output wire [31:0] data_sram_addrM, // TODO: delete
     output wire [31:0] data_sram_wdataM,
     //debug
     output wire [31:0] debug_wb_pc,      
@@ -66,10 +70,15 @@ wire            E_flush;
 wire            M_flush;
 wire            W_flush;
 wire            E_alu_stall;
+wire            E_tlb_stall;
 // cp0
 wire [31:0]     E_cp0_rdata;
 wire            M_cp0_jump;
 wire [31:0]     M_cp0_jump_pc;
+// dtlb
+wire [31:13]    dtlb_vpn2;
+wire            dtlb_found;
+tlb_entry       dtlb_entry;
 // hilo
 wire [63:0]     hilo;
 
@@ -175,6 +184,10 @@ assign D_slave_except.ex_tlbrf      = 1'b0;
 assign D_slave_except.ex_trap       = 1'b0;
 
 // ===== E =====
+wire            E_mem_writeable;
+wire            E_tlb_refill;
+wire            E_tlb_invalid;
+wire            E_dtlb_stall;
 wire            E_master_memWrite;
 wire            E_master_memRead ;
 wire [4 :0]     E_master_rs,E_master_rt,E_slave_rs,E_slave_rt;
@@ -276,6 +289,7 @@ hazard u_hazard(
     .E_slave_reg_waddr          ( E_slave_reg_waddr          ),
     .i_stall                    ( i_stall                    ),
     .E_alu_stall                ( E_alu_stall                ),
+    .E_dtlb_stall               ( E_dtlb_stall               ),
     .d_stall                    ( d_stall                    ),
     .M_except                   ( M_cp0_jump                 ),
     .E_pred_fail                ( E_master_pred_fail         ),
@@ -727,11 +741,11 @@ assign E_master_except.id_cpu       = E_master_except_temp.id_cpu;
 assign E_master_except.ex_ov        = E_master_overflow;
 assign E_master_except.ex_adel      = E_master_mem_adel;
 assign E_master_except.ex_ades      = E_master_mem_ades;
-assign E_master_except.ex_tlbl      = 1'b0;
-assign E_master_except.ex_tlbs      = 1'b0;
-assign E_master_except.ex_tlbm      = 1'b0;
-assign E_master_except.ex_tlbrf     = 1'b0;
-assign E_master_except.ex_trap      = E_master_exp_trap;
+assign E_master_except.ex_tlbl      = (E_tlb_invalid | E_tlb_refill) & mem_read_enE & E_master_mem_en;
+assign E_master_except.ex_tlbs      = (E_tlb_invalid | E_tlb_refill) & mem_write_enE & E_master_mem_en;
+assign E_master_except.ex_tlbm      = !E_mem_writeable & mem_write_enE & E_master_mem_en;
+assign E_master_except.ex_tlbrf     = E_tlb_refill & E_master_mem_en;
+assign E_master_except.ex_trap      = E_master_exp_trap & E_master_mem_en;
 
 assign E_slave_except.if_adel       = E_slave_except_temp.if_adel;
 assign E_slave_except.if_tlbl       = E_slave_except_temp.if_tlbl;
@@ -745,11 +759,11 @@ assign E_slave_except.id_cpu        = E_slave_except_temp.id_cpu;
 assign E_slave_except.ex_ov         = E_slave_overflow;
 assign E_slave_except.ex_adel       = E_slave_mem_adel;
 assign E_slave_except.ex_ades       = E_slave_mem_ades;
-assign E_slave_except.ex_tlbl       = 1'b0;
-assign E_slave_except.ex_tlbs       = 1'b0;
-assign E_slave_except.ex_tlbm       = 1'b0;
-assign E_slave_except.ex_tlbrf      = 1'b0;
-assign E_slave_except.ex_trap       = 1'b0;
+assign E_slave_except.ex_tlbl       = (E_tlb_invalid | E_tlb_refill) & mem_read_enE & E_slave_mem_en;
+assign E_slave_except.ex_tlbs       = (E_tlb_invalid | E_tlb_refill) & mem_write_enE & E_slave_mem_en;
+assign E_slave_except.ex_tlbm       = !E_mem_writeable & mem_write_enE & E_slave_mem_en;
+assign E_slave_except.ex_tlbrf      = E_tlb_refill & E_slave_mem_en;
+assign E_slave_except.ex_trap       = E_master_exp_trap & E_slave_mem_en;
 
 assign E_cop0_info = E_master_cop0_info & {$bits(E_master_cop0_info){~(|E_master_except_temp)}};
 
@@ -981,12 +995,16 @@ ex_mem u_ex_mem(
     .E_mem_op                       ( mem_opE                       ),
     .E_mem_addr                     ( mem_addrE                     ),
     .E_mem_wdata                    ( mem_wdataE                    ),
+    .E_mem_pa                       ( E_mem_pa                      ),
+    .E_mem_uncached                 ( E_mem_uncached                ),
     .M_mem_en                       ( mem_enM                       ),
     .M_mem_ren                      ( mem_renM                      ),
     .M_mem_wen                      ( mem_wenM                      ),
     .M_mem_op                       ( mem_opM                       ),
     .M_mem_addr                     ( mem_addrM                     ),
     .M_mem_wdata                    ( mem_wdataM                    ),
+    .M_mem_pa                       ( M_mem_pa                      ),
+    .M_mem_uncached                 ( M_mem_uncached                ),
     .E_master_mem_sel               ( E_master_mem_sel              ),
     .E_master_hilowrite             ( E_master_hilowrite            ),
     .E_master_memtoReg              ( E_master_memtoReg             ),
@@ -1045,6 +1063,26 @@ ex_mem u_ex_mem(
     .M_slave_alu_res                ( M_slave_alu_res               )
 );
 
+d_tlb dtlb_inst(
+    .clk                ( clk               ),
+    .rst                ( rst               ),
+    .E_mem_en           ( mem_enE           ),
+    .E_mem_va           ( mem_addrE         ),
+    .E_mem_pa           ( E_mem_pa          ),
+    .E_mem_uncached     ( E_mem_uncached    ),
+    .E_mem_writeable    ( E_mem_writeable   ),
+    .E_tlb_refill       ( E_tlb_refill      ),
+    .E_tlb_invalid      ( E_tlb_invalid     ),
+    // to hazard
+    .E_ready_go         ( M_ena             ),
+    .E_dtlb_stall       ( E_dtlb_stall      ),
+    // to l2 tlb
+    .dtlb_vpn2          ( dtlb_vpn2         ),
+    .dtlb_found         ( dtlb_found        ),
+    .fence_tlb          ( fence_tlb         ),
+    .dtlb_entry         ( dtlb_entry        )
+);
+
 mem_access u_mem_access(
     //ports
     .mem_en                 ( mem_enM                   ),
@@ -1056,7 +1094,7 @@ mem_access u_mem_access(
     .data_sram_en           ( data_sram_enM             ),
     .data_sram_rlen         ( data_sram_rlenM           ),
     .data_sram_wen          ( data_sram_wenM            ),
-    .data_sram_addr         ( data_sram_addrM           ),
+    .data_sram_addr         ( data_sram_addrM           ), // TODO: delete
     .data_sram_wdata        ( data_sram_wdataM          ),
     // 异常处理及其选择
     .M_master_mem_sel       ( M_master_mem_sel          ),
@@ -1088,9 +1126,9 @@ cp0 cp0_inst(
     .tlb1_vpn2      ( itlb_vpn2                 ),
     .tlb1_found     ( itlb_found                ),
     .tlb1_entry     ( itlb_entry                ),
-    .tlb2_vpn2      ( 19'd0                     ),
-    .tlb2_found     (                           ),
-    .tlb2_entry     (                           )
+    .tlb2_vpn2      ( dtlb_vpn2                 ),
+    .tlb2_found     ( dtlb_found                ),
+    .tlb2_entry     ( dtlb_entry                )
 );
 
 // TODO: connect fence

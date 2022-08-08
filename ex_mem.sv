@@ -13,12 +13,16 @@ module ex_mem(
     input wire [5 :0] E_mem_op,
     input wire [31:0] E_mem_addr,
     input wire [31:0] E_mem_wdata,
+    input wire [31:0] E_mem_pa,
+    input wire        E_mem_uncached,
     output reg M_mem_en,
     output reg M_mem_ren,
     output reg M_mem_wen,
     output reg [5 :0] M_mem_op,
     output reg [31:0] M_mem_addr,
     output reg [31:0] M_mem_wdata,
+    output reg [31:0] M_mem_pa,
+    output reg        M_mem_uncached,
 
     input wire E_master_mem_sel,
     input wire E_master_hilowrite,
@@ -106,6 +110,8 @@ module ex_mem(
             M_mem_op <= 0;
             M_mem_addr <= 0;
             M_mem_wdata <= 0;
+            M_mem_pa <= 0;
+            M_mem_uncached <= 0;
         end
         else if (ena1) begin
             M_master_mem_sel <= E_master_mem_sel;
@@ -131,6 +137,8 @@ module ex_mem(
             M_mem_op <= E_mem_op;
             M_mem_addr <= E_mem_addr;
             M_mem_wdata <= E_mem_wdata;
+            M_mem_pa <= E_mem_pa;
+            M_mem_uncached <= E_mem_uncached;
         end
     end
 
