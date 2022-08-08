@@ -1029,7 +1029,7 @@ cp0 cp0_inst(
 
 // TODO: connect fence
 assign fence_i = 1'b0;
-assign fence_addr = 0;
+assign fence_addr = E_master_pc; // used for test deadlock when fence_i = 1'b1
 assign fence_tlb = 1'b0;
 
 wire [31:0] M_master_reg_wdata, M_slave_reg_wdata;

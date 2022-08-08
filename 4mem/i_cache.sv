@@ -63,7 +63,7 @@ typedef struct packed {
     logic valid;
 } l1_tlb;
 
-enum { IDLE, FENCE, TLB_FILL, UNCACHED, CACHE_REPLACE, SAVE_RESULT } icache_status;
+enum { IDLE, TLB_FILL, UNCACHED, CACHE_REPLACE, SAVE_RESULT } icache_status;
 
 
 // metadata
@@ -95,7 +95,7 @@ icache_tag tag_ram_wdata;
 wire [NR_WAYS-1:0] tag_compare_valid;
 wire cache_hit = |tag_compare_valid;
 
-wire cache_hit_available = cache_hit && translation_ok && !uncached && !(fence_i && !fence_i_ready) && !(fence_tlb && !fence_tlb_ready);
+wire cache_hit_available = cache_hit && translation_ok && !uncached;
 
 wire cache_inst_ok0 = cache_hit_available;
 wire cache_inst_ok1 = cache_hit_available && inst_va[2] == 1'b0;
@@ -104,15 +104,10 @@ wire cache_inst_ok1 = cache_hit_available && inst_va[2] == 1'b0;
 wire i_cache_sel = tag_compare_valid[1];
 
 wire [LEN_PER_WAY-1:LEN_LINE] va_line_addr = inst_va[LEN_PER_WAY-1:LEN_LINE];
+wire [LEN_PER_WAY-1:LEN_LINE] fence_index = fence_addr[LEN_PER_WAY-1:LEN_LINE];
 
 wire [31:0] cache_inst0 = inst_va[2]  ? cache_data[i_cache_sel][63:32] : cache_data[i_cache_sel][31:0];
 wire [31:0] cache_inst1 =               cache_data[i_cache_sel][63:32];
-
-
-// cache and tlb fence
-logic fence_i_ready;
-logic fence_tlb_ready;
-
 
 assign istall = icache_status == IDLE ? (!cache_hit_available & inst_en) : (icache_status != SAVE_RESULT);
 
@@ -171,8 +166,6 @@ always_ff @(posedge clk) begin // Cache FSM
         inst_tlb_refill <= 0;
         inst_tlb_invalid <= 0;
         itlb_vpn2 <= 0;
-        fence_i_ready <= 0;
-        fence_tlb_ready <= 0;
         // clear status
         replace_line_addr <= 0;
         data_wea <= '{default: '0};
@@ -193,20 +186,13 @@ always_ff @(posedge clk) begin // Cache FSM
         saved_inst_ok1 <= 0;
     end
     else begin
+        // assume istall will stop the whole pipeline
+        // wait !istall to avoid fence dead-lock
+        if (fence_tlb && !istall) itlb.valid <= 1'b0; 
+        if (fence_i && !istall) meta[fence_index].valid <= 0;
         case (icache_status)
             IDLE: begin
-                if (fence_i & !fence_i_ready) begin
-                    tag_ram_wdata <= 0;
-                    replace_line_addr <= fence_addr[LEN_PER_WAY-1:LEN_LINE];
-                    tag_wea <= '{default: '1};
-                    itlb.valid <= 1'b0;
-                    icache_status <= FENCE;
-                end
-                else if (fence_tlb & !fence_tlb_ready) begin
-                    itlb.valid <= 1'b0;
-                    icache_status <= FENCE;
-                end
-                else if (inst_en) begin
+                if (inst_en) begin
                     if (!translation_ok) begin
                         icache_status <= TLB_FILL;
                         itlb_vpn2 <= inst_vpn[31:13];
@@ -232,19 +218,11 @@ always_ff @(posedge clk) begin // Cache FSM
                         axi_cnt <= 0;
                     end
                     else if (!istall && !stallF) begin
-                        fence_i_ready <= 1'b0;
-                        fence_tlb_ready <= 1'b0;
                         // Update LRU when icache hit
                         // Note: If NR_WAYS > 2, we should implement pseudo-LRU or LFSR.
                         meta[va_line_addr].LRU <= ~i_cache_sel;
                     end
                 end
-            end
-            FENCE: begin
-                icache_status <= IDLE;
-                fence_i_ready <= 1'b1;
-                fence_tlb_ready <= 1'b1;
-                tag_wea <= '{default: '0};
             end
             TLB_FILL: begin
                 if (itlb_found) begin
@@ -311,8 +289,6 @@ always_ff @(posedge clk) begin // Cache FSM
             end
             SAVE_RESULT: begin
                 if (!istall && !stallF) begin
-                    fence_i_ready <= 1'b0;
-                    fence_tlb_ready <= 1'b0;
                     inst_tlb_invalid <= 1'b0;
                     inst_tlb_refill <= 1'b0;
                     icache_status <= IDLE;
