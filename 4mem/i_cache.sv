@@ -117,8 +117,8 @@ logic saved_inst_ok0;
 logic saved_inst_ok1;
 
 // to cpu inst ok
-assign inst_ok0     = icache_status == IDLE ? cache_inst_ok0    : saved_inst_ok0;
-assign inst_ok1     = icache_status == IDLE ? cache_inst_ok1    : saved_inst_ok1;
+assign inst_ok0     = (icache_status == IDLE ? cache_inst_ok0    : saved_inst_ok0) & inst_en;
+assign inst_ok1     = (icache_status == IDLE ? cache_inst_ok1    : saved_inst_ok1) & inst_en;
 assign inst_rdata0  = icache_status == IDLE ? cache_inst0       : saved_inst0;
 assign inst_rdata1  = icache_status == IDLE ? cache_inst1       : saved_inst1;
 
