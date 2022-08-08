@@ -21,7 +21,6 @@ module id_ex(
     input wire D_master_is_in_delayslot,
     input wire [3 :0]D_master_branch_type,
     input wire [3 :0]D_master_trap_type,
-    input wire [4 :0]D_master_shamt,
     input wire [4 :0]D_master_reg_waddr,
     input wire [4 :0]D_master_rs,
     input wire [4 :0]D_master_rt,
@@ -35,6 +34,7 @@ module id_ex(
     input wire [31:0]D_master_rs_value,
     input wire [31:0]D_master_rt_value,
     input wire [31:0]D_master_imm_value,
+    input wire [31:0]D_master_shamt_value,
     input cop0_info  D_master_cop0_info,
     input wire       D_master_is_branch,
     input wire       D_master_pred_take,
@@ -56,7 +56,6 @@ module id_ex(
     input wire [3 :0]D_slave_trap_type,
     input wire [4 :0]D_slave_rs,
     input wire [4 :0]D_slave_rt,
-    input wire [4 :0]D_slave_shamt,
     input wire [4 :0]D_slave_reg_waddr,
     input wire [5 :0]D_slave_op,
     input wire [7 :0]D_slave_aluop,
@@ -66,6 +65,7 @@ module id_ex(
     input wire [31:0]D_slave_rs_value,
     input wire [31:0]D_slave_rt_value,
     input wire [31:0]D_slave_imm_value,
+    input wire [31:0]D_slave_shamt_value,
     input wire [31:0]D_slave_pc,
     input cop0_info  D_slave_cop0_info,
 
@@ -82,7 +82,6 @@ module id_ex(
     output reg E_master_is_in_delayslot,
     output reg [3 :0]E_master_branch_type,
     output reg [3 :0]E_master_trap_type,
-    output reg [4 :0]E_master_shamt,
     output reg [4 :0]E_master_reg_waddr,
     output reg [4 :0]E_master_rs,
     output reg [4 :0]E_master_rt,
@@ -95,6 +94,7 @@ module id_ex(
     output reg [31:0]E_master_inst,
     output reg [31:0]E_master_rs_value,
     output reg [31:0]E_master_rt_value,
+    output reg [31:0]E_master_shamt_value,
     output reg [31:0]E_master_imm_value,
     output cop0_info E_master_cop0_info,
     output reg       E_master_is_branch,
@@ -116,7 +116,6 @@ module id_ex(
     output reg E_slave_cp0write,
     output reg E_slave_is_in_delayslot,
     output reg [3 :0]E_slave_trap_type,
-    output reg [4 :0]E_slave_shamt,
     output reg [4 :0]E_slave_rs,
     output reg [4 :0]E_slave_rt,
     output reg [4 :0]E_slave_reg_waddr,
@@ -127,6 +126,7 @@ module id_ex(
     output reg [31:0]E_slave_inst,
     output reg [31:0]E_slave_rs_value,
     output reg [31:0]E_slave_rt_value,
+    output reg [31:0]E_slave_shamt_value,
     output reg [31:0]E_slave_imm_value,
     output reg [31:0]E_slave_pc,
     output cop0_info E_slave_cop0_info
@@ -146,7 +146,7 @@ module id_ex(
             E_master_cp0write <= 0;
             E_master_is_in_delayslot <= 0;
             E_master_branch_type <= 0;
-            E_master_shamt <= 0;
+            E_master_shamt_value <= 0;
             E_master_reg_waddr <= 0;
             E_master_rd <= 0;
             E_master_rs <= 0;
@@ -181,7 +181,7 @@ module id_ex(
             E_master_cp0write <= D_master_cp0write;
             E_master_is_in_delayslot <= D_master_is_in_delayslot;
             E_master_branch_type <= D_master_branch_type;
-            E_master_shamt <= D_master_shamt;
+            E_master_shamt_value <= D_master_shamt_value;
             E_master_reg_waddr <= D_master_reg_waddr;
             E_master_rs <= D_master_rs;
             E_master_rt <= D_master_rt;
@@ -215,7 +215,7 @@ module id_ex(
             E_slave_hilowrite <= 0;
             E_slave_cp0write <= 0;
             E_slave_is_in_delayslot <= 0;
-            E_slave_shamt <= 0;
+            E_slave_shamt_value <= 0;
             E_slave_rs <= 0;
             E_slave_rt <= 0;
             E_slave_reg_waddr <= 0;
@@ -244,7 +244,7 @@ module id_ex(
             E_slave_hilowrite <= D_slave_hilowrite;
             E_slave_cp0write <= D_slave_cp0write;
             E_slave_is_in_delayslot <= D_slave_is_in_delayslot;
-            E_slave_shamt <= D_slave_shamt;
+            E_slave_shamt_value <= D_slave_shamt_value;
             E_slave_rs <= D_slave_rs;
             E_slave_rt <= D_slave_rt;
             E_slave_reg_waddr <= D_slave_reg_waddr;

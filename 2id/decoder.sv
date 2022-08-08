@@ -11,10 +11,10 @@ module  decoder(
     output logic [4:0]          rs,
     output logic [4:0]          rt,
     output logic [4:0]          rd,
-    output logic [4:0]          shamt,
     output logic [5:0]          funct,
     output logic [15:0]         imm,
     output logic [25:0]         j_target,
+    output logic [31:0]         shamt_value,
     output logic [31:0]         sign_extend_imm_value,
     output logic                is_link_pc8,
     output logic [3:0]          branch_type,
@@ -50,9 +50,9 @@ module  decoder(
     assign rs = instr[25:21];
     assign rt = instr[20:16];
     assign rd = instr[15:11];
-    assign shamt = instr[10:6];
     assign funct = instr[5:0];
     assign imm = instr[15:0];
+    assign shamt_value = {{27{1'b0}},instr[10:6]};
     assign sign_extend_imm_value = (instr[29:28]==2'b11) ? {{16{1'b0}},instr[15:0]}:{{16{instr[15]}},instr[15:0]}; //op[3:2] for logic_imm type ==> andi, xori, lui, ori为无符号拓展，其它为有符号拓展
     
     ctrl_sign signsD;

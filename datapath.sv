@@ -75,9 +75,9 @@ wire [31:0]     D_master_pc       ,D_slave_pc      ;
 wire            D_master_is_in_delayslot ,D_slave_is_in_delayslot ;
 // inst
 wire [5:0]      D_master_op              ,D_slave_op              ;
-wire [4:0]      D_master_shamt           ,D_slave_shamt           ;
 wire [5:0]      D_master_funct           ,D_slave_funct           ;
 wire [15:0]     D_master_imm             ,D_slave_imm             ;
+wire [31:0]     D_master_shamt_value     ,D_slave_shamt_value    ;
 wire [31:0]     D_master_imm_value       ,D_slave_imm_value       ;
 wire            D_master_break_inst      ,D_slave_break_inst      ;
 wire            D_master_syscall_inst    ,D_slave_syscall_inst    ;
@@ -175,7 +175,7 @@ wire            E_slave_ena;
 wire [31:0]     E_master_inst     ,E_slave_inst    ;
 wire [31:0]     D_pc_branch_target;
 wire [ 3:0]     E_master_branch_type;
-wire [ 4:0]     E_master_shamt          ;
+wire [31:0]     E_master_shamt_value    ;
 wire [31:0]     E_master_rs_value       ;
 wire [31:0]     E_master_rt_value       ;
 wire [31:0]     E_master_imm_value      ;
@@ -189,7 +189,7 @@ wire            E_master_memtoReg       , E_slave_memtoReg;
 wire            E_master_reg_wen_a      , E_slave_reg_wen_a;
 wire            E_master_reg_wen        , E_slave_reg_wen  ;
 wire [ 4:0]     E_master_reg_waddr      ;
-wire [ 4:0]     E_slave_shamt           ;
+wire [31:0]     E_slave_shamt_value     ;
 wire [31:0]     E_slave_rs_value        ;
 wire [31:0]     E_slave_rt_value        ;
 wire [31:0]     E_slave_imm_value       ;
@@ -375,7 +375,7 @@ decoder u_decoder_master(
     .rs                         ( D_master_rs                           ),
     .rt                         ( D_master_rt                           ),
     .rd                         ( D_master_rd                           ),
-    .shamt                      ( D_master_shamt                        ),
+    .shamt_value                ( D_master_shamt_value                  ),
     .funct                      ( D_master_funct                        ),
     .imm                        ( D_master_imm                          ),
     .sign_extend_imm_value      ( D_master_imm_value                    ),
@@ -415,7 +415,7 @@ decoder u_decoder_slave(
     .rs                         ( D_slave_rs                            ),
     .rt                         ( D_slave_rt                            ),
     .rd                         ( D_slave_rd                            ),
-    .shamt                      ( D_slave_shamt                         ),
+    .shamt_value                ( D_slave_shamt_value                   ),
     .funct                      ( D_slave_funct                         ),
     .imm                        ( D_slave_imm                           ),
     .sign_extend_imm_value      ( D_slave_imm_value                     ),
@@ -597,7 +597,7 @@ id_ex u_id_ex(
     .D_master_cp0write              ( D_master_cp0write             ),
     .D_master_is_in_delayslot       ( D_master_is_in_delayslot      ),
     .D_master_branch_type           ( D_master_branch_type          ),
-    .D_master_shamt                 ( D_master_shamt                ),
+    .D_master_shamt_value           ( D_master_shamt_value          ),
     .D_master_reg_waddr             ( D_master_reg_waddr            ),
     .D_master_rd                    ( D_master_rd                   ),
     .D_master_aluop                 ( D_master_aluop                ),
@@ -630,7 +630,7 @@ id_ex u_id_ex(
     .D_slave_hilowrite              ( D_slave_hilowrite             ),
     .D_slave_cp0write               ( D_slave_cp0write              ),
     .D_slave_is_in_delayslot        ( D_slave_is_in_delayslot       ),
-    .D_slave_shamt                  ( D_slave_shamt                 ),
+    .D_slave_shamt_value            ( D_slave_shamt_value           ),
     .D_slave_reg_waddr              ( D_slave_reg_waddr             ),
     .D_slave_aluop                  ( D_slave_aluop                 ),
     .D_slave_except                 ( D_slave_except                ),
@@ -656,7 +656,7 @@ id_ex u_id_ex(
     .E_master_cp0write              ( E_master_cp0write             ),
     .E_master_is_in_delayslot       ( E_master_is_in_delayslot      ),
     .E_master_branch_type           ( E_master_branch_type          ),
-    .E_master_shamt                 ( E_master_shamt                ),
+    .E_master_shamt_value           ( E_master_shamt_value          ),
     .E_master_reg_waddr             ( E_master_reg_waddr            ),
     .E_master_rd                    ( E_master_rd                   ),
     .E_master_aluop                 ( E_master_aluop                ),
@@ -690,7 +690,7 @@ id_ex u_id_ex(
     .E_slave_hilowrite              ( E_slave_hilowrite             ),
     .E_slave_cp0write               ( E_slave_cp0write              ),
     .E_slave_is_in_delayslot        ( E_slave_is_in_delayslot       ),
-    .E_slave_shamt                  ( E_slave_shamt                 ),
+    .E_slave_shamt_value            ( E_slave_shamt_value           ),
     .E_slave_reg_waddr              ( E_slave_reg_waddr             ),
     .E_slave_aluop                  ( E_slave_aluop                 ),
     .E_slave_except_temp            ( E_slave_except_temp           ),
@@ -777,9 +777,9 @@ assign E_cop0_info = E_master_cop0_info & {$bits(E_master_cop0_info){~(|E_master
 // );
 
 // select_alusrc: 所有的pc要加8的，都在alu执行，进行电路复用
-assign E_master_alu_srca =  E_master_read_rs ? E_master_rs_value : {{27{1'b0}},E_master_shamt};
+assign E_master_alu_srca =  E_master_read_rs ? E_master_rs_value : E_master_shamt_value;
 assign E_master_alu_srcb =  E_master_read_rt ? E_master_rt_value : E_master_imm_value;
-assign E_slave_alu_srca  =  E_slave_read_rs  ? E_slave_rs_value : {{27{1'b0}},E_slave_shamt};
+assign E_slave_alu_srca  =  E_slave_read_rs  ? E_slave_rs_value : E_slave_shamt_value;
 assign E_slave_alu_srcb  =  E_slave_read_rt  ? E_slave_rt_value : E_slave_imm_value;
 
 // reg_wen
