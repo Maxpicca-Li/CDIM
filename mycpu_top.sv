@@ -180,24 +180,6 @@ module mycpu_top (
         .debug_wb_rf_wdata 		( debug_wb_rf_wdata 		)
     );
 
-    //简易的MMU
-    /*
-    mmu u_mmu(
-        .inst_vaddr(pcF_dp),
-        .inst_vaddr2(pc_next_dp),
-        .data_vaddr(data_addr_dp),
-        .data_vaddr2(mem_addrE_dp),
-
-        .inst_paddr(pcF),
-        .inst_paddr2(pc_next),
-        .data_paddr(data_addr),
-        .data_paddr2(mem_addrE),
-        .no_cache_d(no_cache_d),
-        .no_cache_E(no_cache_E),
-        .no_cache_i(no_cache_i)
-    );
-    */
-
     i_cache i_cache_inst (
         .clk                ( clk           ),
         .rst                ( rst           ),
@@ -229,52 +211,43 @@ module mycpu_top (
         .rready             ( i_rready      )
     );
     
-    d_arbitrater u_d_arbitrater(
-        .clk(clk), .rst(rst),
-
-        //TLB
-        .no_cache_E(no_cache_E),
-        .no_cache(no_cache_d),
-
-        //datapath
-        .data_en(data_en),
-        .data_addr(data_addr),
-        .data_rdata(data_rdata),
-        .data_rlen(data_rlen),
-        .data_wen(data_wen),
-        .data_wdata(data_wdata),
-        .stall(d_cache_stall),
-        .mem_addrE(mem_addrE),
-        .mem_read_enE(mem_read_enE),
-        .mem_write_enE(mem_write_enE),
-        .stallM(stallM),
-        
-        //arbitrater
-        .araddr          (d_araddr ),
-        .arlen           (d_arlen  ),
-        .arsize          (d_arsize ),
-        .arvalid         (d_arvalid),
-        .arready         (d_arready),
-
-        .rdata           (d_rdata ),
-        .rlast           (d_rlast ),
-        .rvalid          (d_rvalid),
-        .rready          (d_rready),
-
-        .awaddr          (d_awaddr ),
-        .awlen           (d_awlen  ),
-        .awsize          (d_awsize ),
-        .awvalid         (d_awvalid),
-        .awready         (d_awready),
-
-        .wdata           (d_wdata ),
-        .wstrb           (d_wstrb ),
-        .wlast           (d_wlast ),
-        .wvalid          (d_wvalid),
-        .wready          (d_wready),
-
-        .bvalid          (d_bvalid),
-        .bready          (d_bready)
+    d_cache d_cache_inst (
+        .clk                ( clk           ),
+        .rst                ( rst           ),
+        .stallM             ( stallM        ),
+        .dstall             ( d_cache_stall ),
+        .E_mem_pa           ( mem_addrE     ), // only used for match bram
+        .M_mem_pa           ( data_addr     ),
+        .M_fence_addr       ( 0             ), // used for fence
+        .M_fence_d          ( 0             ), // fence address reuse the M_memva. Note: we shouldn't raise M_fence_en with M_mem_en.
+        .M_mem_en           ( data_en       ),
+        .M_mem_write        ( |data_wen     ),
+        .M_mem_uncached     ( 1'b1          ), // TODO: connect to no_cache_d
+        .M_wmask            ( data_wen      ),
+        .M_mem_size         ( data_rlen     ),
+        .M_wdata            ( data_wdata    ),
+        .M_rdata            ( data_rdata    ),
+        .araddr             ( d_araddr      ),
+        .arlen              ( d_arlen       ),
+        .arsize             ( d_arsize      ),
+        .arvalid            ( d_arvalid     ),
+        .arready            ( d_arready     ),
+        .rdata              ( d_rdata       ),
+        .rlast              ( d_rlast       ),
+        .rvalid             ( d_rvalid      ),
+        .rready             ( d_rready      ),
+        .awaddr             ( d_awaddr      ),
+        .awlen              ( d_awlen       ),
+        .awsize             ( d_awsize      ),
+        .awvalid            ( d_awvalid     ),
+        .awready            ( d_awready     ),
+        .wdata              ( d_wdata       ),
+        .wstrb              ( d_wstrb       ),
+        .wlast              ( d_wlast       ),
+        .wvalid             ( d_wvalid      ),
+        .wready             ( d_wready      ),
+        .bvalid             ( d_bvalid      ),
+        .bready             ( d_bready      )
     );
 
     arbitrater u_arbitrater(

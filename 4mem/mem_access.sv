@@ -64,15 +64,18 @@ module mem_access (
                             {32{mem_addr[1:0]==2'b00}} & {{16{1'b0}},data_sram_rdata[15: 0]} ;
             end
             `OP_SW: begin
+                data_sram_rlen = 2'd2;
                 data_sram_wen = {4{mem_addr[1:0]==2'b00}} & 4'b1111;
                 data_sram_wdata = {32{mem_addr[1:0]==2'b00}} & mem_wdata;
             end
             `OP_SH: begin
+                data_sram_rlen = 2'd1;
                 data_sram_wen = {4{mem_addr[1:0]==2'b10}} & 4'b1100 |
                                 {4{mem_addr[1:0]==2'b00}} & 4'b0011 ;
                 data_sram_wdata = {32{mem_addr[0]==1'b0}} & {mem_wdata[15:0],mem_wdata[15:0]};
             end
             `OP_SB: begin
+                data_sram_rlen = 2'd0;
                 data_sram_wdata = {mem_wdata[7:0],mem_wdata[7:0],mem_wdata[7:0],mem_wdata[7:0]};
                 data_sram_wen = {4{mem_addr[1:0]==2'b11}} & 4'b1000 |
                                 {4{mem_addr[1:0]==2'b10}} & 4'b0100 |
