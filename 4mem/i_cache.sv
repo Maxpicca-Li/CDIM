@@ -1,12 +1,8 @@
 `include "defines.vh"
 // I Cache and L1 I TLB
-// 4KB * 2 Line = 64 is enough
 module i_cache #(
-    parameter LEN_LINE = 6, // 64 Bytes
-    parameter LEN_INDEX = 6,
-    parameter LEN_PER_WAY = LEN_LINE + LEN_INDEX,
-    parameter LEN_TAG = 32 - LEN_LINE - LEN_INDEX,
-    parameter LEN_BRAM_ADDR = LEN_LINE - 3 + LEN_INDEX,
+    parameter LEN_LINE = 6,  // 64 Bytes
+    parameter LEN_INDEX = 6, // 64 lines
     parameter NR_WAYS = 2
 ) (
     input               clk,
@@ -44,36 +40,44 @@ module i_cache #(
 
 // defines
 
-typedef struct packed {
-    logic   valid;
-    logic [LEN_TAG-1:0] tag;
-} icache_tag;
-
-enum { IDLE, FENCE, TLB_FILL, UNCACHED, CACHE_REPLACE, SAVE_RESULT } icache_status;
-
+localparam LEN_PER_WAY = LEN_LINE + LEN_INDEX;
+localparam LEN_TAG = 32 - LEN_LINE - LEN_INDEX;
+localparam LEN_BRAM_ADDR = LEN_LINE - 3 + LEN_INDEX;
 localparam NR_LINES = 1 << LEN_INDEX;
 localparam NR_WORDS = 1 << (LEN_LINE - 2);
 
-// Cache LRU
-logic LRU [NR_LINES-1:0];
-wire [LEN_PER_WAY-1:LEN_LINE] va_line_addr = inst_va[LEN_PER_WAY-1:LEN_LINE];
-// Note: If NR_WAYS > 2, we should implement pseudo-LRU or LFSR.
+typedef struct packed {
+    logic [LEN_TAG-1:0] tag;
+} icache_tag;
+
+typedef struct packed {
+    logic [NR_WAYS-1:0] valid;
+    logic LRU;
+    // Note: If NR_WAYS > 2, we should implement pseudo-LRU or LFSR.
+} icache_meta;
+
+typedef struct packed {
+    logic [31:12] vpn;
+    logic [31:12] ppn;
+    logic uncached;
+    logic valid;
+} l1_tlb;
+
+enum { IDLE, TLB_FILL, UNCACHED, CACHE_REPLACE, SAVE_RESULT } icache_status;
 
 
-// iTLB registers
-logic [31:12] l1_itlb_vpn;
-logic [31:12] l1_itlb_ppn;
-logic l1_itlb_uncached;
-logic l1_itlb_valid;
+// metadata
+icache_meta meta [NR_LINES-1:0];
 
 // iTLB Translation
+l1_tlb itlb;
 wire direct_mapped = inst_va[31:30] == 2'b10; // kseg0 and kseg1
-wire uncached = direct_mapped ? inst_va[29] : l1_itlb_uncached;
-wire [31:12] inst_tag = direct_mapped ? {3'b000, inst_va[28:12]} : l1_itlb_ppn;
+wire uncached = direct_mapped ? inst_va[29] : itlb.uncached;
+wire [31:12] inst_tag = direct_mapped ? {3'b000, inst_va[28:12]} : itlb.ppn;
 wire [31:12] inst_vpn = inst_va[31:12];
 wire [31: 0] inst_pa = {inst_tag,inst_va[11:0]};
 
-wire translation_ok = direct_mapped | (l1_itlb_vpn == inst_vpn && l1_itlb_valid);
+wire translation_ok = direct_mapped | (itlb.vpn == inst_vpn && itlb.valid);
 
 // icache bram
 logic [LEN_PER_WAY-1:LEN_LINE] replace_line_addr; // used for controller replace.
@@ -91,23 +95,19 @@ icache_tag tag_ram_wdata;
 wire [NR_WAYS-1:0] tag_compare_valid;
 wire cache_hit = |tag_compare_valid;
 
-wire cache_hit_available = cache_hit && translation_ok && !uncached && !(fence_i && !fence_i_ready) && !(fence_tlb && !fence_tlb_ready);
+wire cache_hit_available = cache_hit && translation_ok && !uncached;
 
 wire cache_inst_ok0 = cache_hit_available;
 wire cache_inst_ok1 = cache_hit_available && inst_va[2] == 1'b0;
 
-
 // Note: If NR_WAYS > 2, we should mux one hot from tag_compare_valid;
 wire i_cache_sel = tag_compare_valid[1];
 
+wire [LEN_PER_WAY-1:LEN_LINE] va_line_addr = inst_va[LEN_PER_WAY-1:LEN_LINE];
+wire [LEN_PER_WAY-1:LEN_LINE] fence_index = fence_addr[LEN_PER_WAY-1:LEN_LINE];
+
 wire [31:0] cache_inst0 = inst_va[2]  ? cache_data[i_cache_sel][63:32] : cache_data[i_cache_sel][31:0];
 wire [31:0] cache_inst1 =               cache_data[i_cache_sel][63:32];
-
-
-// cache and tlb fence
-logic fence_i_ready;
-logic fence_tlb_ready;
-
 
 assign istall = icache_status == IDLE ? (!cache_hit_available & inst_en) : (icache_status != SAVE_RESULT);
 
@@ -125,7 +125,6 @@ assign inst_rdata1  = icache_status == IDLE ? cache_inst1       : saved_inst1;
 // axi cnt
 logic [LEN_LINE:2] axi_cnt;
 
-
 // generate bram
 genvar i;
 generate
@@ -142,7 +141,7 @@ generate
             .addrb  (bram_word_addr),
             .doutb  (cache_data[i])
         );
-        dual_port_bram_nobw #(.LEN_DATA(LEN_TAG+1),.LEN_ADDR(LEN_PER_WAY-LEN_LINE)) i_tag
+        dual_port_bram_nobw #(.LEN_DATA(LEN_TAG),.LEN_ADDR(LEN_PER_WAY-LEN_LINE)) i_tag
         (
             .clka   (clk),
             .clkb   (clk),
@@ -154,24 +153,19 @@ generate
             .addrb  (bram_line_addr),
             .doutb  (cache_tag[i])
         );
-        assign tag_compare_valid[i] = cache_tag[i].tag == inst_tag;
+        assign tag_compare_valid[i] = cache_tag[i].tag == inst_tag && meta[va_line_addr].valid[i];
     end
 endgenerate
 
 always_ff @(posedge clk) begin // Cache FSM
     if (rst) begin
         icache_status <= IDLE;
-        // clear itlb
-        l1_itlb_vpn <= 0;
-        l1_itlb_ppn <= 0;
-        l1_itlb_uncached <= 0;
-        l1_itlb_valid <= 0;
+        itlb <= '{default: '0};
+        meta <= '{default: '0};
         // clear to cpu output
         inst_tlb_refill <= 0;
         inst_tlb_invalid <= 0;
         itlb_vpn2 <= 0;
-        fence_i_ready <= 0;
-        fence_tlb_ready <= 0;
         // clear status
         replace_line_addr <= 0;
         data_wea <= '{default: '0};
@@ -190,25 +184,16 @@ always_ff @(posedge clk) begin // Cache FSM
         saved_inst1 <= 0;
         saved_inst_ok0 <= 0;
         saved_inst_ok1 <= 0;
-        // clear LRU
-        LRU <= '{default: '0};
     end
     else begin
+        // assume istall will stop the whole pipeline
+        // wait !istall && !stallF to avoid fence dead-lock
+        if (fence_tlb && !istall && !stallF) itlb.valid <= 1'b0; 
+        if (fence_i && !istall && !stallF) meta[fence_index].valid <= 0;
         case (icache_status)
             IDLE: begin
                 if (inst_en) begin
-                    if (fence_i & !fence_i_ready) begin
-                        tag_ram_wdata <= 0;
-                        replace_line_addr <= fence_addr[LEN_PER_WAY-1:LEN_LINE];
-                        tag_wea <= '{default: '1};
-                        l1_itlb_valid <= 1'b0;
-                        icache_status <= FENCE;
-                    end
-                    else if (fence_tlb & !fence_tlb_ready) begin
-                        l1_itlb_valid <= 1'b0;
-                        icache_status <= FENCE;
-                    end
-                    else if (!translation_ok) begin
+                    if (!translation_ok) begin
                         icache_status <= TLB_FILL;
                         itlb_vpn2 <= inst_vpn[31:13];
                     end
@@ -225,34 +210,27 @@ always_ff @(posedge clk) begin // Cache FSM
                         arsize <= 3'd2;
                         arvalid <= 1'b1;
                         replace_line_addr <= va_line_addr;
-                        data_wea[LRU[va_line_addr]] <= 8'h0f;
-                        tag_wea[LRU[va_line_addr]] <= 1'b1;
-                        tag_ram_wdata <= '{valid: 1, tag: inst_tag};
+                        data_wea[meta[va_line_addr].LRU] <= 8'h0f;
+                        tag_wea[meta[va_line_addr].LRU] <= 1'b1;
+                        tag_ram_wdata <= '{tag: inst_tag};
+                        meta[va_line_addr].valid[meta[va_line_addr].LRU] <= 1'b1;
                         icache_status <= CACHE_REPLACE;
                         axi_cnt <= 0;
                     end
                     else if (!istall && !stallF) begin
-                        fence_i_ready <= 1'b0;
-                        fence_tlb_ready <= 1'b0;
                         // Update LRU when icache hit
                         // Note: If NR_WAYS > 2, we should implement pseudo-LRU or LFSR.
-                        LRU[va_line_addr] <= ~i_cache_sel;
+                        meta[va_line_addr].LRU <= ~i_cache_sel;
                     end
                 end
-            end
-            FENCE: begin
-                icache_status <= IDLE;
-                fence_i_ready <= 1'b1;
-                fence_tlb_ready <= 1'b1;
-                tag_wea <= '{default: '0};
             end
             TLB_FILL: begin
                 if (itlb_found) begin
                     if ( (inst_tag[12] & itlb_entry.V1) | (!inst_tag[12] & itlb_entry.V0)) begin
-                        l1_itlb_vpn <= inst_tag;
-                        l1_itlb_ppn <= inst_tag[12] ? itlb_entry.PFN1 : itlb_entry.PFN0;
-                        l1_itlb_uncached <= inst_tag[12] ? !itlb_entry.C1 : !itlb_entry.C0;
-                        l1_itlb_valid <= 1'b1;
+                        itlb.vpn <= inst_tag;
+                        itlb.ppn <= inst_tag[12] ? itlb_entry.PFN1 : itlb_entry.PFN0;
+                        itlb.uncached <= inst_tag[12] ? !itlb_entry.C1 : !itlb_entry.C0;
+                        itlb.valid <= 1'b1;
                     end
                     else begin
                         icache_status <= SAVE_RESULT;
@@ -296,12 +274,12 @@ always_ff @(posedge clk) begin // Cache FSM
                         if (!rlast) begin
                             axi_cnt <= axi_cnt + 1;
                             // data_wea initial set to 8'h0f
-                            data_wea[LRU[va_line_addr]] <= ~data_wea[LRU[va_line_addr]];
+                            data_wea[meta[va_line_addr].LRU] <= ~data_wea[meta[va_line_addr].LRU];
                         end
                         else begin
                             rready <= 0;
-                            data_wea[LRU[va_line_addr]] <= 0;
-                            tag_wea[LRU[va_line_addr]] <= 0;
+                            data_wea[meta[va_line_addr].LRU] <= 0;
+                            tag_wea[meta[va_line_addr].LRU] <= 0;
                         end
                     end
                     else if (!rready) begin // wait the final data write to bram.
@@ -311,8 +289,6 @@ always_ff @(posedge clk) begin // Cache FSM
             end
             SAVE_RESULT: begin
                 if (!istall && !stallF) begin
-                    fence_i_ready <= 1'b0;
-                    fence_tlb_ready <= 1'b0;
                     inst_tlb_invalid <= 1'b0;
                     inst_tlb_refill <= 1'b0;
                     icache_status <= IDLE;

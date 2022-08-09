@@ -74,6 +74,12 @@ module mycpu_top (
     wire inst_tlb_invalid   ;
     wire [31:0] inst_rdata1 ;
     wire [31:0] inst_rdata2 ;
+    wire        fence_i;
+    wire [31:0] fence_addr;
+    wire        fence_tlb;
+    wire [31:13]itlb_vpn2;
+    wire        itlb_found;
+    tlb_entry   itlb_entry;
 
     wire data_en            ;
     wire [31:0] data_addr   ;
@@ -145,6 +151,12 @@ module mycpu_top (
         .inst_tlb_invalid       ( inst_tlb_invalid          ),
         .inst_rdata1       		( inst_rdata1       		),
         .inst_rdata2       		( inst_rdata2       		),
+        .fence_i                ( fence_i                   ),
+        .fence_addr             ( fence_addr                ),
+        .fence_tlb              ( fence_tlb                 ),
+        .itlb_vpn2              ( itlb_vpn2                 ),
+        .itlb_found             ( itlb_found                ),
+        .itlb_entry             ( itlb_entry                ),
         // data
         .d_stall           		( d_cache_stall           	),
         .stallM            		( stallM            		),
@@ -180,37 +192,7 @@ module mycpu_top (
         .no_cache_E(no_cache_E),
         .no_cache_i(no_cache_i)
     );
-    /*
-    i_cache_daxi u_i_cache_daxi(
-        .clk(clk), .rst(rst),
 
-        //TLB
-        .no_cache(no_cache_i),
-        
-        //datapath
-        .inst_en(inst_en),
-        .pc_next(pc_next),
-        .pcF(pcF),
-        .stall(i_cache_stall),
-        .stallF(stallF),
-        .inst_data_ok1(inst_data_ok1),
-        .inst_data_ok2(inst_data_ok2),
-        .inst_rdata1(inst_rdata1),
-        .inst_rdata2(inst_rdata2),
-
-        //arbitrater
-        .araddr          (i_araddr ),
-        .arlen           (i_arlen  ),
-        .arsize          (i_arsize ),
-        .arvalid         (i_arvalid),
-        .arready         (i_arready),
-                    
-        .rdata           (i_rdata ),
-        .rlast           (i_rlast ),
-        .rvalid          (i_rvalid),
-        .rready          (i_rready)
-    );
-    */
     i_cache i_cache_inst (
         .clk                ( clk           ),
         .rst                ( rst           ),
@@ -225,12 +207,12 @@ module mycpu_top (
         .inst_tlb_invalid   (inst_tlb_invalid ),
         .stallF             ( stallF        ),
         .istall             ( i_cache_stall ),
-        .fence_i            ( 1'b0          ),
-        .fence_addr         ( 32'd0         ),
-        .fence_tlb          ( 1'b0          ),
-        .itlb_vpn2          (               ),
-        .itlb_found         ( 1'b0          ),
-        .itlb_entry         ( 0             ),
+        .fence_i            ( fence_i       ),
+        .fence_addr         ( fence_addr    ),
+        .fence_tlb          ( fence_tlb     ),
+        .itlb_vpn2          ( itlb_vpn2     ),
+        .itlb_found         ( itlb_found    ),
+        .itlb_entry         ( itlb_entry    ),
         .araddr             ( i_araddr      ),
         .arlen              ( i_arlen       ),
         .arsize             ( i_arsize      ),
@@ -241,6 +223,7 @@ module mycpu_top (
         .rvalid             ( i_rvalid      ),
         .rready             ( i_rready      )
     );
+    
     d_arbitrater u_d_arbitrater(
         .clk(clk), .rst(rst),
 

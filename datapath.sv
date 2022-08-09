@@ -14,10 +14,16 @@ module datapath (
     output wire [31:0] F_pc_next,
     input  wire        inst_data_ok1,
     input  wire        inst_data_ok2,
-    input  wire        inst_tlb_refill,
-    input  wire        inst_tlb_invalid,
     input  wire [31:0] inst_rdata1,
     input  wire [31:0] inst_rdata2,
+    input  wire        inst_tlb_refill,
+    input  wire        inst_tlb_invalid,
+    output wire        fence_i,
+    output wire [31:0] fence_addr,
+    output wire        fence_tlb,
+    input  wire [31:13]itlb_vpn2,
+    output wire        itlb_found,
+    output tlb_entry   itlb_entry,
     // data
     input  wire        d_stall,
     output wire        stallM,
@@ -75,6 +81,7 @@ wire [31:0]     D_master_inst     ,D_slave_inst    ;
 wire            D_cp0_useable;
 wire            D_master_tlb_refill, D_slave_tlb_refill;
 wire            D_master_tlb_invalid, D_slave_tlb_invalid;
+wire            D_kernel_mode;
 wire [31:0]     D_master_pc       ,D_slave_pc      ;
 wire            D_master_is_in_delayslot ,D_slave_is_in_delayslot ;
 // inst
@@ -1081,15 +1088,20 @@ cp0 cp0_inst(
     .M_cp0_jump_pc  ( M_cp0_jump_pc             ),
     .M_cp0_jump     ( M_cp0_jump                ),
     .D_cp0_useable  ( D_cp0_useable             ),
-    .F_mmu_info     (                           ),
+    .D_kernel_mode  ( D_kernel_mode             ),
     .D_int_info     ( D_int_info                ),
-    .tlb1_vpn2      ( 19'd0                     ),
-    .tlb1_found     (                           ),
-    .tlb1_entry     (                           ),
+    .tlb1_vpn2      ( itlb_vpn2                 ),
+    .tlb1_found     ( itlb_found                ),
+    .tlb1_entry     ( itlb_entry                ),
     .tlb2_vpn2      ( 19'd0                     ),
     .tlb2_found     (                           ),
     .tlb2_entry     (                           )
 );
+
+// TODO: connect fence
+assign fence_i = 1'b0;
+assign fence_addr = E_master_pc; // used for test deadlock when fence_i = 1'b1
+assign fence_tlb = 1'b0;
 
 wire [31:0] M_master_reg_wdata, M_slave_reg_wdata;
 assign M_master_reg_wdata = M_master_memtoReg ? M_master_mem_rdata : M_master_alu_res;

@@ -13,7 +13,6 @@ module  decoder(
     output logic [4:0]          rd,
     output logic [5:0]          funct,
     output logic [15:0]         imm,
-    output logic [25:0]         j_target,
     output logic [31:0]         shamt_value,
     output logic [31:0]         sign_extend_imm_value,
     output logic                is_link_pc8,

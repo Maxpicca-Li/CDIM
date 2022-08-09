@@ -21,7 +21,7 @@ module cp0(
     output logic [31:0] M_cp0_jump_pc,
     output logic        M_cp0_jump,
     output              D_cp0_useable,
-    output mmu_info     F_mmu_info,
+    output              D_kernel_mode,
     // int out
     output int_info     D_int_info,
     // I-TLB read port
@@ -78,10 +78,7 @@ tlb_entry tlb[NR_TLB_ENTRY-1:0] = '{default: '0};
 
 wire is_kernel_mode = (status_reg.EXL & (!(except.id_eret&status_reg.ERL))) | (status_reg.ERL & (!except.id_eret)) | (~status_reg.UM) | ((|except) & (!except.id_eret));
 assign D_cp0_useable = is_kernel_mode | status_reg.CU0;
-
-assign F_mmu_info.ASID = entryhi_reg.ASID;
-assign F_mmu_info.usermode = !is_kernel_mode;
-
+assign D_kernel_mode = is_kernel_mode;
 
 assign D_int_info.IM = status_reg.IM;
 assign D_int_info.IP = cause_reg.IP;
