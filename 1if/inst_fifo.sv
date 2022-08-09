@@ -65,7 +65,7 @@ module inst_fifo(
     assign read_data2        = read_line2.data;
 
     // fifo状态
-    assign full     = &data_count[3:1] || (write_pointer+1==read_pointer); // 1110(装不下两条指令了) 
+    assign full     = &data_count[3:1] || (write_pointer+4'd1==read_pointer); // 1110(装不下两条指令了) 
     assign empty    = (data_count == 4'd0); //0000
     assign almost_empty = (data_count == 4'd1); //0001
 
@@ -150,7 +150,7 @@ module inst_fifo(
             lines[write_pointer] <= write_line1;
         end
         if(write_en2) begin
-            lines[write_pointer + 1] <= write_line2;
+            lines[write_pointer + 4'd1] <= write_line2;
         end
     end
     
