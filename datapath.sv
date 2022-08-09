@@ -599,6 +599,12 @@ forward_top u_forward_top(
     .slave_rt_value             ( D_slave_rt_value          )
 );
 
+wire[31:0] mem_rs_valueD, mem_rs_valueE;
+wire[31:0] mem_imm_valueD, mem_imm_valueE;
+assign mem_rs_valueD = D_master_mem_en ? D_master_rs_value : D_slave_rs_value;
+assign mem_imm_valueD = D_master_mem_en ? D_master_imm_value : D_slave_imm_value;
+
+
 // ====================================== Execute ======================================
 wire D2E_clear1,D2E_clear2;
 // wire [31:0] E_master_rs_value_tmp,E_master_rt_value_tmp,E_slave_rs_value_tmp,E_slave_rt_value_tmp;
@@ -613,6 +619,8 @@ id_ex u_id_ex(
     .clear2                         ( D2E_clear2                    ),
     .ena1                           ( E_ena                         ),
     .ena2                           ( D_slave_ena                   ),
+    .mem_rs_valueD                  ( mem_rs_valueD                 ),
+    .mem_imm_valueD                 ( mem_imm_valueD                ),
     .D_master_memtoReg              ( D_master_memtoReg             ),
     .D_master_reg_wen               ( D_master_reg_wen              ),
     .D_master_read_rs               ( D_master_read_rs              ),
@@ -672,6 +680,8 @@ id_ex u_id_ex(
     .D_slave_rs                     ( D_slave_rs                    ),
     .D_slave_rt                     ( D_slave_rt                    ),
     .D_slave_cop0_info              ( D_slave_cop0_info             ),
+    .mem_rs_valueE                  ( mem_rs_valueE                 ),  
+    .mem_imm_valueE                 ( mem_imm_valueE                ),
     .E_master_memtoReg              ( E_master_memtoReg             ),
     .E_master_reg_wen               ( E_master_reg_wen_a            ),
     .E_master_read_rs               ( E_master_read_rs              ),
@@ -941,7 +951,7 @@ wire        M_master_mem_sel, M_slave_mem_sel ;
 // mem_addr: base(rs value) + offset(immediate value)
 assign E_master_mem_addr = E_master_rs_value + E_master_imm_value;
 assign E_slave_mem_addr = E_slave_rs_value + E_slave_imm_value; 
-
+assign mem_addrE = mem_rs_valueE + mem_imm_valueE;
 // Note: only care about except signals from D for load/store.
 struct_conflict u_struct_conflict(
     // datapath ctrl
@@ -978,7 +988,7 @@ struct_conflict u_struct_conflict(
     .E_mem_ren          ( mem_read_enE      ),
     .E_mem_wen          ( mem_write_enE     ),
     .E_mem_op           ( mem_opE           ),
-    .E_mem_addr         ( mem_addrE         ),
+    // .E_mem_addr         ( mem_addrE         ),
     .E_mem_wdata        ( mem_wdataE        ),
     .M_mem_rdata        ( mem_rdataM        )
 );

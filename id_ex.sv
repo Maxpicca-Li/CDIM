@@ -8,6 +8,7 @@ module id_ex(
     input wire ena1,
     input wire ena2,
 
+    input wire [31:0]mem_rs_valueD,mem_imm_valueD, 
     input wire D_master_memtoReg,
     input wire D_master_reg_wen,
     input wire D_master_read_rs,
@@ -69,6 +70,7 @@ module id_ex(
     input wire [31:0]D_slave_pc,
     input cop0_info  D_slave_cop0_info,
 
+    output reg [31:0]mem_rs_valueE, mem_imm_valueE, // FIXME how slave?
     output reg E_master_memtoReg,
     output reg E_master_reg_wen,
     output reg E_master_read_rs,
@@ -167,6 +169,8 @@ module id_ex(
             E_master_branch_target <= 0;
             E_master_jump_conflict <= 0;
             E_master_pred_take <= 0;
+            mem_rs_valueE <= 0;
+            mem_imm_valueE <= 0;
         end
         else if (ena1) begin
             E_master_memtoReg <= D_master_memtoReg;
@@ -202,6 +206,8 @@ module id_ex(
             E_master_branch_target <= D_master_branch_target;
             E_master_jump_conflict <= D_master_jump_conflict;
             E_master_pred_take <= D_master_pred_take;
+            mem_rs_valueE <= mem_rs_valueD;
+            mem_imm_valueE <= mem_imm_valueD;
         end
     end
 
