@@ -64,7 +64,7 @@ if (NR_DTLB_ENTRY > 1) begin
     end
 end
 else begin
-    assign dtlb_matched = dtlb[0].vpn == E_mem_va[31:12];
+    assign dtlb_matched = dtlb[0].vpn == E_mem_va[31:12] & dtlb_valid[0];
     assign dtlb_ppn = dtlb[0].ppn;
     assign dtlb_uncached = dtlb[0].uncached;
     assign dtlb_dirty = dtlb[0].dirty;
