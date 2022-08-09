@@ -5,38 +5,22 @@
 module  decoder(
     input [31:0] instr,
     input        c0_useable,
-
     //per part
-    output logic [5:0]          op,
-    output logic [4:0]          rs,
-    output logic [4:0]          rt,
-    output logic [4:0]          rd,
-    output logic [5:0]          funct,
-    output logic [15:0]         imm,
+    output logic [5 :0]         op,
+    output logic [4 :0]         rs,
+    output logic [4 :0]         rt,
+    output logic [4 :0]         rd,
+    output logic [5 :0]         funct,
+    output logic [4 :0]         reg_waddr,
     output logic [31:0]         shamt_value,
     output logic [31:0]         sign_extend_imm_value,
     output logic                is_link_pc8,
-    output logic [3:0]          branch_type,
-    output logic [3:0]          trap_type,
+    output logic [3 :0]         branch_type,
+    output logic [3 :0]         trap_type,
     output logic [`CmovBus]     cmov_type,
-    output logic [4:0]          reg_waddr,
-    
-    output logic [7:0]          aluop,
-    output logic                flush_all,
-    output logic                read_rs,
-    output logic                read_rt,
-    output logic                reg_write,
-    output logic                mem_en,
-    output logic                mem_write_reg,
-    output logic                mem_read,
-    output logic                mem_write,
-    output logic                cp0_read,
-    output logic                cp0_write,
-    output logic                hilo_read,
-    output logic                hilo_write,
-    output logic                may_bring_flush,
-    output logic                only_one_issue,
-    
+    // control
+    output ctrl_sign            signsD,
+    // separate signal
     output logic				undefined_inst,  // 1 as received a unknown operation.
     output logic                syscall_inst,
     output logic                break_inst,
@@ -50,27 +34,9 @@ module  decoder(
     assign rt = instr[20:16];
     assign rd = instr[15:11];
     assign funct = instr[5:0];
-    assign imm = instr[15:0];
     assign shamt_value = {{27{1'b0}},instr[10:6]};
     assign sign_extend_imm_value = (instr[29:28]==2'b11) ? {{16{1'b0}},instr[15:0]}:{{16{instr[15]}},instr[15:0]}; //op[3:2] for logic_imm type ==> andi, xori, lui, ori为无符号拓展，其它为有符号拓展
     
-    ctrl_sign signsD;
-    assign aluop = signsD.aluop;
-    assign flush_all = signsD.flush_all;
-    assign read_rs = signsD.read_rs;
-    assign read_rt = signsD.read_rt;
-    assign reg_write = signsD.reg_write;
-    assign mem_en = signsD.mem_en;
-    assign mem_write_reg = signsD.mem_write_reg;
-    assign mem_read = signsD.mem_read;
-    assign mem_write = signsD.mem_write;
-    assign cp0_read = signsD.cp0_read;
-    assign cp0_write = signsD.cp0_write;
-    assign hilo_read = signsD.hilo_read;
-    assign hilo_write = signsD.hilo_write;
-    assign may_bring_flush = signsD.may_bring_flush;
-    assign only_one_issue = signsD.only_one_issue;
-
     always_comb begin : generate_control_signals
         undefined_inst = 1'b0;
         syscall_inst = 1'b0;
