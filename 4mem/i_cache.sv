@@ -226,11 +226,12 @@ always_ff @(posedge clk) begin // Cache FSM
             end
             TLB_FILL: begin
                 if (itlb_found) begin
-                    if ( (inst_tag[12] & itlb_entry.V1) | (!inst_tag[12] & itlb_entry.V0)) begin
-                        itlb.vpn <= inst_tag;
-                        itlb.ppn <= inst_tag[12] ? itlb_entry.PFN1 : itlb_entry.PFN0;
-                        itlb.uncached <= inst_tag[12] ? !itlb_entry.C1 : !itlb_entry.C0;
+                    if ( (inst_vpn[12] & itlb_entry.V1) | (!inst_vpn[12] & itlb_entry.V0)) begin
+                        itlb.vpn <= inst_vpn[31:12];
+                        itlb.ppn <= inst_vpn[12] ? itlb_entry.PFN1 : itlb_entry.PFN0;
+                        itlb.uncached <= inst_vpn[12] ? !itlb_entry.C1 : !itlb_entry.C0;
                         itlb.valid <= 1'b1;
+                        icache_status <= IDLE;
                     end
                     else begin
                         icache_status <= SAVE_RESULT;

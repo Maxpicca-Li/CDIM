@@ -162,12 +162,16 @@ module mycpu_top (
         .stallM            		( stallM            		),
         .mem_read_enE      		( mem_read_enE      		),
         .mem_write_enE     		( mem_write_enE     		),
-        .mem_addrE         		( mem_addrE_dp      		),
+        .E_mem_pa               ( mem_addrE                 ),
+        .E_mem_uncached         ( no_cache_E                ),
+        .mem_addrE         		( mem_addrE_dp      		), // TODO: delete
         .data_sram_enM     		( data_en           		),
         .data_sram_rdataM  		( data_rdata          		),
         .data_sram_rlenM   		( data_rlen           		),
         .data_sram_wenM    		( data_wen             		),
-        .data_sram_addrM   		( data_addr_dp         		),
+        .M_mem_pa               ( data_addr                 ),
+        .M_mem_uncached         ( no_cache_d                ),
+        .data_sram_addrM   		( data_addr_dp         		), // TODO: delete
         .data_sram_wdataM  		( data_wdata          		),
         // debug
         .debug_wb_pc       		( debug_wb_pc       		),
@@ -177,7 +181,7 @@ module mycpu_top (
     );
 
     //简易的MMU
-  
+    /*
     mmu u_mmu(
         .inst_vaddr(pcF_dp),
         .inst_vaddr2(pc_next_dp),
@@ -192,6 +196,7 @@ module mycpu_top (
         .no_cache_E(no_cache_E),
         .no_cache_i(no_cache_i)
     );
+    */
 
     i_cache i_cache_inst (
         .clk                ( clk           ),

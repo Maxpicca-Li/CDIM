@@ -13,12 +13,16 @@ module ex_mem(
     input  logic [5 :0] E_mem_op,
     input  logic [31:0] E_mem_addr,
     input  logic [31:0] E_mem_wdata,
+    input  logic [31:0] E_mem_pa,
+    input  logic        E_mem_uncached,
     output logic        M_mem_en,
     output logic        M_mem_ren,
     output logic        M_mem_wen,
     output logic [5 :0] M_mem_op,
     output logic [31:0] M_mem_addr,
     output logic [31:0] M_mem_wdata,
+    output logic [31:0] M_mem_pa,
+    output logic        M_mem_uncached,
 
     input  ctrl_sign    E_master_ctrl_sign,
     input  except_bus   E_master_except,
@@ -69,6 +73,8 @@ module ex_mem(
             M_mem_op <= 0;
             M_mem_addr <= 0;
             M_mem_wdata <= 0;
+            M_mem_pa <= 0;
+            M_mem_uncached <= 0;
             M_master_ctrl_sign <= 0;
             M_master_except <= 0;
             M_master_reg_wen <= 0;
@@ -86,6 +92,8 @@ module ex_mem(
             M_mem_op <= E_mem_op;
             M_mem_addr <= E_mem_addr;
             M_mem_wdata <= E_mem_wdata;
+            M_mem_pa <= E_mem_pa;
+            M_mem_uncached <= E_mem_uncached;
             M_master_ctrl_sign <= E_master_ctrl_sign;
             M_master_except <= E_master_except;
             M_master_reg_wen <= E_master_reg_wen;
