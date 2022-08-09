@@ -203,7 +203,6 @@ always_ff @(posedge clk) begin
             if (store_buffer_ctrl.axi_busy) begin // To implement SC memory ordering, if store buffer busy, axi is unseable.
                 if (awvalid & awready) begin
                     awvalid <= 0;
-                    wvalid <= 1; // FIXME: fix AXI Deadlock
                 end
                 if (wvalid & wready) begin
                     if (store_buffer_has_next) begin
@@ -214,11 +213,11 @@ always_ff @(posedge clk) begin
                         wdata <= store_buffer[store_buffer_ctrl.ptr_begin].wdata;
                         wstrb <= store_buffer[store_buffer_ctrl.ptr_begin].wstrb;
                         wlast <= 1'b1;
-                        wvalid <= 1'b0;
+                        wvalid <= 1'b1;
                         store_buffer_ctrl.ptr_begin <= store_buffer_ctrl.ptr_begin + 3'd1;
                     end
                     else begin
-                        awaddr <= 0;
+                        wvalid <= 0;
                         wlast <= 0;
                         store_buffer_ctrl.axi_busy <= 1'b0;
                     end
@@ -232,7 +231,7 @@ always_ff @(posedge clk) begin
                 wdata <= store_buffer[store_buffer_ctrl.ptr_begin].wdata;
                 wstrb <= store_buffer[store_buffer_ctrl.ptr_begin].wstrb;
                 wlast <= 1'b1;
-                wvalid <= 1'b0;
+                wvalid <= 1'b1;
                 store_buffer_ctrl.ptr_begin <= store_buffer_ctrl.ptr_begin + 3'd1;
                 store_buffer_ctrl.axi_busy <= 1'b1;
             end
