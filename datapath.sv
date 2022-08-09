@@ -88,6 +88,8 @@ wire            F_pc_except                 ;
 // ===== D =====
 wire [31:0]     D_master_inst     ,D_slave_inst    ;
 wire            D_cp0_useable;
+wire            D_master_tlb_refill, D_slave_tlb_refill;
+wire            D_master_tlb_invalid, D_slave_tlb_invalid;
 wire            D_kernel_mode;
 wire [31:0]     D_master_pc       ,D_slave_pc      ;
 wire            D_master_is_in_delayslot ,D_slave_is_in_delayslot ;
@@ -271,11 +273,6 @@ wire [31:0]     W_master_reg_wdata,W_slave_reg_wdata;
 except_bus      W_master_except   ,W_slave_except   ;
 wire [63:0]     W_master_alu_out64;
 
-
-// 异常数据从上至下传递
-assign D_master_is_pc_except  = (|D_master_pc[1:0]); // 2'b00
-assign D_slave_is_pc_except   = (|D_slave_pc[1:0]);
-
 // 冒险处理
 hazard u_hazard(
     //ports
@@ -363,7 +360,11 @@ inst_fifo u_inst_fifo(
     .delay_rst                    ( D_delay_rst            ), // next_master_is_in_delayslot
     
     .read_en1                     ( D_ena                  ),
-    .read_en2                     ( D_slave_ena              ), // D阶段的发射结果
+    .read_en2                     ( D_slave_ena            ), // D阶段的发射结果
+    .read_tlb_refill1             ( D_master_tlb_refill    ),
+    .read_tlb_refill2             ( D_slave_tlb_refill     ),
+    .read_tlb_invalid1            ( D_master_tlb_invalid   ),
+    .read_tlb_invalid2            ( D_slave_tlb_invalid    ),
     .read_address1                ( D_master_pc            ),
     .read_address2                ( D_slave_pc             ),
     .read_data1                   ( D_master_inst          ),
@@ -371,6 +372,10 @@ inst_fifo u_inst_fifo(
     
     .write_en1                    ( inst_data_ok1),
     .write_en2                    ( inst_data_ok2),
+    .write_tlb_refill1            ( inst_tlb_refill        ),
+    .write_tlb_refill2            ( inst_tlb_refill        ),
+    .write_tlb_invalid1           ( inst_tlb_invalid       ),
+    .write_tlb_invalid2           ( inst_tlb_invalid       ),
     .write_address1               ( F_pc                   ),
     .write_address2               ( F_pc + 32'd4           ),
     .write_data1                  ( inst_rdata1            ),

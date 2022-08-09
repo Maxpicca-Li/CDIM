@@ -1,4 +1,5 @@
 `timescale 1ns / 1ps
+`include "defines.vh"
 
 // 参考实现：https://github.com/name1e5s/Sirius/blob/SiriusG/hdl/ifu/instruction_fifo.sv
 module inst_fifo(
@@ -12,7 +13,11 @@ module inst_fifo(
         output logic                master_is_in_delayslot_o, // 延迟槽判断结果
 
         input                       read_en1,    // master是否发射
-        input                       read_en2,    // slave是否发射
+        input                       read_en2,    // slave是否发射                   
+        output                      read_tlb_refill1,
+        output                      read_tlb_refill2,
+        output                      read_tlb_invalid1,
+        output                      read_tlb_invalid2,
         output logic [31:0]         read_data1,  // 指令
         output logic [31:0]         read_data2,
         output logic [31:0]         read_address1, // 指令地址，即pc
@@ -20,6 +25,10 @@ module inst_fifo(
 
         input                       write_en1, // 数据读回 ==> inst_ok & inst_ok_1
         input                       write_en2, // 数据读回 ==> inst_ok & inst_ok_2
+        input                       write_tlb_refill1,
+        input                       write_tlb_refill2,
+        input                       write_tlb_invalid1,
+        input                       write_tlb_invalid2,
         input [31:0]                write_address1, // pc
         input [31:0]                write_address2,  
         input [31:0]                write_data1, // inst写入
@@ -31,10 +40,10 @@ module inst_fifo(
 );
 
     // fifo结构
-    reg [31:0]  data[0:15];
-    reg [31:0]  address[0:15];
-    reg [31:0]  delayslot_data;
-    reg [31:0]  delayslot_addr;
+    fifo_entry  lines[0:15];
+    fifo_entry  read_line1, read_line2;
+    fifo_entry  write_line1, write_line2;
+    fifo_entry  delayslot_line;
     reg         delayslot_stall; // 还在读取相关数据
     reg         delayslot_enable; // 需要读取延迟槽的数据
 
@@ -42,6 +51,18 @@ module inst_fifo(
     reg [3:0] write_pointer;
     reg [3:0] read_pointer;
     reg [3:0] data_count;
+
+    // INPUT and OUTPUT
+    assign write_line1 = '{default:'0, refill:write_tlb_refill1, invalid:write_tlb_invalid1, addr:write_address1, data:write_data1};
+    assign write_line2 = '{default:'0, refill:write_tlb_refill2, invalid:write_tlb_invalid2, addr:write_address2, data:write_data2};
+    assign read_tlb_refill1  = read_line1.refill;
+    assign read_tlb_refill2  = read_line2.refill;
+    assign read_tlb_invalid1 = read_line1.invalid;
+    assign read_tlb_invalid2 = read_line2.invalid;
+    assign read_address1     = read_line1.addr;
+    assign read_address2     = read_line2.addr;
+    assign read_data1        = read_line1.data;
+    assign read_data2        = read_line2.data;
 
     // fifo状态
     assign full     = &data_count[3:1] || (write_pointer+1==read_pointer); // 1110(装不下两条指令了) 
@@ -74,16 +95,14 @@ module inst_fifo(
     always_ff @(posedge clk) begin // 下一条指令在需要执行的延迟槽中
         if(fifo_rst && delay_rst & !flush_delay_slot) begin // 初步判断
             delayslot_enable <= 1'b1;
-            delayslot_data  <= (read_pointer + 4'd1 == write_pointer || read_pointer == write_pointer)? write_data1 : data[read_pointer + 4'd1];
-            delayslot_addr  <= (read_pointer + 4'd1 == write_pointer || read_pointer == write_pointer)? write_address1 : address[read_pointer + 4'd1];
+            delayslot_line   <= (read_pointer + 4'd1 == write_pointer || read_pointer == write_pointer) ? write_line1 : lines[read_pointer + 1];
         end
         else if(delayslot_stall && write_en1) begin // 要写的数据回来了
-            delayslot_data    <= write_data1;
+            delayslot_line   <= write_line1;
         end
         else if(!delayslot_stall && read_en1) begin // 清空
             delayslot_enable <= 1'b0;
-            delayslot_data   <= 32'd0;
-            delayslot_addr   <= 32'd0;
+            delayslot_line   <= '{default:'0};
         end
     end
 
@@ -106,42 +125,32 @@ module inst_fifo(
     // fifo读
     always_comb begin  // 取指限制：注意需要保证fifo中至少有一条指令
         if(delayslot_enable) begin
-            read_data1      = delayslot_data;
-            read_data2      = 32'd0;
-            read_address1   = delayslot_addr;
-            read_address2   = 32'd0;
+            read_line1 = delayslot_line;
+            read_line2 = '{default: '0};
         end
         else if(empty) begin
-            read_data1      = 32'd0;
-            read_data2      = 32'd0;
-            read_address1   = 32'd0;
-            read_address2   = 32'd0;
+            read_line1 = '{default: '0};
+            read_line2 = '{default: '0};
         end
         else if(almost_empty) begin
             // 只能取一条数据
-            read_data1      = data[read_pointer];
-            read_data2      = 32'd0;
-            read_address1   = address[read_pointer];
-            read_address2   = 32'd0;
+            read_line1 = lines[read_pointer];
+            read_line2 = '{default: '0};
         end 
         else begin
             // 可以取两条数据
-            read_data1      = data[read_pointer];
-            read_data2      = data[read_pointer + 4'd1];
-            read_address1   = address[read_pointer];
-            read_address2   = address[read_pointer + 4'd1];
+            read_line1 = lines[read_pointer];
+            read_line2 = lines[read_pointer + 1];
         end
     end
 
     // fifo写
     always_ff @(posedge clk) begin : write_data 
         if(write_en1) begin
-            data[write_pointer] <= write_data1;
-            address[write_pointer] <= write_address1;
+            lines[write_pointer] <= write_line1;
         end
         if(write_en2) begin
-            data[write_pointer + 4'd1] <= write_data2;
-            address[write_pointer + 4'd1] <= write_address2;
+            lines[write_pointer + 1] <= write_line2;
         end
     end
     
