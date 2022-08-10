@@ -82,7 +82,7 @@ wire translation_ok = direct_mapped | (itlb.vpn == inst_vpn && itlb.valid);
 // icache bram
 logic [LEN_PER_WAY-1:LEN_LINE] replace_line_addr; // used for controller replace.
 
-wire bram_addr_choose = istall | stallF; // 1: inst_va, 0: inst_va_next
+wire bram_addr_choose = istall; // 1: inst_va, 0: inst_va_next
 wire [LEN_PER_WAY-1:3]          bram_word_addr = bram_addr_choose ? inst_va[LEN_PER_WAY-1:3]         : inst_va_next[LEN_PER_WAY-1:3];
 wire [LEN_PER_WAY-1:LEN_LINE]   bram_line_addr = bram_addr_choose ? inst_va[LEN_PER_WAY-1:LEN_LINE]  : inst_va_next[LEN_PER_WAY-1:LEN_LINE];
 wire [63:0] cache_data [NR_WAYS-1:0];
@@ -217,10 +217,16 @@ always_ff @(posedge clk) begin // Cache FSM
                         icache_status <= CACHE_REPLACE;
                         axi_cnt <= 0;
                     end
-                    else if (!istall && !stallF) begin
+                    else if (!istall) begin
                         // Update LRU when icache hit
                         // Note: If NR_WAYS > 2, we should implement pseudo-LRU or LFSR.
                         meta[va_line_addr].LRU <= ~i_cache_sel;
+                        if (stallF) begin
+                            icache_status <= SAVE_RESULT;
+                            saved_inst1 <= cache_inst1;
+                            saved_inst_ok0 <= cache_inst_ok0;
+                            saved_inst_ok1 <= cache_inst_ok1;
+                        end
                     end
                 end
             end

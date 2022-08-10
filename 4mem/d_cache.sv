@@ -116,7 +116,7 @@ dcache_tag tag_ram_wdata;
 
 // dcache bram
 wire [31:LEN_PER_WAY] addr_tag = M_mem_pa[31:LEN_PER_WAY];
-wire bram_addr_choose = dstall | stallM; // 1: M_mem_pa or M_fence_addr, 0: E_mem_pa
+wire bram_addr_choose = dstall; // 1: M_mem_pa or M_fence_addr, 0: E_mem_pa
 
 // FIXME: fix M_fence_addr
 wire [LEN_PER_WAY-1:2]          bram_word_addr = bram_use_replace_addr ? bram_replace_addr : (bram_addr_choose ? M_mem_pa[LEN_PER_WAY-1:2] : E_mem_pa[LEN_PER_WAY-1:2]);
@@ -343,10 +343,14 @@ always_ff @(posedge clk) begin
                             end
                         end
                         else begin
-                            if (!dstall && !stallM) begin
-                                // Update LRU
+                            if (!dstall) begin
+                                // update lru and mark dirty
                                 meta[pa_line_addr].LRU <= ~d_cache_sel;
                                 if (M_mem_write) meta[pa_line_addr].dirty[d_cache_sel] <= 1'b1;
+                                if (stallM) begin
+                                    saved_rdata <= cache_data_forward[d_cache_sel];
+                                    dcache_status <= SAVE_RESULT;
+                                end
                             end
                         end
                     end
