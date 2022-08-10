@@ -16,11 +16,11 @@ module hazard (
     input wire       d_stall,
     // flush: phase越靠后越先处理
     input wire       M_except,
+    input wire       M_flush_all, // 暂时用不上这个信号
     input wire       E_pred_fail,
     input wire       E_jump_conflict,
     input wire       D_pred_take,
     input wire       D_jump_take,
-    input wire       D_flush_all, // 暂时用不上这个信号
     // out
     output wire F_ena, 
     output wire D_ena, 
@@ -31,7 +31,8 @@ module hazard (
     output wire D_flush, 
     output wire E_flush, 
     output wire M_flush, 
-    output wire W_flush
+    output wire W_flush,
+    output wire delay_slot_flush
 
 );
     wire lwstall, longest_stall;
@@ -39,7 +40,7 @@ module hazard (
     assign lwstall = (E_master_memtoReg & (|E_master_reg_waddr) & ((D_master_read_rs & D_master_rs == E_master_reg_waddr) | (D_master_read_rt & D_master_rt == E_master_reg_waddr))) || 
                      (E_slave_memtoReg  & (|E_slave_reg_waddr)  & ((D_master_read_rs & D_master_rs == E_slave_reg_waddr)  | (D_master_read_rt & D_master_rt == E_slave_reg_waddr)));
     assign longest_stall = E_alu_stall | i_stall | d_stall | E_dtlb_stall;
-    
+
     assign F_ena = ~i_stall; // 存在fifo情况下，d_stall不影响取指
     assign D_ena = ~(lwstall | longest_stall);
     assign E_ena = ~longest_stall;
@@ -47,10 +48,11 @@ module hazard (
     assign W_ena = ~longest_stall | M_except;
 
     assign F_flush = 1'b0;
-    assign D_flush = M_except | E_pred_fail | E_jump_conflict | D_pred_take | D_jump_take | D_flush_all; // D\E branch
-    assign E_flush = M_except | E_pred_fail | E_jump_conflict ;    // E branch
-    assign M_flush = M_except;
+    assign D_flush = M_except | M_flush_all | E_pred_fail | E_jump_conflict | D_pred_take | D_jump_take; // D\E branch
+    assign E_flush = M_except | M_flush_all | E_pred_fail | E_jump_conflict ;    // E branch
+    assign M_flush = M_except | M_flush_all;
     assign W_flush = 1'b0; // TODO:0xbfc7cbe8 异常绑定
+    assign delay_slot_flush = M_except | M_flush_all;
 
     /* 
     // TODO: 需要好好涉及hazard的信号和刷新逻辑

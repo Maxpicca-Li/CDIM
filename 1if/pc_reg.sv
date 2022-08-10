@@ -13,8 +13,8 @@ module pc_reg (
         input       [31:0]  E_pc_plus8,
         input               E_jump_conflict,
         input       [31:0]  E_rs_value,
-        input               D_flush_all,
-        input       [31:0]  D_flush_all_addr,
+        input               M_flush_all,
+        input       [31:0]  M_flush_all_addr,
         input               D_branch_take,
         input       [31:0]  D_branch_target,
         input               D_jump_take,
@@ -45,8 +45,8 @@ module pc_reg (
                 pc_next = E_next_pc8 ? E_pc_plus8 : E_pc_plus4;
             else if (E_jump_conflict) 
                 pc_next = E_rs_value;
-            else if (D_flush_all)
-                pc_next = D_flush_all_addr;
+            else if (M_flush_all)
+                pc_next = M_flush_all_addr;
             else if (D_branch_take)
                 pc_next = D_branch_target;
             else if (D_jump_take) 

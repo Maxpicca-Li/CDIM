@@ -33,7 +33,24 @@ module mem_access (
             `OP_LW: begin
                 data_sram_wen = 4'b0000;
                 data_sram_rlen = 2'd2;
-                mem_rdata = {32{mem_addr[1:0]==2'b00}} & data_sram_rdata;
+                mem_rdata = data_sram_rdata;
+            end
+            `OP_LL: begin
+                data_sram_wen = 4'b0000;
+                data_sram_rlen = 2'd2;
+                mem_rdata = data_sram_rdata;
+            end
+            `OP_LH: begin
+                data_sram_wen = 4'b0000;
+                data_sram_rlen = 2'd1;
+                mem_rdata = {32{mem_addr[1:0]==2'b10}} & {{16{data_sram_rdata[31]}},data_sram_rdata[31:16]} |
+                            {32{mem_addr[1:0]==2'b00}} & {{16{data_sram_rdata[15]}},data_sram_rdata[15: 0]} ;
+            end
+            `OP_LHU: begin
+                data_sram_wen = 4'b0000;
+                data_sram_rlen = 2'd1;
+                mem_rdata = {32{mem_addr[1:0]==2'b10}} & {{16{1'b0}},data_sram_rdata[31:16]} |
+                            {32{mem_addr[1:0]==2'b00}} & {{16{1'b0}},data_sram_rdata[15: 0]} ;
             end
             `OP_LB: begin
                 data_sram_wen = 4'b0000;
@@ -51,33 +68,25 @@ module mem_access (
                             {32{mem_addr[1:0]==2'b01}} & {{24{1'b0}},data_sram_rdata[15: 8]} |
                             {32{mem_addr[1:0]==2'b00}} & {{24{1'b0}},data_sram_rdata[7 : 0]} ;
             end
-            `OP_LH: begin
-                data_sram_wen = 4'b0000;
-                data_sram_rlen = 2'd1;
-                mem_rdata = {32{mem_addr[1:0]==2'b10}} & {{16{data_sram_rdata[31]}},data_sram_rdata[31:16]} |
-                            {32{mem_addr[1:0]==2'b00}} & {{16{data_sram_rdata[15]}},data_sram_rdata[15: 0]} ;
-            end
-            `OP_LHU: begin
-                data_sram_wen = 4'b0000;
-                data_sram_rlen = 2'd1;
-                mem_rdata = {32{mem_addr[1:0]==2'b10}} & {{16{1'b0}},data_sram_rdata[31:16]} |
-                            {32{mem_addr[1:0]==2'b00}} & {{16{1'b0}},data_sram_rdata[15: 0]} ;
-            end
             `OP_SW: begin
                 data_sram_wen = {4{mem_addr[1:0]==2'b00}} & 4'b1111;
-                data_sram_wdata = {32{mem_addr[1:0]==2'b00}} & mem_wdata;
+                data_sram_wdata = mem_wdata;
+            end
+            `OP_SC: begin
+                data_sram_wen = {4{mem_addr[1:0]==2'b00}} & 4'b1111;
+                data_sram_wdata = mem_wdata;
             end
             `OP_SH: begin
                 data_sram_wen = {4{mem_addr[1:0]==2'b10}} & 4'b1100 |
                                 {4{mem_addr[1:0]==2'b00}} & 4'b0011 ;
-                data_sram_wdata = {32{mem_addr[0]==1'b0}} & {mem_wdata[15:0],mem_wdata[15:0]};
+                data_sram_wdata = {mem_wdata[15:0],mem_wdata[15:0]};
             end
             `OP_SB: begin
-                data_sram_wdata = {mem_wdata[7:0],mem_wdata[7:0],mem_wdata[7:0],mem_wdata[7:0]};
                 data_sram_wen = {4{mem_addr[1:0]==2'b11}} & 4'b1000 |
                                 {4{mem_addr[1:0]==2'b10}} & 4'b0100 |
                                 {4{mem_addr[1:0]==2'b01}} & 4'b0010 |
                                 {4{mem_addr[1:0]==2'b00}} & 4'b0001 ;
+                data_sram_wdata = {mem_wdata[7:0],mem_wdata[7:0],mem_wdata[7:0],mem_wdata[7:0]};
             end
             default:begin
                 data_sram_wen = 4'b0000;

@@ -351,6 +351,12 @@ module  decoder(
                 signsD.reg_write = 1'b1;
                 signsD.read_rs = 1'b1;
             end
+            `OP_LL    : begin
+                signsD.mem_en = 1'b1;
+                signsD.mem_read = 1'b1; signsD.mem_write_reg = 1'b1;
+                signsD.reg_write = 1'b1;
+                signsD.read_rs = 1'b1;
+            end
             `OP_SB    : begin
                 signsD.mem_en = 1'b1;
                 signsD.mem_write = 1'b1;
@@ -368,6 +374,14 @@ module  decoder(
                 signsD.mem_write = 1'b1;
                 signsD.read_rs = 1'b1;
                 signsD.read_rt = 1'b1;
+            end
+            `OP_SC    : begin
+                signsD.mem_en = 1'b1;
+                signsD.mem_write = 1'b1; 
+                signsD.read_rs = 1'b1;       // read rs
+                signsD.read_rt = 1'b1;       // read rt
+                signsD.reg_write = 1'b1;     // write rt
+                signsD.aluop = `ALUOP_SC;    // in E phase, the register wvalue is in ALU path, which will not cause lwstall in D
             end
             // arith imme
             `OP_ADDI  : begin
@@ -492,15 +506,19 @@ module  decoder(
                         case(funct)
                             `FUN_TLBR: begin
                                 cop0_info_out.TLBR = 1'b1;
+                                signsD.flush_all = 1'b1;
                             end
                             `FUN_TLBWI: begin
                                 cop0_info_out.TLBWI = 1'b1;
+                                signsD.flush_all = 1'b1;
                             end
                             `FUN_TLBWR: begin
                                 cop0_info_out.TLBWR = 1'b1;
+                                signsD.flush_all = 1'b1;
                             end
                             `FUN_TLBP: begin
                                 cop0_info_out.TLBP = 1'b1;
+                                signsD.flush_all = 1'b1;
                             end
                             `FUN_ERET: begin
                                 eret_inst = 1'b1;

@@ -163,6 +163,12 @@
 `define OP_SLTI         6'b001010
 `define OP_SLTIU        6'b001011   
 `define OP_COP0_INST    6'b010000
+`define OP_LWR          6'b100110
+`define OP_SC           6'b111000
+`define OP_SWL          6'b101010
+`define OP_SWR          6'b101110
+`define OP_LL           6'b110000
+`define OP_LWL          6'b100010
 
 // # ALU OP
 // ## special1
@@ -221,12 +227,6 @@
 
 // # 特殊指令类型
 `define EXE_ERET 32'b01000010000000000000000000011000 // 特权指令
-// `define EXE_LWR  6'b100110
-// `define EXE_SC  6'b111000
-// `define EXE_SWL  6'b101010
-// `define EXE_SWR  6'b101110
-// `define EXE_LL  6'b110000
-// `define EXE_LWL  6'b100010
 `define RS_MTC0 5'b00100
 `define RS_MFC0 5'b00000
 `define RS_CO   5'b10000

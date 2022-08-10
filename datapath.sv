@@ -66,6 +66,7 @@ wire            M_flush;
 wire            W_flush;
 wire            E_alu_stall;
 wire            E_tlb_stall;
+wire            delay_slot_flush;
 ctrl_sign       D1cs,D2cs;
 ctrl_sign       E1cs,E2cs;
 ctrl_sign       M1cs,M2cs;
@@ -180,6 +181,7 @@ wire [31:0]     M_master_alu_res,M_slave_alu_res;
 wire [ 4:0]     M_master_reg_waddr,M_slave_reg_waddr;
 except_bus      M_master_except,M_slave_except;
 wire            M_master_is_in_delayslot, M_slave_is_in_delayslot;
+wire [31:0]     M_master_pc_plus4;
 wire [31:0]     mem_rdataM;
 wire            mem_enM;
 wire            mem_renM;
@@ -218,7 +220,7 @@ hazard u_hazard(
     .E_jump_conflict            ( E_master_jump_conflict     ),
     .D_pred_take                ( D_master_pred_take         ),
     .D_jump_take                ( D_master_jump_take         ),
-    .D_flush_all                ( D1cs.flush_all             ),
+    .M_flush_all                ( M1cs.flush_all             ),
     .F_ena                      ( F_ena                      ),
     .D_ena                      ( D_ena                      ),
     .E_ena                      ( E_ena                      ),
@@ -228,7 +230,8 @@ hazard u_hazard(
     .D_flush                    ( D_flush                    ),
     .E_flush                    ( E_flush                    ),
     .M_flush                    ( M_flush                    ),
-    .W_flush                    ( W_flush                    )
+    .W_flush                    ( W_flush                    ),
+    .delay_slot_flush           ( delay_slot_flush           )
 );
 
 
@@ -256,8 +259,8 @@ pc_reg u_pc_reg(
     .E_pc_plus8               ( E_master_pc_plus8        ),
     .E_jump_conflict          ( E_master_jump_conflict   ),
     .E_rs_value               ( E_master_rs_value        ),
-    .D_flush_all              ( D1cs.flush_all           ),
-    .D_flush_all_addr         ( D_master_pc_plus4        ),
+    .M_flush_all              ( M1cs.flush_all           ),
+    .M_flush_all_addr         ( M_master_pc_plus4        ),
     .D_branch_take            ( D_master_pred_take       ),
     .D_branch_target          ( D_master_branch_target   ),
     .D_jump_take              ( D_master_jump_take       ),
@@ -277,8 +280,8 @@ inst_fifo u_inst_fifo(
     //ports
     .clk                          ( clk                    ),
     .rst                          ( rst                    ),
-    .fifo_rst                     ( rst | D_flush | D1cs.flush_all   ),
-    .flush_delay_slot             ( M_cp0_jump | D1cs.flush_all      ),
+    .fifo_rst                     ( rst | D_flush          ),
+    .flush_delay_slot             ( delay_slot_flush       ),
     .D_ena                        ( D_ena                  ),
     .master_is_branch             ( D_master_is_bj         ), // D阶段的branch
     .delay_rst                    ( D_delay_rst            ), // next_master_is_in_delayslot
@@ -860,6 +863,7 @@ ex_mem u_ex_mem(
     .M_slave_alu_res            ( M_slave_alu_res             )
 );
 
+assign M_master_pc_plus4 = M_master_pc + 32'd4;
 d_tlb dtlb_inst(
     .clk                ( clk               ),
     .rst                ( rst               ),
