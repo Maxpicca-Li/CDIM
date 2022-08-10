@@ -8,6 +8,10 @@ module id_ex(
     input logic ena1,
     input logic ena2,
 
+    input  logic [31:0]     D_mem_rs_value,
+    input  logic [31:0]     D_mem_imm_value,
+    output logic [31:0]     E_mem_rs_value,
+    output logic [31:0]     E_mem_imm_value,
     input  ctrl_sign        D_master_ctrl_sign,
     input  except_bus       D_master_except,
     input  cop0_info        D_master_cop0_info,
@@ -91,6 +95,8 @@ module id_ex(
 
     always @(posedge clk) begin
         if(rst | clear1) begin
+            E_mem_rs_value <= 0;
+            E_mem_imm_value <= 0;
             E_master_ctrl_sign <= 0;
             E_master_except <= 0;
             E_master_cop0_info <= 0;
@@ -116,6 +122,8 @@ module id_ex(
             E_master_branch_target <= 0;
         end
         else if (ena1) begin
+            E_mem_rs_value <= D_mem_rs_value;
+            E_mem_imm_value <= D_mem_imm_value;
             E_master_ctrl_sign <= D_master_ctrl_sign;
             E_master_except <= D_master_except;
             E_master_cop0_info <= D_master_cop0_info;
