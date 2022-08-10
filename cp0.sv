@@ -188,7 +188,7 @@ always_comb begin : tlb2_match
         tlb2_i = tlb2_index[$clog2(NR_TLB_ENTRY)-1:0];
         if ((tlb[tlb2_i].G || tlb[tlb2_i].ASID == entryhi_reg.ASID) && tlb2_vpn2 == tlb[tlb2_i].VPN2) begin
             tlb2_found = 1'b1;
-            tlb2_entry = tlb[tlb1_i];
+            tlb2_entry = tlb[tlb2_i];
         end
     end
 end
@@ -323,6 +323,7 @@ always_ff @(posedge clk) begin // note: mtc0 should be done in exec stage.
             endcase
         end // mtc0 }
         else if (E_cop0_info.TLBWI) begin
+            $display("write tlb to index %d\n", index_reg.index);
             tlb[index_reg.index] <= '{
                 default: '0,
                 G: (entrylo0_reg.G & entrylo1_reg.G),
@@ -339,6 +340,7 @@ always_ff @(posedge clk) begin // note: mtc0 should be done in exec stage.
             };
         end
         else if (E_cop0_info.TLBWR) begin
+            $display("write tlb to index %d\n", random_reg[$clog2(NR_TLB_ENTRY)-1:0]);
             tlb[random_reg[$clog2(NR_TLB_ENTRY)-1:0]] <= '{
                 default: '0,
                 G: (entrylo0_reg.G & entrylo1_reg.G),
