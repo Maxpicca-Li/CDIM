@@ -357,6 +357,20 @@ module  decoder(
                 signsD.reg_write = 1'b1;
                 signsD.read_rs = 1'b1;
             end
+            `OP_LWL   : begin
+                signsD.mem_en = 1'b1;
+                signsD.mem_read = 1'b1; signsD.mem_write_reg = 1'b1;
+                signsD.reg_write = 1'b1;
+                signsD.read_rs = 1'b1;
+                signsD.read_rt = 1'b1; // need initial contents of dest register
+            end
+            `OP_LWR   : begin
+                signsD.mem_en = 1'b1;
+                signsD.mem_read = 1'b1; signsD.mem_write_reg = 1'b1;
+                signsD.reg_write = 1'b1;
+                signsD.read_rs = 1'b1;
+                signsD.read_rt = 1'b1; // need initial contents of dest register
+            end
             `OP_SB    : begin
                 signsD.mem_en = 1'b1;
                 signsD.mem_write = 1'b1;
@@ -370,6 +384,18 @@ module  decoder(
                 signsD.read_rt = 1'b1;
             end
             `OP_SW    : begin
+                signsD.mem_en = 1'b1;
+                signsD.mem_write = 1'b1;
+                signsD.read_rs = 1'b1;
+                signsD.read_rt = 1'b1;
+            end
+            `OP_SWL   : begin
+                signsD.mem_en = 1'b1;
+                signsD.mem_write = 1'b1;
+                signsD.read_rs = 1'b1;
+                signsD.read_rt = 1'b1;
+            end
+            `OP_SWR   : begin
                 signsD.mem_en = 1'b1;
                 signsD.mem_write = 1'b1;
                 signsD.read_rs = 1'b1;
@@ -581,6 +607,10 @@ module  decoder(
             `OP_LH    : reg_waddr = rt;
             `OP_LHU   : reg_waddr = rt;
             `OP_LW    : reg_waddr = rt;
+            `OP_LL    : reg_waddr = rt;
+            `OP_LWL   : reg_waddr = rt;
+            `OP_LWR   : reg_waddr = rt;
+            `OP_SC    : reg_waddr = rt;
             // arith imme
             `OP_ADDI  : reg_waddr = rt;
             `OP_ADDIU : reg_waddr = rt;

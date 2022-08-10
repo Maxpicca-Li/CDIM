@@ -206,8 +206,6 @@
 `define ALUOP_DIVU      8'b00011011
 `define ALUOP_PREF      8'b11110011
 `define ALUOP_SC        8'b11111000
-`define ALUOP_SWL       8'b11101010
-`define ALUOP_SWR       8'b11101110
 `define ALUOP_SYNC      8'b00001111
 `define ALUOP_MFC0      8'b01011101
 `define ALUOP_ROTR      8'b00000101
