@@ -326,6 +326,8 @@ inst_fifo u_inst_fifo(
 // ====================================== Decode ======================================
 assign D_master_except = '{
     default     : '0,
+    if_tlbl     : D_master_tlb_refill | D_master_tlb_invalid,
+    if_tlbrf    : D_master_tlb_refill,
     if_adel     : (|D_master_pc[1:0]), // TODO: move to if
     id_ri       : D_master_undefined_inst,
     id_syscall  : D_master_syscall_inst,
@@ -336,6 +338,8 @@ assign D_master_except = '{
 };
 assign D_slave_except = '{
     default     : '0,
+    if_tlbl     : D_slave_tlb_refill | D_slave_tlb_invalid,
+    if_tlbrf    : D_slave_tlb_refill,
     if_adel     : (|D_slave_pc[1:0]), // TODO: move to if
     id_ri       : D_slave_undefined_inst,
     id_syscall  : D_slave_syscall_inst,

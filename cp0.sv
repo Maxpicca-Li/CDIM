@@ -67,7 +67,7 @@ logic [31:0]    epc_reg;
 logic [31:0]    prid = 32'h00018003;
 logic [31:0]    ebase_reg;
 cp0_config0     config0 = '{default: '0, k0: 3'b011, MT: 3'd1, M: 1'b1};
-cp0_config1     config1 = '{default: '0, DA: 3'd1, DL: 3'd4, DS: 3'd1, IA: 3'd1, IL: 3'd4, IS: 3'd1, MS: NR_TLB_ENTRY - 1};
+cp0_config1     config1 = '{default: '0, DA: 3'd1, DL: 3'd5, DS: 3'd0, IA: 3'd1, IL: 3'd5, IS: 3'd0, MS: NR_TLB_ENTRY - 1};
 logic [31:0]    taglo_reg;
 logic [31:0]    taghi_reg;
 logic [31:0]    errorepc_reg;
@@ -323,7 +323,6 @@ always_ff @(posedge clk) begin // note: mtc0 should be done in exec stage.
             endcase
         end // mtc0 }
         else if (E_cop0_info.TLBWI) begin
-            $display("write tlb to index %d\n", index_reg.index);
             tlb[index_reg.index] <= '{
                 default: '0,
                 G: (entrylo0_reg.G & entrylo1_reg.G),
@@ -340,7 +339,6 @@ always_ff @(posedge clk) begin // note: mtc0 should be done in exec stage.
             };
         end
         else if (E_cop0_info.TLBWR) begin
-            $display("write tlb to index %d\n", random_reg[$clog2(NR_TLB_ENTRY)-1:0]);
             tlb[random_reg[$clog2(NR_TLB_ENTRY)-1:0]] <= '{
                 default: '0,
                 G: (entrylo0_reg.G & entrylo1_reg.G),
