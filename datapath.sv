@@ -328,7 +328,7 @@ assign D_master_except = '{
     default     : '0,
     if_tlbl     : D_master_tlb_refill | D_master_tlb_invalid,
     if_tlbrf    : D_master_tlb_refill,
-    if_adel     : (|D_master_pc[1:0]), // TODO: move to if
+    if_adel     : (|D_master_pc[1:0]) | (D_master_pc[31] & !D_kernel_mode),
     id_ri       : D_master_undefined_inst,
     id_syscall  : D_master_syscall_inst,
     id_break    : D_master_break_inst,
@@ -340,7 +340,7 @@ assign D_slave_except = '{
     default     : '0,
     if_tlbl     : D_slave_tlb_refill | D_slave_tlb_invalid,
     if_tlbrf    : D_slave_tlb_refill,
-    if_adel     : (|D_slave_pc[1:0]), // TODO: move to if
+    if_adel     : (|D_slave_pc[1:0]) | (D_slave_pc[31] & !D_kernel_mode),
     id_ri       : D_slave_undefined_inst,
     id_syscall  : D_slave_syscall_inst,
     id_break    : D_slave_break_inst,
@@ -771,6 +771,7 @@ assign E_master_mem_addr = E_master_rs_value + E_master_imm_value;
 assign E_slave_mem_addr = E_slave_rs_value + E_slave_imm_value; 
 
 // Note: only care about except signals from D for load/store.
+// FIXME: add adel/ades exception when reading kernel memory in usermode.
 struct_conflict u_struct_conflict(
     // datapath ctrl
     .E_exp1             ( |E_master_except_temp ),
