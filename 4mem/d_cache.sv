@@ -89,19 +89,35 @@ wire store_buffer_has_next = store_buffer_ctrl.ptr_begin != store_buffer_ctrl.pt
 wire store_buffer_busy = store_buffer_has_next | store_buffer_ctrl.axi_busy;
 wire store_buffer_full = (store_buffer_ctrl.ptr_end + 3'd1) == store_buffer_ctrl.ptr_begin;
 
+// replace & fence control
+wire [LEN_PER_WAY-1:LEN_LINE]   fence_line_addr = M_fence_addr[LEN_PER_WAY-1:LEN_LINE];
+logic [LEN_LINE-1:2] axi_rcnt; // cache -> axi_w cnt
+logic [LEN_LINE-1:2] axi_wcnt; // axi_r -> cache cnt
+logic [LEN_PER_WAY-1:2] bram_replace_addr;
+logic [$clog2(NR_WORDS):0] bram_replace_cnt; // cnt itself can be send to axi (by mux cache_data[i] and bram_r_buffer), cnt - 1 can be read from bram_r_buffer
+logic [31:0] bram_r_buffer [NR_WORDS-1:0];
+logic bram_use_replace_addr;
+logic bram_data_valid;
+logic fence_working;
+logic aw_handshake;
+wire fence_way = meta[fence_line_addr].dirty[1] ? 1'b1 : 1'b0;
+// TODO: If we changed NR_WAYS, we should add judge to each way
+
 // dcache bram
 wire [31:LEN_PER_WAY] addr_tag = M_mem_pa[31:LEN_PER_WAY];
-wire bram_addr_choose = (dcache_status != IDLE && dcache_status != SAVE_RESULT); // 1: M_mem_pa, 0: E_mem_pa
-wire [LEN_PER_WAY-1:2]          bram_word_addr = bram_addr_choose ? E_mem_pa[LEN_PER_WAY-1:2]        : M_mem_pa[LEN_PER_WAY-1:2];
-wire [LEN_PER_WAY-1:LEN_LINE]   bram_line_addr = bram_addr_choose ? E_mem_pa[LEN_PER_WAY-1:LEN_LINE] : M_mem_pa[LEN_PER_WAY-1:LEN_LINE];
+wire bram_addr_choose = (dcache_status != IDLE && dcache_status != SAVE_RESULT); // 1: M_mem_pa or M_fence_addr, 0: E_mem_pa
 
+// FIXME: fix M_fence_addr
+wire [LEN_PER_WAY-1:2]          bram_word_addr = bram_use_replace_addr ? bram_replace_addr : (bram_addr_choose ? M_mem_pa[LEN_PER_WAY-1:2] : E_mem_pa[LEN_PER_WAY-1:2]);
+wire [LEN_PER_WAY-1:LEN_LINE]   bram_line_addr = bram_use_replace_addr ? bram_replace_addr[LEN_PER_WAY-1:LEN_LINE] : (bram_addr_choose ? M_mem_pa[LEN_PER_WAY-1:LEN_LINE] : E_mem_pa[LEN_PER_WAY-1:LEN_LINE]);
 wire [31:0] bram_rdata;
 
 wire [LEN_PER_WAY-1:2] tag_read_addr;
 wire [LEN_PER_WAY-1:2] data_read_addr;
 wire [LEN_PER_WAY-1:2] data_write_addr;
-logic [LEN_PER_WAY-1:LEN_LINE] replace_line_addr;
 
+wire data_bram_wdata_sel = dcache_status == CACHE_REPLACE; // 1: axi rdata, 0: M_wdata
+wire [31:0] data_bram_wdata = data_bram_wdata_sel ? rdata : M_wdata;
 
 wire [31:0] cache_data [NR_WAYS-1:0];
 dcache_tag cache_tag[NR_WAYS-1:0];
@@ -116,25 +132,28 @@ wire cache_hit = |tag_compare_valid;
 
 wire cache_hit_available = cache_hit && !M_mem_uncached;
 
+// stall control
 wire mmio_read_stall = M_mem_en && M_mem_uncached && !M_mem_write && dcache_status != SAVE_RESULT;
 wire mmio_write_stall = (M_mem_en && M_mem_uncached && M_mem_write && (dcache_status != IDLE || store_buffer_full) );
 wire cached_stall = M_mem_en & (!M_mem_uncached) & !cache_hit;
+wire fence_stall = M_fence_d && dcache_status != SAVE_RESULT;
 
 // Note: If NR_WAYS > 2, we should mux one hot from tag_compare_valid;
 wire d_cache_sel = tag_compare_valid[1];
 
 wire [LEN_PER_WAY-1:LEN_LINE] pa_line_addr = M_mem_pa[LEN_PER_WAY-1:LEN_LINE];
-wire [LEN_PER_WAY-1:LEN_LINE] fence_index = M_fence_addr[LEN_PER_WAY-1:LEN_LINE];
 
 assign dstall = dcache_status == IDLE ? ((cached_stall | mmio_read_stall | mmio_write_stall) | M_fence_d) : (dcache_status != SAVE_RESULT);
 
 logic [31:0] saved_rdata;
 
-assign M_rdata = dcache_status == SAVE_RESULT ? saved_rdata : 32'd0;
+// forward last stored data in data bram
+logic [LEN_PER_WAY-1:2] last_line_addr; // two way shared
+logic [31:0] last_wea [NR_WAYS-1:0]; // assume only write one way at a time
+logic [31:0] last_wdata; // two way shared
+wire [31:0] cache_data_forward [NR_WAYS-1:0];
 
-// axi ctrl
-logic [LEN_LINE:2] axi_rcnt;
-logic [LEN_LINE:2] axi_wcnt;
+assign M_rdata = dcache_status == SAVE_RESULT ? saved_rdata : cache_data_forward[d_cache_sel];
 
 // generate bram
 genvar i;
@@ -147,7 +166,7 @@ generate
             .ena    (1'b1),
             .enb    (1'b1),
             .addra  (data_write_addr),
-            .dina   (rdata),
+            .dina   (data_bram_wdata),
             .wea    (data_wea[i]),
             .addrb  (bram_word_addr),
             .doutb  (cache_data[i])
@@ -158,15 +177,35 @@ generate
             .clkb   (clk),
             .ena    (1'b1),
             .enb    (1'b1),
-            .addra  (replace_line_addr),
+            .addra  (bram_replace_addr[LEN_PER_WAY-1:LEN_LINE]),
             .dina   (tag_ram_wdata),
             .wea    (tag_wea[i]),
             .addrb  (bram_line_addr),
             .doutb  (cache_tag[i])
         );
         assign tag_compare_valid[i] = cache_tag[i].tag == addr_tag && meta[pa_line_addr].valid[i];
+        assign cache_data_forward[i] = (last_wea[i] & last_wdata) | (cache_data[i] & (~last_wea[i]));
+        always_ff @(posedge clk) begin
+            if (rst) begin
+                last_wea[i] <= 0;
+            end
+            else begin
+                last_wea[i] <= {{8{data_wea[i][3]}},{8{data_wea[i][2]}},{8{data_wea[i][1]}},{8{data_wea[i][0]}}};
+            end
+        end
     end
 endgenerate
+// save last_line_addr
+always_ff @(posedge clk) begin
+    if (rst) begin
+        last_line_addr <= 0;
+        last_wdata <= 0;
+    end
+    else begin
+        last_line_addr <= bram_word_addr;
+        last_wdata <= data_bram_wdata;
+    end
+end
 
 // axi bready
 assign bready = 1'b1;
@@ -177,9 +216,16 @@ always_ff @(posedge clk) begin
         // clear store buffer
         store_buffer_ctrl <= 0;
         current_mmio_write_saved <= 0;
-        // clear axi ctrl
+        // clear replace ctrl
         axi_rcnt <= 0;
         axi_wcnt <= 0;
+        bram_replace_addr <= 0;
+        bram_replace_cnt <= 0;
+        bram_r_buffer <= '{default: '0};
+        bram_use_replace_addr <= 0;
+        bram_data_valid <= 0;
+        fence_working <= 0;
+        aw_handshake <= 0;
         // clear saved rdata
         saved_rdata <= 0;
         // clear axi
@@ -270,6 +316,21 @@ always_ff @(posedge clk) begin
                         // TODO: cached
                     end
                 end
+                else if (M_fence_d) begin
+                    if (|meta[fence_line_addr].dirty) begin
+                        dcache_status <= CACHE_WRITEBACK;
+                        axi_rcnt <= 0;
+                        axi_wcnt <= 0;
+                        bram_replace_addr <= {M_fence_addr[LEN_PER_WAY-1:LEN_LINE],{LEN_LINE-2{1'b0}}};
+                        bram_replace_cnt <= 0;
+                        bram_use_replace_addr <= 1'b1;
+                        bram_data_valid <= 0;
+                    end
+                    else if (|meta[fence_line_addr].valid) begin
+                        meta[fence_line_addr].valid <= 0;
+                        dcache_status <= SAVE_RESULT;
+                    end
+                end
             end
             UNCACHED_READ: begin
                 if (arvalid && arready) begin
@@ -280,9 +341,50 @@ always_ff @(posedge clk) begin
                     dcache_status <= SAVE_RESULT;
                 end
             end
-            CACHE_WRITEBACK: begin // cache op
+            CACHE_WRITEBACK: begin // CACHE Instruction
+                if (fence_working) begin
+                    bram_r_buffer[bram_replace_addr[LEN_LINE-1:2]] <= cache_data[fence_way];
+                    if (!aw_handshake) begin
+                        awaddr <= {cache_tag[fence_way].tag,fence_line_addr,{LEN_LINE{1'b0}}};
+                        awlen <= NR_WORDS - 1;
+                        awsize <= 3'd2;
+                        awvalid <= 1'b1;
+                        wdata <= cache_data[fence_way];
+                        wstrb <= 4'b1111;
+                        wlast <= NR_WORDS == 1 ? 1'b1 : 1'b0;
+                        wvalid <= 1'b1;
+                        aw_handshake <= 1'b1;
+                    end
+                    if (awvalid & awready) begin
+                        awvalid <= 1'b0;
+                    end
+                    if (bram_replace_addr[LEN_LINE-1:2] != NR_WORDS - 1) begin
+                        bram_replace_addr <= bram_replace_addr + 1;
+                    end
+                    if (wvalid & wready) begin
+                        if (wlast) begin
+                            wvalid <= 1'b0;
+                            meta[fence_line_addr].dirty[fence_way] <= 1'b0;
+                            fence_working <= 1'b0;
+                            bram_use_replace_addr <= 1'b0;
+                            dcache_status <= IDLE;
+                        end
+                        else begin
+                            wdata <= ((axi_wcnt + 1'b1) == bram_replace_addr[LEN_LINE-1:2]) ? cache_data[fence_way] : bram_r_buffer[axi_wcnt + 1'b1];
+                            axi_wcnt <= axi_wcnt + 1;
+                            if ({1'b0,axi_wcnt} + 1'b1 == NR_WORDS) begin
+                                wlast <= 1'b1;
+                            end
+                        end
+                    end
+                end
+                else begin
+                    aw_handshake <= 1'b0;
+                    fence_working <= 1'b1;
+                end
             end
             CACHE_REPLACE: begin
+                // TODO
             end
             SAVE_RESULT: begin
                 if (!dstall && !stallM) begin
