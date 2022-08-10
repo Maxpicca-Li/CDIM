@@ -272,7 +272,7 @@
 `define CP0_REG_STATUS      5'd12
 `define CP0_REG_CAUSE       5'd13
 `define CP0_REG_EPC         5'd14
-`define CP0_REG_PRID        5'd15   // Note: ebase is optional, so we didn't implement it.
+`define CP0_REG_PRID_EBASE  5'd15   // Note: ebase is optional, so we didn't implement it.
 `define CP0_REG_CONFIG      5'd16
 `define CP0_REG_TAGLO       5'd28
 `define CP0_REG_TAGHI       5'd29

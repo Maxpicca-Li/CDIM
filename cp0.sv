@@ -65,7 +65,7 @@ cp0_status      status_reg = '{default: '0, BEV: 1'b1};
 cp0_cause       cause_reg;
 logic [31:0]    epc_reg;
 logic [31:0]    prid = 32'h00018003;
-logic [31:0]    ebase = 32'h80000000; // Note: ebase is not changeable
+logic [31:0]    ebase_reg;
 cp0_config0     config0 = '{default: '0, k0: 3'b011, MT: 3'd1, M: 1'b1};
 cp0_config1     config1 = '{default: '0, DA: 3'd1, DL: 3'd4, DS: 3'd1, IA: 3'd1, IL: 3'd4, IS: 3'd1, MS: NR_TLB_ENTRY - 1};
 logic [31:0]    taglo_reg;
@@ -101,7 +101,16 @@ always_comb begin : mfc0_read
         `CP0_REG_STATUS: E_mfc0_rdata = status_reg;
         `CP0_REG_CAUSE: E_mfc0_rdata = cause_reg;
         `CP0_REG_EPC: E_mfc0_rdata = epc_reg;
-        `CP0_REG_PRID: E_mfc0_rdata = prid;
+        `CP0_REG_PRID_EBASE: begin
+            case (E_cop0_info.sel_addr)
+                0:
+                    E_mfc0_rdata = prid;
+                1:
+                    E_mfc0_rdata = ebase_reg;
+                default:
+                    E_mfc0_rdata = 0;
+            endcase 
+        end
         `CP0_REG_CONFIG: begin
             case (E_cop0_info.sel_addr)
                 0:
@@ -119,7 +128,7 @@ always_comb begin : mfc0_read
     endcase
 end
 
-wire [31:0] trap_base = status_reg.BEV ? 32'hbfc00200 : 32'h80000000;
+wire [31:0] trap_base = status_reg.BEV ? 32'hbfc00200 : ebase_reg;
 wire i_tlb_rf = (except.if_tlbl & except.if_tlbrf);
 wire d_tlb_rf = ((~(|{except.if_adel,except.if_tlbl})) & (except.ex_tlbl | except.ex_tlbs) & except.ex_tlbrf);
 wire tlb_rf = i_tlb_rf | d_tlb_rf;
@@ -212,6 +221,7 @@ always_ff @(posedge clk) begin // note: mtc0 should be done in exec stage.
         status_reg <= '{default: '0, BEV: 1'b1};
         cause_reg <= 0;
         epc_reg <= 0;
+        ebase_reg <= 32'h80000000;
         taglo_reg <= 0;
         taghi_reg <= 0;
         errorepc_reg <= 0;
@@ -299,6 +309,11 @@ always_ff @(posedge clk) begin // note: mtc0 should be done in exec stage.
                     cause_reg.IV <= cause_wdata.IV;
                 end
                 `CP0_REG_EPC: epc_reg <= E_mtc0_wdata;
+                `CP0_REG_PRID_EBASE: begin
+                    if (E_cop0_info.sel_addr == 1) begin
+                        ebase_reg[29:0] <= E_mtc0_wdata[29:0];
+                    end
+                end
                 `CP0_REG_TAGLO: taglo_reg <= E_mtc0_wdata;
                 `CP0_REG_TAGHI: taghi_reg <= E_mtc0_wdata;
                 `CP0_REG_ERREPC: errorepc_reg <= E_mtc0_wdata;
