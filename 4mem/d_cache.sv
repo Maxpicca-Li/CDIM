@@ -2,7 +2,7 @@ module d_cache #(
     parameter LEN_LINE = 6,  // 64 Bytes
     parameter LEN_INDEX = 6, // 64 lines
     parameter NR_WAYS = 2,
-    parameter SIZE_STORE_BUFFER = 8
+    parameter SIZE_STORE_BUFFER = 16
 ) (
     input               clk,
     input               rst,
@@ -87,7 +87,7 @@ store_buffer_control store_buffer_ctrl;
 logic current_mmio_write_saved;
 wire store_buffer_has_next = store_buffer_ctrl.ptr_begin != store_buffer_ctrl.ptr_end;
 wire store_buffer_busy = store_buffer_has_next | store_buffer_ctrl.axi_busy;
-wire store_buffer_full = (store_buffer_ctrl.ptr_end + 3'd1) == store_buffer_ctrl.ptr_begin;
+wire store_buffer_full = (store_buffer_ctrl.ptr_end + 4'd1) == store_buffer_ctrl.ptr_begin;
 
 // replace & fence control
 wire [LEN_PER_WAY-1:LEN_LINE]   fence_line_addr = M_fence_addr[LEN_PER_WAY-1:LEN_LINE];
@@ -189,7 +189,7 @@ generate
             .doutb  (cache_tag[i])
         );
         assign tag_compare_valid[i] = cache_tag[i].tag == addr_tag && meta[pa_line_addr].valid[i];
-        assign cache_data_forward[i] = last_line_addr == bram_word_addr ? ((last_wea[i] & last_wdata) | (cache_data[i] & (~last_wea[i]))) : cache_data[i];
+        assign cache_data_forward[i] = last_line_addr == M_mem_pa[LEN_PER_WAY-1:2] ? ((last_wea[i] & last_wdata) | (cache_data[i] & (~last_wea[i]))) : cache_data[i];
         assign data_wea[i] = (tag_compare_valid[i] && M_mem_en && M_mem_write && !M_mem_uncached && dcache_status == IDLE) ? M_wmask :  bram_replace_wea[i];
         always_ff @(posedge clk) begin
             if (rst) begin
@@ -276,7 +276,7 @@ always_ff @(posedge clk) begin
                         wstrb <= store_buffer[store_buffer_ctrl.ptr_begin].wstrb;
                         wlast <= 1'b1;
                         wvalid <= 1'b1;
-                        store_buffer_ctrl.ptr_begin <= store_buffer_ctrl.ptr_begin + 3'd1;
+                        store_buffer_ctrl.ptr_begin <= store_buffer_ctrl.ptr_begin + 1;
                     end
                     else begin
                         wvalid <= 0;
@@ -294,7 +294,7 @@ always_ff @(posedge clk) begin
                 wstrb <= store_buffer[store_buffer_ctrl.ptr_begin].wstrb;
                 wlast <= 1'b1;
                 wvalid <= 1'b1;
-                store_buffer_ctrl.ptr_begin <= store_buffer_ctrl.ptr_begin + 3'd1;
+                store_buffer_ctrl.ptr_begin <= store_buffer_ctrl.ptr_begin + 1;
                 store_buffer_ctrl.axi_busy <= 1'b1;
             end
         end
@@ -310,7 +310,7 @@ always_ff @(posedge clk) begin
                                     wstrb: M_wmask,
                                     wdata: M_wdata
                                 };
-                                store_buffer_ctrl.ptr_end <= store_buffer_ctrl.ptr_end + 3'd1;
+                                store_buffer_ctrl.ptr_end <= store_buffer_ctrl.ptr_end + 1;
                                 current_mmio_write_saved <= 1'b1;
                             end
                             if (!dstall && !stallM) begin
