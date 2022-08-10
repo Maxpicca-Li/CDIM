@@ -222,7 +222,7 @@ module mycpu_top (
         .M_fence_d          ( 0             ), // fence address reuse the M_memva. Note: we shouldn't raise M_fence_en with M_mem_en.
         .M_mem_en           ( data_en       ),
         .M_mem_write        ( |data_wen     ),
-        .M_mem_uncached     ( 1'b1          ), // TODO: connect to no_cache_d
+        .M_mem_uncached     ( no_cache_d    ), // TODO: connect to no_cache_d
         .M_wmask            ( data_wen      ),
         .M_mem_size         ( data_rlen     ),
         .M_wdata            ( data_wdata    ),
