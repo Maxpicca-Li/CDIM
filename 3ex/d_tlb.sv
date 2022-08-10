@@ -144,6 +144,7 @@ else begin
     // refill fsm
     always_ff @(posedge clk) begin
         if (rst) begin
+            dtlb <= '{default: '0};
             dtlb_valid <= 0;
             dtlb_status <= IDLE;
             E_tlb_refill <= 0;

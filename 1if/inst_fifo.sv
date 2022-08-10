@@ -65,7 +65,7 @@ module inst_fifo(
     assign read_data2        = read_line2.data;
 
     // fifo状态
-    assign full     = &data_count[3:1] || (write_pointer+1==read_pointer); // 1110(装不下两条指令了) 
+    assign full     = &data_count[3:1] || (write_pointer+4'd1==read_pointer); // 1110(装不下两条指令了) 
     assign empty    = (data_count == 4'd0); //0000
     assign almost_empty = (data_count == 4'd1); //0001
 
@@ -95,7 +95,7 @@ module inst_fifo(
     always_ff @(posedge clk) begin // 下一条指令在需要执行的延迟槽中
         if(fifo_rst && delay_rst & !flush_delay_slot) begin // 初步判断
             delayslot_enable <= 1'b1;
-            delayslot_line   <= (read_pointer + 4'd1 == write_pointer || read_pointer == write_pointer) ? write_line1 : lines[read_pointer + 1];
+            delayslot_line   <= (read_pointer + 4'd1 == write_pointer || read_pointer == write_pointer) ? write_line1 : lines[read_pointer + 4'd1];
         end
         else if(delayslot_stall && write_en1) begin // 要写的数据回来了
             delayslot_line   <= write_line1;
@@ -140,7 +140,7 @@ module inst_fifo(
         else begin
             // 可以取两条数据
             read_line1 = lines[read_pointer];
-            read_line2 = lines[read_pointer + 1];
+            read_line2 = lines[read_pointer + 4'd1];
         end
     end
 
@@ -150,7 +150,7 @@ module inst_fifo(
             lines[write_pointer] <= write_line1;
         end
         if(write_en2) begin
-            lines[write_pointer + 1] <= write_line2;
+            lines[write_pointer + 4'd1] <= write_line2;
         end
     end
     

@@ -217,10 +217,16 @@ always_ff @(posedge clk) begin // Cache FSM
                         icache_status <= CACHE_REPLACE;
                         axi_cnt <= 0;
                     end
-                    else if (!istall && !stallF) begin
+                    else if (!istall) begin
                         // Update LRU when icache hit
                         // Note: If NR_WAYS > 2, we should implement pseudo-LRU or LFSR.
                         meta[va_line_addr].LRU <= ~i_cache_sel;
+                        if (stallF) begin
+                            icache_status <= SAVE_RESULT;
+                            saved_inst1 <= cache_inst1;
+                            saved_inst_ok0 <= cache_inst_ok0;
+                            saved_inst_ok1 <= cache_inst_ok1;
+                        end
                     end
                 end
             end
