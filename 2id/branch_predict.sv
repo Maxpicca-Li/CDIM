@@ -1,4 +1,7 @@
-module branch_predict (
+module branch_predict #(
+    parameter PHT_DEPTH = 6,
+    parameter BHT_DEPTH = 5
+) (
     input wire clk, rst,
     input wire [31:0] instrD,
 
@@ -19,8 +22,6 @@ module branch_predict (
     assign branch_targetD = pc_plus4D + {{14{instrD[15]}},instrD[15:0], 2'b00};  // branch为有符号扩展
 
     localparam Strongly_not_taken = 2'b00, Weakly_not_taken = 2'b01, Weakly_taken = 2'b11, Strongly_taken = 2'b10;
-    localparam PHT_DEPTH = 6;
-    localparam BHT_DEPTH = 6;
 
     reg [5:0] BHT [(1<<BHT_DEPTH)-1 : 0];
     reg [1:0] PHT [(1<<PHT_DEPTH)-1:0];
