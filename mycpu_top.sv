@@ -74,9 +74,11 @@ module mycpu_top (
     wire inst_tlb_invalid   ;
     wire [31:0] inst_rdata1 ;
     wire [31:0] inst_rdata2 ;
-    wire        fence_i;
-    wire [31:0] fence_addr;
-    wire        fence_tlb;
+    wire        fence_iE;
+    wire [31:0] fence_addrE;
+    wire        fence_dM;
+    wire [31:0] fence_addrM;
+    wire        fence_tlbE;
     wire [31:13]itlb_vpn2;
     wire        itlb_found;
     tlb_entry   itlb_entry;
@@ -151,9 +153,11 @@ module mycpu_top (
         .inst_tlb_invalid       ( inst_tlb_invalid          ),
         .inst_rdata1       		( inst_rdata1       		),
         .inst_rdata2       		( inst_rdata2       		),
-        .fence_i                ( fence_i                   ),
-        .fence_addr             ( fence_addr                ),
-        .fence_tlb              ( fence_tlb                 ),
+        .fence_iE               ( fence_iE                  ),
+        .fence_addrE            ( fence_addrE               ),
+        .fence_dM               ( fence_dM                  ),
+        .fence_addrM            ( fence_addrM               ),
+        .fence_tlbE             ( fence_tlbE                ),
         .itlb_vpn2              ( itlb_vpn2                 ),
         .itlb_found             ( itlb_found                ),
         .itlb_entry             ( itlb_entry                ),
@@ -194,9 +198,9 @@ module mycpu_top (
         .inst_tlb_invalid   (inst_tlb_invalid ),
         .stallF             ( stallF        ),
         .istall             ( i_cache_stall ),
-        .fence_i            ( fence_i       ),
-        .fence_addr         ( fence_addr    ),
-        .fence_tlb          ( fence_tlb     ),
+        .fence_i            ( fence_iE      ),
+        .fence_addr         ( fence_addrE   ),
+        .fence_tlb          ( fence_tlbE    ),
         .itlb_vpn2          ( itlb_vpn2     ),
         .itlb_found         ( itlb_found    ),
         .itlb_entry         ( itlb_entry    ),
@@ -218,8 +222,8 @@ module mycpu_top (
         .dstall             ( d_cache_stall ),
         .E_mem_pa           ( mem_addrE     ), // only used for match bram
         .M_mem_pa           ( data_addr     ),
-        .M_fence_addr       ( 0             ), // used for fence
-        .M_fence_d          ( 0             ), // fence address reuse the M_memva. Note: we shouldn't raise M_fence_en with M_mem_en.
+        .M_fence_addr       ( fence_addrM   ), // used for fence
+        .M_fence_d          ( fence_dM      ), // fence address reuse the M_memva. Note: we shouldn't raise M_fence_en with M_mem_en.
         .M_mem_en           ( data_en       ),
         .M_mem_write        ( |data_wen     ),
         .M_mem_uncached     ( no_cache_d    ), // TODO: connect to no_cache_d

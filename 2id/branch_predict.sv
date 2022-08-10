@@ -1,6 +1,6 @@
 module branch_predict #(
     parameter PHT_DEPTH = 6,
-    parameter BHT_DEPTH = 5
+    parameter BHT_DEPTH = 4
 ) (
     input wire clk, rst,
     input wire [31:0] instrD,

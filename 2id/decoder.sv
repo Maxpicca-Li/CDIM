@@ -526,27 +526,35 @@ module  decoder(
                     `RS_MTC0: begin
                         signsD.read_rt = 1'b1;
                         signsD.cp0_write = 1'b1; // TODO: delete this signal
+                        signsD.tlb_fence = 1'b1;
                         cop0_info_out.mtc0_en = 1'b1;
                     end
                     `RS_CO: begin
                         case(funct)
                             `FUN_TLBR: begin
                                 cop0_info_out.TLBR = 1'b1;
+                                signsD.only_one_issue = 1'b1;
                                 signsD.flush_all = 1'b1;
+                                signsD.tlb_fence = 1'b1;
                             end
                             `FUN_TLBWI: begin
                                 cop0_info_out.TLBWI = 1'b1;
+                                signsD.only_one_issue = 1'b1;
                                 signsD.flush_all = 1'b1;
+                                signsD.tlb_fence = 1'b1;
                             end
                             `FUN_TLBWR: begin
                                 cop0_info_out.TLBWR = 1'b1;
+                                signsD.only_one_issue = 1'b1;
                                 signsD.flush_all = 1'b1;
                             end
                             `FUN_TLBP: begin
                                 cop0_info_out.TLBP = 1'b1;
+                                signsD.only_one_issue = 1'b1;
                                 signsD.flush_all = 1'b1;
                             end
                             `FUN_ERET: begin
+                                signsD.only_one_issue = 1'b1;
                                 eret_inst = 1'b1;
                             end
                             `FUN_WAIT: begin
@@ -561,6 +569,16 @@ module  decoder(
                         undefined_inst = 1'b1;
                     end
                 endcase
+            end
+            `OP_CACHE: begin
+                signsD.only_one_issue = 1'b1;
+                signsD.icache_fence = instr[16] == 1'b0;
+                signsD.dcache_fence = instr[16] == 1'b1;
+                signsD.read_rs = 1'b1;
+                signsD.aluop = `ALUOP_ADD; // base + offset (no mem_en, so put it in alu path)
+            end
+            `OP_PREF: begin
+                // as NOP
             end
             default: begin
                 undefined_inst = 1'b1;

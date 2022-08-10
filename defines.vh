@@ -169,6 +169,8 @@
 `define OP_SWR          6'b101110
 `define OP_LL           6'b110000
 `define OP_LWL          6'b100010
+`define OP_CACHE        6'b101111
+`define OP_PREF         6'b110011
 
 // # ALU OP
 // ## special1
@@ -420,6 +422,9 @@ typedef struct packed{
     logic hilo_write;
     logic may_bring_flush; // instruction which will bring flush
     logic only_one_issue;  // such as
+    logic icache_fence;
+    logic dcache_fence;
+    logic tlb_fence;
 } ctrl_sign;
 
 typedef struct packed {

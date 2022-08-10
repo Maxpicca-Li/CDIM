@@ -18,9 +18,11 @@ module datapath (
     input  wire [31:0] inst_rdata2,
     input  wire        inst_tlb_refill,
     input  wire        inst_tlb_invalid,
-    output wire        fence_i,
-    output wire [31:0] fence_addr,
-    output wire        fence_tlb,
+    output wire        fence_iE,
+    output wire [31:0] fence_addrE,
+    output wire        fence_dM,
+    output wire [31:0] fence_addrM,
+    output wire        fence_tlbE,
     input  wire [31:13]itlb_vpn2,
     output wire        itlb_found,
     output tlb_entry   itlb_entry,
@@ -234,6 +236,12 @@ hazard u_hazard(
     .delay_slot_flush           ( delay_slot_flush           )
 );
 
+// fence
+assign fence_iE = E1cs.icache_fence;
+assign fence_addrE = E_master_alu_res;
+assign fence_dM = E1cs.dcache_fence;
+assign fence_addrM = M_master_alu_res;
+assign fence_tlbE = E1cs.tlb_fence;
 
 // ====================================== Fetch ======================================
 // NOTE: 与i_stall有关的cache disable，一般修改stallF（即F_ena），而不是inst_sram_en，否则会loop
@@ -880,7 +888,7 @@ d_tlb dtlb_inst(
     // to l2 tlb
     .dtlb_vpn2          ( dtlb_vpn2         ),
     .dtlb_found         ( dtlb_found        ),
-    .fence_tlb          ( fence_tlb         ),
+    .fence_tlb          ( fence_tlbE        ),
     .dtlb_entry         ( dtlb_entry        )
 );
 
@@ -931,11 +939,6 @@ cp0 cp0_inst(
     .tlb2_found     ( dtlb_found                ),
     .tlb2_entry     ( dtlb_entry                )
 );
-
-// TODO: connect fence
-assign fence_i = 1'b0;
-assign fence_addr = E_master_pc; // used for test deadlock when fence_i = 1'b1
-assign fence_tlb = 1'b0;
 
 assign M_master_reg_wdata = M1cs.mem_write_reg  ? M_master_mem_rdata : M_master_alu_res;
 assign M_slave_reg_wdata  =  M2cs.mem_write_reg ? M_slave_mem_rdata  : M_slave_alu_res ;
