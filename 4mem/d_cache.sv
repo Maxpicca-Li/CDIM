@@ -189,7 +189,7 @@ generate
             .doutb  (cache_tag[i])
         );
         assign tag_compare_valid[i] = cache_tag[i].tag == addr_tag && meta[pa_line_addr].valid[i];
-        assign cache_data_forward[i] = (last_wea[i] & last_wdata) | (cache_data[i] & (~last_wea[i]));
+        assign cache_data_forward[i] = last_line_addr == bram_word_addr ? ((last_wea[i] & last_wdata) | (cache_data[i] & (~last_wea[i]))) : cache_data[i];
         assign data_wea[i] = (tag_compare_valid[i] && M_mem_en && M_mem_write && !M_mem_uncached && dcache_status == IDLE) ? M_wmask :  bram_replace_wea[i];
         always_ff @(posedge clk) begin
             if (rst) begin
@@ -208,7 +208,7 @@ always_ff @(posedge clk) begin
         last_wdata <= 0;
     end
     else begin
-        last_line_addr <= bram_word_addr;
+        last_line_addr <= data_write_addr;
         last_wdata <= data_bram_wdata;
     end
 end
@@ -486,10 +486,12 @@ always_ff @(posedge clk) begin
                         end
                     end
                     if ((!replace_writeback || (wvalid & wready & wlast)) && ( (ar_handshake && rvalid && rlast) || (ar_handshake && !rready) ) ) begin
-                        replace_working <= 1'b0;
                         bram_use_replace_addr <= 0;
-                        dcache_status <= IDLE;
                         meta[pa_line_addr].valid[meta[pa_line_addr].LRU] <= 1'b1;
+                    end
+                    if (!bram_use_replace_addr) begin
+                        replace_working <= 1'b0;
+                        dcache_status <= IDLE;
                     end
                 end
                 else begin
