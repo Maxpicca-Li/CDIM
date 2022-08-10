@@ -110,7 +110,6 @@ wire bram_addr_choose = (dcache_status != IDLE && dcache_status != SAVE_RESULT);
 // FIXME: fix M_fence_addr
 wire [LEN_PER_WAY-1:2]          bram_word_addr = bram_use_replace_addr ? bram_replace_addr : (bram_addr_choose ? M_mem_pa[LEN_PER_WAY-1:2] : E_mem_pa[LEN_PER_WAY-1:2]);
 wire [LEN_PER_WAY-1:LEN_LINE]   bram_line_addr = bram_use_replace_addr ? bram_replace_addr[LEN_PER_WAY-1:LEN_LINE] : (bram_addr_choose ? M_mem_pa[LEN_PER_WAY-1:LEN_LINE] : E_mem_pa[LEN_PER_WAY-1:LEN_LINE]);
-wire [31:0] bram_rdata;
 
 wire [LEN_PER_WAY-1:2] tag_read_addr;
 wire [LEN_PER_WAY-1:2] data_read_addr;
@@ -372,7 +371,7 @@ always_ff @(posedge clk) begin
                         else begin
                             wdata <= ((axi_wcnt + 1'b1) == bram_replace_addr[LEN_LINE-1:2]) ? cache_data[fence_way] : bram_r_buffer[axi_wcnt + 1'b1];
                             axi_wcnt <= axi_wcnt + 1;
-                            if ({1'b0,axi_wcnt} + 1'b1 == NR_WORDS) begin
+                            if ({1'b0,axi_wcnt} + 1'b1 == NR_WORDS - 1) begin
                                 wlast <= 1'b1;
                             end
                         end
