@@ -97,7 +97,7 @@ wire            D_cp0_useable;
 wire            D_kernel_mode;
 wire            D_interrupt;
 int_info        D_int_info;
-wire            D_delay_rst;
+wire            D_delay_rst,E_delay_rst;
 wire            D_master_is_bj;
 wire            D_master_bj,D_master_is_branch,D_master_is_jump;
 wire            D_master_pred_take,D_master_jump_take,D_master_jump_conflict;
@@ -281,9 +281,9 @@ pc_reg u_pc_reg(
 );
 
 assign E_next_pc8  = E_slave_is_in_delayslot | D_master_is_in_delayslot;
-assign D_delay_rst = E_master_bj ? !E_next_pc8  :
-                     D_master_bj ? !D_slave_ena : 
-                     1'b0;
+assign D_delay_rst = D_master_bj & !D_slave_ena;
+assign E_delay_rst = E_master_bj & !E_next_pc8;
+
 inst_fifo u_inst_fifo(
     //ports
     .clk                          ( clk                    ),
@@ -291,8 +291,10 @@ inst_fifo u_inst_fifo(
     .fifo_rst                     ( rst | D_flush          ),
     .flush_delay_slot             ( delay_slot_flush       ),
     .D_ena                        ( D_ena                  ),
+    .i_stall                      ( i_stall                ),
     .master_is_branch             ( D_master_is_bj         ), // D阶段的branch
-    .delay_rst                    ( D_delay_rst            ), // next_master_is_in_delayslot
+    .D_delay_rst                  ( D_delay_rst            ), // D: next_master_is_in_delayslot
+    .E_delay_rst                  ( E_delay_rst            ), // D: master_is_in_delayslot
     
     .read_en1                     ( D_ena                  ),
     .read_en2                     ( D_slave_ena            ), // D阶段的发射结果

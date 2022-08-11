@@ -571,11 +571,13 @@ module  decoder(
                 endcase
             end
             `OP_CACHE: begin
+                /*
                 signsD.only_one_issue = 1'b1;
                 signsD.icache_fence = instr[16] == 1'b0;
                 signsD.dcache_fence = instr[16] == 1'b1;
                 signsD.read_rs = 1'b1;
                 signsD.aluop = `ALUOP_ADD; // base + offset (no mem_en, so put it in alu path)
+                */
             end
             `OP_PREF: begin
                 // as NOP

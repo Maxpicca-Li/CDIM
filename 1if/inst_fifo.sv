@@ -7,8 +7,10 @@ module inst_fifo(
         input                       rst,
         input                       fifo_rst,                 // fifo读写指针重置位
         input                       flush_delay_slot,
-        input                       delay_rst,                // 下一条master指令是延迟槽指令，要存起来
+        input                       D_delay_rst,              // 下一条master指令是延迟槽指令，要存起来
+        input                       E_delay_rst,              // 下一条master指令是延迟槽指令，要存起来
         input                       D_ena,
+        input                       i_stall,
         input                       master_is_branch,         // 延迟槽判断
         output logic                master_is_in_delayslot_o, // 延迟槽判断结果
 
@@ -82,23 +84,28 @@ module inst_fifo(
     end
 
     always_ff @(posedge clk) begin // 延迟槽读取信号
-        if(fifo_rst && delay_rst && !flush_delay_slot && !write_en1 && (read_pointer + 4'd1 == write_pointer || read_pointer == write_pointer)) begin
+        if(fifo_rst && (D_delay_rst | E_delay_rst) && !flush_delay_slot && i_stall && (read_pointer + 4'd1 == write_pointer || read_pointer == write_pointer)) begin
             delayslot_stall   <= 1'd1;
         end
         else if(delayslot_stall && write_en1)
             delayslot_stall   <= 1'd0;
-        else if(delayslot_stall)
-            delayslot_stall   <= delayslot_stall;
         else
-            delayslot_stall   <= 1'd0;
+            delayslot_stall   <= delayslot_stall;
     end
     always_ff @(posedge clk) begin // 下一条指令在需要执行的延迟槽中
-        if(fifo_rst && delay_rst & !flush_delay_slot) begin // 初步判断
-            delayslot_enable <= 1'b1;
-            delayslot_line   <= (read_pointer + 4'd1 == write_pointer || read_pointer == write_pointer) ? write_line1 : lines[read_pointer + 4'd1];
-        end
-        else if(delayslot_stall && write_en1) begin // 要写的数据回来了
-            delayslot_line   <= write_line1;
+        if(fifo_rst & !flush_delay_slot) begin // 初步判断
+            if(D_delay_rst) begin
+                delayslot_enable <= 1'b1;
+                delayslot_line   <= (read_pointer + 4'd1 == write_pointer) ? write_line1 : lines[read_pointer + 4'd1];
+            end
+            else if(E_delay_rst) begin
+                delayslot_enable <= 1'b1;
+                delayslot_line   <= (read_pointer == write_pointer) ? write_line1 : lines[read_pointer];
+            end
+            else begin
+                delayslot_enable <= 1'b0;
+                delayslot_line   <= '{default:'0};
+            end
         end
         else if(!delayslot_stall && read_en1) begin // 清空
             delayslot_enable <= 1'b0;
@@ -109,7 +116,7 @@ module inst_fifo(
     /*
     // E阶段跳转判断
     always_ff @(posedge clk) begin  // 当前指令在需要执行的延迟槽中
-        if(fifo_rst && delay_rst && ~read_en1) begin // 初步判断
+        if(fifo_rst && D_delay_rst && ~read_en1) begin // 初步判断
             delayslot_enable <= 1'b1;
             delayslot_data  <= read_data1;
             delayslot_addr  <= read_address1;
