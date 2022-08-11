@@ -35,8 +35,9 @@ module pc_reg (
 
     always_comb begin : compute_pc_next
         if (rst) 
-            // pc_next = 32'hbfc00000;
-            pc_next = 32'h80100000;
+            pc_next = 32'hbfc00000;
+            // pc_next = 32'h80100000;
+            // pc_next = 32'h80000000;
         // else if (pc_en) begin
             else if (M_except)
                 pc_next = M_except_addr;            
