@@ -35,7 +35,11 @@ module cp0(
     // D-TLB read port
     input  [31:13]      tlb2_vpn2,
     output logic        tlb2_found,
-    output tlb_entry    tlb2_entry
+    output tlb_entry    tlb2_entry,
+    // debug
+    output [31:0]       debug_cp0_countE,
+    output [31:0]       debug_cp0_randomE,
+    output [31:0]       debug_cp0_causeE
 );
 
 // ERRATA: eret with ERL=1 and pipeline is stalling will cause jump to epc, but it will not used by this CPU with linux.
@@ -414,5 +418,10 @@ always_ff @(posedge clk) begin // note: mtc0 should be done in exec stage.
         end
     end
 end
+
+// debug
+assign debug_cp0_causeE = cause_reg;
+assign debug_cp0_randomE = random_reg;
+assign debug_cp0_countE = count_reg;
 
 endmodule

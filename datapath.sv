@@ -46,8 +46,32 @@ module datapath (
     output wire [31:0] debug_wb_pc,      
     output wire [3 :0] debug_wb_rf_wen,
     output wire [4 :0] debug_wb_rf_wnum, 
-    output wire [31:0] debug_wb_rf_wdata
+    output wire [31:0] debug_wb_rf_wdata,
+    output wire [31:0] debug_cp0_count,
+    output wire [31:0] debug_cp0_random,
+    output wire [31:0] debug_cp0_cause,
+    output wire debug_int,
+    output wire debug_commit
 );
+
+// debug
+wire [31:0] E_master_debug_cp0_count;
+wire [31:0] E_master_debug_cp0_random;
+wire [31:0] E_master_debug_cp0_cause;
+wire [31:0] M_master_debug_cp0_count;
+wire [31:0] M_master_debug_cp0_random;
+wire [31:0] M_master_debug_cp0_cause;
+wire        M_master_debug_int;
+wire [31:0] W_master_debug_cp0_count;
+wire [31:0] W_master_debug_cp0_random;
+wire [31:0] W_master_debug_cp0_cause;
+wire        W_master_debug_int;
+
+assign debug_cp0_count = W_master_debug_cp0_count;
+assign debug_cp0_random = W_master_debug_cp0_random;
+assign debug_cp0_cause = W_master_debug_cp0_cause;
+assign debug_int = W_master_debug_int;
+assign debug_commit = W_ena;
 
 // ====================================== 变量定义区 ======================================
 // fifo
@@ -879,7 +903,13 @@ ex_mem u_ex_mem(
     .M_slave_reg_waddr          ( M_slave_reg_waddr           ),
     .M_slave_pc                 ( M_slave_pc                  ),
     .M_slave_inst               ( M_slave_inst                ),
-    .M_slave_alu_res            ( M_slave_alu_res             )
+    .M_slave_alu_res            ( M_slave_alu_res             ),
+    .E_master_debug_cp0_count   ( E_master_debug_cp0_count    ),  
+    .E_master_debug_cp0_random  ( E_master_debug_cp0_random   ),
+    .E_master_debug_cp0_cause   ( E_master_debug_cp0_cause    ),
+    .M_master_debug_cp0_count   ( M_master_debug_cp0_count    ),  
+    .M_master_debug_cp0_random  ( M_master_debug_cp0_random   ),
+    .M_master_debug_cp0_cause   ( M_master_debug_cp0_cause    )
 );
 
 assign M_master_pc_plus4 = M_master_pc + 32'd4;
@@ -950,11 +980,16 @@ cp0 cp0_inst(
     .tlb1_entry     ( itlb_entry                ),
     .tlb2_vpn2      ( dtlb_vpn2                 ),
     .tlb2_found     ( dtlb_found                ),
-    .tlb2_entry     ( dtlb_entry                )
+    .tlb2_entry     ( dtlb_entry                ),
+    .debug_cp0_countE( E_master_debug_cp0_count ),
+    .debug_cp0_randomE(E_master_debug_cp0_random),
+    .debug_cp0_causeE( E_master_debug_cp0_cause )
 );
 
 assign M_master_reg_wdata = M1cs.mem_write_reg  ? M_master_mem_rdata : M_master_alu_res;
 assign M_slave_reg_wdata  =  M2cs.mem_write_reg ? M_slave_mem_rdata  : M_slave_alu_res ;
+
+assign M_master_debug_int = M_master_except.id_int;
 
 // ====================================== WriteBack ======================================
 mem_wb u_mem_wb(
@@ -992,7 +1027,15 @@ mem_wb u_mem_wb(
     .W_slave_reg_waddr  ( W_slave_reg_waddr     ),
     .W_slave_inst       ( W_slave_inst          ),
     .W_slave_pc         ( W_slave_pc            ),
-    .W_slave_reg_wdata  ( W_slave_reg_wdata     )
+    .W_slave_reg_wdata  ( W_slave_reg_wdata     ),
+    .M_master_debug_cp0_count (M_master_debug_cp0_count ),
+    .M_master_debug_cp0_random(M_master_debug_cp0_random),
+    .M_master_debug_cp0_cause (M_master_debug_cp0_cause ),
+    .M_master_debug_int       (M_master_debug_int       ),
+    .W_master_debug_cp0_count (W_master_debug_cp0_count ),
+    .W_master_debug_cp0_random(W_master_debug_cp0_random),
+    .W_master_debug_cp0_cause (W_master_debug_cp0_cause ),
+    .W_master_debug_int       (W_master_debug_int       )
 );
 
 // debug

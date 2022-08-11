@@ -37,8 +37,16 @@ module mem_wb(
     output logic [4 :0] W_slave_reg_waddr,
     output logic [31:0] W_slave_inst,
     output logic [31:0] W_slave_pc,
-    output logic [31:0] W_slave_reg_wdata
+    output logic [31:0] W_slave_reg_wdata,
 
+    input  [31:0]       M_master_debug_cp0_count,
+    input  [31:0]       M_master_debug_cp0_random,
+    input  [31:0]       M_master_debug_cp0_cause,
+    input               M_master_debug_int,
+    output logic [31:0] W_master_debug_cp0_count,
+    output logic [31:0] W_master_debug_cp0_random,
+    output logic [31:0] W_master_debug_cp0_cause,
+    output logic        W_master_debug_int
 ); 
     always @(posedge clk) begin
         if(rst | clear1) begin
@@ -49,6 +57,10 @@ module mem_wb(
             W_master_inst <= 0;
             W_master_pc <= 0;
             W_master_reg_wdata <= 0;
+            W_master_debug_cp0_count <= 0;
+            W_master_debug_cp0_random <= 0;
+            W_master_debug_cp0_cause <= 0;
+            W_master_debug_int <= 0;
         end
         else if (ena1) begin
             // W_master_ctrl_sign <= M_master_ctrl_sign;
@@ -58,6 +70,10 @@ module mem_wb(
             W_master_inst <= M_master_inst;
             W_master_pc <= M_master_pc;
             W_master_reg_wdata <= M_master_reg_wdata;
+            W_master_debug_cp0_count <= M_master_debug_cp0_count;
+            W_master_debug_cp0_random <= M_master_debug_cp0_random;
+            W_master_debug_cp0_cause <= M_master_debug_cp0_cause;
+            W_master_debug_int <= M_master_debug_int;
         end
     end
 

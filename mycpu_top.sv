@@ -49,7 +49,13 @@ module mycpu_top (
     output wire[31:0] debug_wb_pc,
     output wire[3:0] debug_wb_rf_wen,
     output wire[4:0] debug_wb_rf_wnum,
-    output wire[31:0] debug_wb_rf_wdata
+    output wire[31:0] debug_wb_rf_wdata,
+    // soc-simulator + cemu debug interface
+    output wire [31:0] debug_cp0_count,
+    output wire [31:0] debug_cp0_random,
+    output wire [31:0] debug_cp0_cause,
+    output wire debug_int,
+    output wire debug_commit
 );
     wire clk, rst;
     assign clk = aclk; // assign clk = aclk;
@@ -181,7 +187,12 @@ module mycpu_top (
         .debug_wb_pc       		( debug_wb_pc       		),
         .debug_wb_rf_wen   		( debug_wb_rf_wen   		),
         .debug_wb_rf_wnum  		( debug_wb_rf_wnum  		),
-        .debug_wb_rf_wdata 		( debug_wb_rf_wdata 		)
+        .debug_wb_rf_wdata 		( debug_wb_rf_wdata 		),
+        .debug_cp0_count        ( debug_cp0_count           ),
+        .debug_cp0_random       ( debug_cp0_random          ),
+        .debug_cp0_cause        ( debug_cp0_cause           ),
+        .debug_int              ( debug_int                 ),
+        .debug_commit           ( debug_commit              )
     );
 
     i_cache i_cache_inst (

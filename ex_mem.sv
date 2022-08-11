@@ -62,7 +62,15 @@ module ex_mem(
     output logic [4 :0] M_slave_reg_waddr,
     output logic [31:0] M_slave_pc,
     output logic [31:0] M_slave_inst,
-    output logic [31:0] M_slave_alu_res
+    output logic [31:0] M_slave_alu_res,
+
+    input  [31:0]       E_master_debug_cp0_count,  
+    input  [31:0]       E_master_debug_cp0_random,
+    input  [31:0]       E_master_debug_cp0_cause,
+
+    output logic [31:0] M_master_debug_cp0_count,  
+    output logic [31:0] M_master_debug_cp0_random,
+    output logic [31:0] M_master_debug_cp0_cause
 ); 
 
     always_ff @(posedge clk) begin
@@ -84,6 +92,9 @@ module ex_mem(
             M_master_inst <= 0;
             M_master_alu_res <= 0;
             M_master_pc <= 0;
+            M_master_debug_cp0_count <= 0;
+            M_master_debug_cp0_random <= 0;
+            M_master_debug_cp0_cause <= 0;
         end
         else if (ena1) begin
             M_mem_en <= E_mem_en;
@@ -103,6 +114,9 @@ module ex_mem(
             M_master_inst <= E_master_inst;
             M_master_alu_res <= E_master_alu_res;
             M_master_pc <= E_master_pc;
+            M_master_debug_cp0_count <= E_master_debug_cp0_count;
+            M_master_debug_cp0_random <= E_master_debug_cp0_random;
+            M_master_debug_cp0_cause <= E_master_debug_cp0_cause;
         end
     end
 
