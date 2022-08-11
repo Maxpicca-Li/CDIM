@@ -271,18 +271,7 @@ always_ff @(posedge clk) begin
                     wlast <= 0;
                 end
                 if (bvalid & bready) begin
-                    if (store_buffer_has_next) begin
-                        awaddr <= store_buffer[store_buffer_ctrl.ptr_begin].waddr;
-                        awlen <= 0;
-                        awsize <= {1'd0,store_buffer[store_buffer_ctrl.ptr_begin].wsize};
-                        awvalid <= 1'b1;
-                        wdata <= store_buffer[store_buffer_ctrl.ptr_begin].wdata;
-                        wstrb <= store_buffer[store_buffer_ctrl.ptr_begin].wstrb;
-                        wlast <= 1'b1;
-                        wvalid <= 1'b1;
-                        store_buffer_ctrl.ptr_begin <= store_buffer_ctrl.ptr_begin + 1;
-                    end
-                    else store_buffer_ctrl.axi_busy <= 1'b0;
+                    store_buffer_ctrl.axi_busy <= 1'b0;
                 end
             end
             else begin
@@ -406,10 +395,6 @@ always_ff @(posedge clk) begin
                     if (wvalid & wready) begin
                         if (wlast) begin
                             wvalid <= 1'b0;
-                            meta[fence_line_addr].dirty[fence_way] <= 1'b0;
-                            fence_working <= 1'b0;
-                            bram_use_replace_addr <= 1'b0;
-                            dcache_status <= IDLE;
                         end
                         else begin
                             wdata <= ((axi_wcnt + 1'b1) == bram_read_ready_addr[LEN_LINE-1:2]) ? cache_data[fence_way] : bram_r_buffer[axi_wcnt + 1'b1];
@@ -418,6 +403,12 @@ always_ff @(posedge clk) begin
                                 wlast <= 1'b1;
                             end
                         end
+                    end
+                    if (bvalid & bready) begin
+                        meta[fence_line_addr].dirty[fence_way] <= 1'b0;
+                        fence_working <= 1'b0;
+                        bram_use_replace_addr <= 1'b0;
+                        dcache_status <= IDLE;
                     end
                 end
                 else begin
@@ -452,8 +443,6 @@ always_ff @(posedge clk) begin
                         if (wvalid & wready) begin
                             if (wlast) begin
                                 wvalid <= 1'b0;
-                                meta[pa_line_addr].dirty[meta[pa_line_addr].LRU] <= 1'b0;
-                                replace_writeback <= 1'b0;
                             end
                             else begin
                                 wdata <= ((axi_wcnt + 1'b1) == bram_read_ready_addr[LEN_LINE-1:2]) ? cache_data[meta[pa_line_addr].LRU] : bram_r_buffer[axi_wcnt + 1'b1];
@@ -462,6 +451,10 @@ always_ff @(posedge clk) begin
                                     wlast <= 1'b1;
                                 end
                             end
+                        end
+                        if (bvalid & bready) begin
+                            meta[pa_line_addr].dirty[meta[pa_line_addr].LRU] <= 1'b0;
+                            replace_writeback <= 1'b0;
                         end
                     end
                     // at here, cache line is writeable from axi read.
@@ -489,7 +482,7 @@ always_ff @(posedge clk) begin
                             bram_replace_write_addr <= bram_replace_write_addr + 1;
                         end
                     end
-                    if ((!replace_writeback || (wvalid & wready & wlast)) && ( (ar_handshake && rvalid && rlast) || (ar_handshake && !rready) ) ) begin
+                    if ((!replace_writeback || (bvalid & bready)) && ( (ar_handshake && rvalid && rlast) || (ar_handshake && !rready) ) ) begin
                         bram_use_replace_addr <= 0;
                         meta[pa_line_addr].valid[meta[pa_line_addr].LRU] <= 1'b1;
                     end
