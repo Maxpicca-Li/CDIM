@@ -367,8 +367,8 @@ always_ff @(posedge clk) begin
                             bram_data_valid <= 0;
                         end
                     end
-                    else if (|meta[fence_line_addr].valid) begin
-                        meta[fence_line_addr].valid <= 0;
+                    else begin
+                        if (|meta[fence_line_addr].valid) meta[fence_line_addr].valid <= 0;
                         dcache_status <= SAVE_RESULT;
                     end
                 end
