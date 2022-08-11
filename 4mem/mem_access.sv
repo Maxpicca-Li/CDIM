@@ -90,7 +90,7 @@ module mem_access (
                 data_sram_wdata = mem_wdata;
             end
             `OP_SWL: begin
-	    	data_sram_rlen = 2'd2;
+                data_sram_rlen = 2'd2;
                 data_sram_wen = ~((4'b1110) << mem_addr[1:0]); // ~ 按位取反
                 data_sram_wdata = {32{mem_addr[1:0]==2'b11}} & (mem_init_data      ) |
                                   {32{mem_addr[1:0]==2'b10}} & (mem_init_data >> 8 ) |
@@ -98,7 +98,7 @@ module mem_access (
                                   {32{mem_addr[1:0]==2'b00}} & (mem_init_data >> 24) ;
             end
             `OP_SWR: begin
-	    	data_sram_rlen = 2'd2;
+                data_sram_rlen = 2'd2;
                 data_sram_wen = (4'b1111) << mem_addr[1:0]; // ~ 按位取反
                 data_sram_wdata = {32{mem_addr[1:0]==2'b11}} & (mem_init_data << 24) |
                                   {32{mem_addr[1:0]==2'b10}} & (mem_init_data << 16) |
@@ -106,6 +106,7 @@ module mem_access (
                                   {32{mem_addr[1:0]==2'b00}} & (mem_init_data      ) ;
             end
             `OP_SC: begin
+                data_sram_rlen = 2'd2;
                 data_sram_wen = {4{mem_addr[1:0]==2'b00}} & 4'b1111;
                 data_sram_wdata = mem_wdata;
             end
