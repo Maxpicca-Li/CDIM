@@ -2,10 +2,14 @@
 
 // CP0 and L2 TLB
 
+// import "DPI-C" function void report_tlb_exception();
+
 module cp0(
     input               clk,
     input               rst,
+    input               stallE,
     input  cop0_info    E_cop0_info,
+    input  [31:0]       E_master_pc, // only for debug cop0
     output logic [31:0] E_mfc0_rdata,
     input  [31:0]       E_mtc0_wdata,
     input  [4:0]        ext_int,    // ext_int async
@@ -151,47 +155,42 @@ always_comb begin // except_target
     end
 end
 
-logic tlbp_ok;
-logic [$clog2(NR_TLB_ENTRY):0] tlbp_index;
-logic [$clog2(NR_TLB_ENTRY)-1:0] tlbp_i;
-always_comb begin : tlbp_matcher
-    tlbp_ok = 1'b0;
-    for (tlbp_index=0;tlbp_index<=NR_TLB_ENTRY-1;tlbp_index++) begin
-        tlbp_i = tlbp_index[$clog2(NR_TLB_ENTRY)-1:0];
-        if ((tlb[tlbp_i].G || tlb[tlbp_i].ASID == entryhi_reg.ASID) && entryhi_reg.VPN2 == tlb[tlbp_i].VPN2) begin
-            tlbp_ok = 1'b1;
-            break;
-        end
-    end
-end
+wire [NR_TLB_ENTRY-1:0] tlb_matched [2:0];
+wire [18:0] tlb_find_vpn2 [2:0];
+wire [$clog2(NR_TLB_ENTRY)-1:0] tlb_matched_index [2:0];
 
-logic [$clog2(NR_TLB_ENTRY):0] tlb1_index;
-logic [$clog2(NR_TLB_ENTRY)-1:0] tlb1_i;
-always_comb begin : tlb1_match
-    tlb1_found = 1'b0;
-    tlb1_entry = 0;
-    for (tlb1_index=0;tlb1_index<=NR_TLB_ENTRY-1;tlb1_index++) begin
-        tlb1_i = tlb1_index[$clog2(NR_TLB_ENTRY)-1:0];
-        if ((tlb[tlb1_i].G || tlb[tlb1_i].ASID == entryhi_reg.ASID) && tlb1_vpn2 == tlb[tlb1_i].VPN2) begin
-            tlb1_found = 1'b1;
-            tlb1_entry = tlb[tlb1_i];
-        end
-    end
-end
+assign tlb_find_vpn2[0] = entryhi_reg.VPN2;
+assign tlb_find_vpn2[1] = tlb1_vpn2;
+assign tlb_find_vpn2[2] = tlb2_vpn2;
 
-logic [$clog2(NR_TLB_ENTRY):0] tlb2_index;
-logic [$clog2(NR_TLB_ENTRY)-1:0] tlb2_i;
-always_comb begin : tlb2_match
-    tlb2_found = 1'b0;
-    tlb2_entry = 0;
-    for (tlb2_index=0;tlb2_index<=NR_TLB_ENTRY-1;tlb2_index++) begin
-        tlb2_i = tlb2_index[$clog2(NR_TLB_ENTRY)-1:0];
-        if ((tlb[tlb2_i].G || tlb[tlb2_i].ASID == entryhi_reg.ASID) && tlb2_vpn2 == tlb[tlb2_i].VPN2) begin
-            tlb2_found = 1'b1;
-            tlb2_entry = tlb[tlb2_i];
+generate
+    for (genvar j=0;j<3;j++) begin
+        for (genvar i=0;i<=NR_TLB_ENTRY-1;i++) begin
+            assign tlb_matched[j][i] = (tlb[i].G || tlb[i].ASID == entryhi_reg.ASID) && (tlb[i].VPN2 == tlb_find_vpn2[j]);
         end
+        assign tlb_matched_index[j] = 
+            tlb_matched[j][0] ? 4'd0 :
+            tlb_matched[j][1] ? 4'd1 :
+            tlb_matched[j][2] ? 4'd2 :
+            tlb_matched[j][3] ? 4'd3 :
+            tlb_matched[j][4] ? 4'd4 :
+            tlb_matched[j][5] ? 4'd5 :
+            tlb_matched[j][6] ? 4'd6 :
+            tlb_matched[j][7] ? 4'd7 :
+            tlb_matched[j][8] ? 4'd8 :
+            tlb_matched[j][9] ? 4'd9 :
+            tlb_matched[j][10] ? 4'd10 :
+            tlb_matched[j][11] ? 4'd11 :
+            tlb_matched[j][12] ? 4'd12 :
+            tlb_matched[j][13] ? 4'd13 :
+            tlb_matched[j][14] ? 4'd14 : 4'd15;
     end
-end
+endgenerate
+
+assign tlb1_found = |tlb_matched[1];
+assign tlb2_found = |tlb_matched[2];
+assign tlb1_entry = tlb[tlb_matched_index[1]];
+assign tlb2_entry = tlb[tlb_matched_index[2]];
 
 cp0_entrylo entrylo0_wdata;
 assign entrylo0_wdata = E_mtc0_wdata;
@@ -235,25 +234,58 @@ always_ff @(posedge clk) begin // note: mtc0 should be done in exec stage.
             if (status_reg.ERL) status_reg.ERL <= 0;
             else status_reg.EXL <= 0;
         end
-        else if (|except) begin // all except rather than eret
+        else if ( (|except)) begin // all except rather than eret
             if (!status_reg.EXL) begin
                 epc_reg <= except_bd ? except_pc - 4 : except_pc;
                 cause_reg.BD <= except_bd;
             end
             status_reg.EXL <= 1'b1;
             // exccode
-            if (except.if_adel | except.ex_adel) cause_reg.exccode <= `EXC_ADEL;
-            else if (except.ex_ades) cause_reg.exccode <= `EXC_ADES;
+            if (except.if_adel | except.ex_adel) begin
+                cause_reg.exccode <= `EXC_ADEL;
+                // $display("adel at pc %x",except_pc);
+            end
+            else if (except.ex_ades) begin
+                cause_reg.exccode <= `EXC_ADES;
+                // $display("ades at pc %x",except_pc);
+            end
             else if (except.id_int) cause_reg.exccode <= `EXC_INT;
-            else if (except.ex_tlbl | except.if_tlbl) cause_reg.exccode <= `EXC_TLBL;
-            else if (except.ex_tlbs) cause_reg.exccode <= `EXC_TLBS;
-            else if (except.ex_tlbm) cause_reg.exccode <= `EXC_MOD;
-            else if (except.id_syscall) cause_reg.exccode <= `EXC_SYS;
-            else if (except.id_break) cause_reg.exccode <= `EXC_BP;
-            else if (except.id_ri) cause_reg.exccode <= `EXC_RI;
-            else if (except.id_cpu) cause_reg.exccode <= `EXC_CPU;
-            else if (except.ex_ov) cause_reg.exccode <= `EXC_OV;
-            else if (except.ex_trap) cause_reg.exccode <= `EXC_TR;
+            else if (except.ex_tlbl | except.if_tlbl) begin
+                cause_reg.exccode <= `EXC_TLBL;
+                // $display("tlbl at pc %x, badva = %x",except_pc,badva_in);
+            end
+            else if (except.ex_tlbs) begin
+                cause_reg.exccode <= `EXC_TLBS;
+                // $display("tlbs at pc %x, badva = %x",except_pc,badva_in);
+            end
+            else if (except.ex_tlbm) begin
+                cause_reg.exccode <= `EXC_MOD;
+                // $display("tlbm at pc %x, badva = %x",except_pc,badva_in);
+            end
+            else if (except.id_syscall) begin
+                cause_reg.exccode <= `EXC_SYS;
+                // $display("syscall at pc %x",except_pc);
+            end
+            else if (except.id_break) begin
+                cause_reg.exccode <= `EXC_BP;
+                // $display("break at pc %x",except_pc);
+            end
+            else if (except.id_ri) begin
+                cause_reg.exccode <= `EXC_RI;
+                // $display("ri at pc %x",except_pc);
+            end
+            else if (except.id_cpu) begin
+                cause_reg.exccode <= `EXC_CPU;
+                // $display("cpu at pc %x",except_pc);
+            end
+            else if (except.ex_ov) begin
+                cause_reg.exccode <= `EXC_OV;
+                // $display("ov at pc %x",except_pc);
+            end
+            else if (except.ex_trap) begin
+                cause_reg.exccode <= `EXC_TR;
+                // $display("trap at pc %x",except_pc);
+            end
             if (except.if_adel | except.if_tlbl | except.ex_adel | except.ex_ades | except.ex_tlbl | except.ex_tlbs | except.ex_tlbm) begin
                 badva_reg <= badva_in;
             end
@@ -262,7 +294,7 @@ always_ff @(posedge clk) begin // note: mtc0 should be done in exec stage.
                 entryhi_reg.VPN2 <= badva_in[31:13];
             end
         end
-        else if (E_cop0_info.mtc0_en) begin // mtc0 {
+        else if (E_cop0_info.mtc0_en && !stallE) begin // mtc0 {
             case (E_cop0_info.reg_addr)
                 `CP0_REG_INDEX: index_reg.index <= E_mtc0_wdata[$clog2(NR_TLB_ENTRY)-1:0];
                 `CP0_REG_ENTRYLO0: begin
@@ -271,6 +303,7 @@ always_ff @(posedge clk) begin // note: mtc0 should be done in exec stage.
                     entrylo0_reg.D <= entrylo0_wdata.D;
                     entrylo0_reg.C <= entrylo0_wdata.C;
                     entrylo0_reg.PFN <= entrylo0_wdata.PFN;
+                    // $display("write entrylo0 PFN = %x, V = %x",entrylo0_wdata.PFN,entrylo0_wdata.V);
                 end
                 `CP0_REG_ENTRYLO1: begin
                     entrylo1_reg.G <= entrylo1_wdata.G;
@@ -278,6 +311,7 @@ always_ff @(posedge clk) begin // note: mtc0 should be done in exec stage.
                     entrylo1_reg.D <= entrylo1_wdata.D;
                     entrylo1_reg.C <= entrylo1_wdata.C;
                     entrylo1_reg.PFN <= entrylo1_wdata.PFN;
+                    // $display("write entrylo1 PFN = %x, V = %x",entrylo1_wdata.PFN,entrylo1_wdata.V);
                 end
                 `CP0_REG_CONTEXT: begin
                     context_reg.ptebase <= context_wdata.ptebase;
@@ -322,7 +356,8 @@ always_ff @(posedge clk) begin // note: mtc0 should be done in exec stage.
                 end
             endcase
         end // mtc0 }
-        else if (E_cop0_info.TLBWI) begin
+        else if (E_cop0_info.TLBWI && !stallE) begin
+            // $display("TLBWI at pc %x, VPN2 = %x, index=%x",E_master_pc,entryhi_reg.VPN2,index_reg.index);
             tlb[index_reg.index] <= '{
                 default: '0,
                 G: (entrylo0_reg.G & entrylo1_reg.G),
@@ -338,7 +373,8 @@ always_ff @(posedge clk) begin // note: mtc0 should be done in exec stage.
                 ASID: entryhi_reg.ASID
             };
         end
-        else if (E_cop0_info.TLBWR) begin
+        else if (E_cop0_info.TLBWR && !stallE) begin
+            // $display("TLBWR at pc %x, VPN2 = %x, index=%x",E_master_pc,entryhi_reg.VPN2,random_reg[$clog2(NR_TLB_ENTRY)-1:0]);
             tlb[random_reg[$clog2(NR_TLB_ENTRY)-1:0]] <= '{
                 default: '0,
                 G: (entrylo0_reg.G & entrylo1_reg.G),
@@ -354,14 +390,15 @@ always_ff @(posedge clk) begin // note: mtc0 should be done in exec stage.
                 ASID: entryhi_reg.ASID
             };
         end
-        else if (E_cop0_info.TLBP) begin
-            if (tlbp_ok) begin
-                index_reg.index <= tlbp_i;
+        else if (E_cop0_info.TLBP && !stallE) begin
+            // $display("TLBP at pc %x, VPN2 = %x, index=%x, ok=%d",E_master_pc,entryhi_reg.VPN2,tlbp_result,tlbp_ok);
+            if (|tlb_matched[0]) begin
+                index_reg.index <= tlb_matched_index[0];
                 index_reg.p <= 1'b0;
             end
             else index_reg.p <= 1'b1;
         end
-        else if (E_cop0_info.TLBR) begin
+        else if (E_cop0_info.TLBR && !stallE) begin
             entrylo0_reg.G <= tlb[index_reg.index].G;
             entrylo0_reg.V <= tlb[index_reg.index].V0;
             entrylo0_reg.D <= tlb[index_reg.index].D0;

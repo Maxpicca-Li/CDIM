@@ -927,7 +927,9 @@ mem_access u_mem_access(
 cp0 cp0_inst(
     .clk            ( clk                       ),
     .rst            ( rst                       ),
+    .stallE         ( ~E_ena                    ),
     .E_cop0_info    ( E_cop0_info               ),
+    .E_master_pc    ( E_master_pc               ),
     .E_mfc0_rdata   ( E_cp0_rdata               ),
     .E_mtc0_wdata   ( E_master_rt_value         ),
     .ext_int        ( ext_int[4:0]              ),    // ext_int async
