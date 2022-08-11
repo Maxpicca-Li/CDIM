@@ -239,7 +239,7 @@ hazard u_hazard(
 // fence
 assign fence_iE = E1cs.icache_fence;
 assign fence_addrE = E_master_alu_res;
-assign fence_dM = E1cs.dcache_fence;
+assign fence_dM = M1cs.dcache_fence;
 assign fence_addrM = M_master_alu_res;
 assign fence_tlbE = E1cs.tlb_fence;
 
