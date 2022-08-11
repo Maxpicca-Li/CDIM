@@ -305,7 +305,7 @@ always_ff @(posedge clk) begin
                         if (M_mem_write) begin
                             if (!store_buffer_full && !current_mmio_write_saved) begin
                                 store_buffer[store_buffer_ctrl.ptr_end] <= '{
-                                    waddr: M_mem_pa,
+                                    waddr: M_mem_size == 2'd2 ? {M_mem_pa[31:2],2'd0} : M_mem_pa,
                                     wsize: M_mem_size,
                                     wstrb: M_wmask,
                                     wdata: M_wdata
@@ -319,7 +319,7 @@ always_ff @(posedge clk) begin
                         end
                         else begin // mmio read
                             if (!store_buffer_busy) begin
-                                araddr <= M_mem_pa;
+                                araddr <= M_mem_size == 2'd2 ? {M_mem_pa[31:2],2'd0} : M_mem_pa;
                                 arlen <= 0;
                                 arsize <= {1'b0, M_mem_size};
                                 arvalid <= 1'b1;
