@@ -201,6 +201,7 @@ wire            E_master_mem_sel,E_slave_mem_sel;
 wire            E_master_mem_adel,E_slave_mem_adel;
 wire            E_master_mem_ades,E_slave_mem_ades;
 // ===== M =====
+wire            M_master_flush_all;
 wire [31:0]     M_master_inst,M_slave_inst;
 wire [31:0]     M_master_pc,M_slave_pc;
 wire [31:0]     M_master_alu_res,M_slave_alu_res;
@@ -246,7 +247,7 @@ hazard u_hazard(
     .E_jump_conflict            ( E_master_jump_conflict     ),
     .D_pred_take                ( D_master_pred_take         ),
     .D_jump_take                ( D_master_jump_take         ),
-    .M_flush_all                ( M1cs.flush_all             ),
+    .M_flush_all                ( M_master_flush_all             ),
     .F_ena                      ( F_ena                      ),
     .D_ena                      ( D_ena                      ),
     .E_ena                      ( E_ena                      ),
@@ -291,7 +292,7 @@ pc_reg u_pc_reg(
     .E_pc_plus8               ( E_master_pc_plus8        ),
     .E_jump_conflict          ( E_master_jump_conflict   ),
     .E_rs_value               ( E_master_rs_value        ),
-    .M_flush_all              ( M1cs.flush_all           ),
+    .M_flush_all              ( M_master_flush_all           ),
     .M_flush_all_addr         ( M_master_pc_plus4        ),
     .D_branch_take            ( D_master_pred_take       ),
     .D_branch_target          ( D_master_branch_target   ),
@@ -315,7 +316,7 @@ inst_fifo u_inst_fifo(
     //ports
     .clk                          ( clk                    ),
     .rst                          ( rst                    ),
-    .fifo_rst                     ( rst | D_flush          ),
+    .fifo_rst                     ( rst | D_flush          ), // TODO: fix fence_iE
     .flush_delay_slot             ( delay_slot_flush       ),
     .D_ena                        ( D_ena                  ),
     .i_stall                      ( i_stall                ),
@@ -379,7 +380,7 @@ assign D_slave_except = '{
 };
 int_raiser d_int(
     .info_i ( D_int_info    ),
-    .id_ena ( !fifo_empty   ),
+    .id_ena ( !fifo_empty   ), // skip branch jump
     .int_o  ( D_interrupt   )
 );
 
@@ -562,8 +563,8 @@ forward_top u_forward_top(
 wire D2E_clear1,D2E_clear2;
 // wire [31:0] E_master_rs_value_tmp,E_master_rt_value_tmp,E_slave_rs_value_tmp,E_slave_rt_value_tmp;
 // 在使能的情况下跳转清空才成立
-assign D2E_clear1 = M_cp0_jump | (!D_master_is_in_delayslot & E_flush & E_ena) | (!D_ena & E_ena);
-assign D2E_clear2 = M_cp0_jump | (E_flush & D_slave_ena) || (E_ena & !D_slave_ena);
+assign D2E_clear1 = M_cp0_jump | M_master_flush_all | (!D_master_is_in_delayslot & E_flush & E_ena) | (!D_ena & E_ena);
+assign D2E_clear2 = M_cp0_jump | M_master_flush_all | (E_flush & D_slave_ena) || (E_ena & !D_slave_ena);
 id_ex u_id_ex(
     //ports
     .clk                      ( clk                          ),
@@ -913,6 +914,7 @@ ex_mem u_ex_mem(
 );
 
 assign M_master_pc_plus4 = M_master_pc + 32'd4;
+assign M_master_flush_all = M1cs.flush_all & M_ena;
 d_tlb dtlb_inst(
     .clk                ( clk               ),
     .rst                ( rst               ),
@@ -958,6 +960,7 @@ cp0 cp0_inst(
     .clk            ( clk                       ),
     .rst            ( rst                       ),
     .stallE         ( ~E_ena                    ),
+    .stallM         ( d_stall                   ),
     .E_cop0_info    ( E_cop0_info               ),
     .E_master_pc    ( E_master_pc               ),
     .E_mfc0_rdata   ( E_cp0_rdata               ),
@@ -1039,7 +1042,7 @@ mem_wb u_mem_wb(
 );
 
 // debug
-assign debug_wb_pc          = (clk) ? W_master_pc : W_slave_pc;
+assign debug_wb_pc          = (clk) ? (W_master_pc) : ({32{~(|W_master_except)}} & W_slave_pc);
 assign debug_wb_rf_wen      = (rst) ? 4'b0000 : ((clk) ? {4{u_regfile.wen1}} : {4{u_regfile.wen2}});
 assign debug_wb_rf_wnum     = (clk) ? u_regfile.wa1 : u_regfile.wa2;
 assign debug_wb_rf_wdata    = (clk) ? u_regfile.wd1 : u_regfile.wd2;

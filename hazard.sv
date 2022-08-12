@@ -45,7 +45,7 @@ module hazard (
     assign D_ena = ~(lwstall | longest_stall);
     assign E_ena = ~longest_stall;
     assign M_ena = ~longest_stall;
-    assign W_ena = ~longest_stall | M_except;
+    assign W_ena = ~longest_stall | M_except | M_flush_all;
 
     assign F_flush = 1'b0;
     assign D_flush = M_except | M_flush_all | E_pred_fail | E_jump_conflict | D_pred_take | D_jump_take; // D\E branch

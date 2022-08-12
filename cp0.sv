@@ -7,6 +7,7 @@
 module cp0(
     input               clk,
     input               rst,
+    input               stallM,
     input               stallE,
     input  cop0_info    E_cop0_info,
     input  [31:0]       E_master_pc, // only for debug cop0
@@ -141,17 +142,17 @@ wire i_tlb_rf = (except.if_tlbl & except.if_tlbrf);
 wire d_tlb_rf = ((~(|{except.if_adel,except.if_tlbl})) & (except.ex_tlbl | except.ex_tlbs) & except.ex_tlbrf);
 wire tlb_rf = i_tlb_rf | d_tlb_rf;
 
-always_comb begin // except_target    
+always_comb begin // except_target
     // We should sure that there is no exception in IF stage
     M_cp0_jump = 1'b0;
     M_cp0_jump_pc = 32'd0;
     // TODO: add CP0 unuseable signal to decoder. If there is except in IF or CP0 unuseable, all enable signals must be zero.
     if (except.id_eret) begin
         M_cp0_jump_pc = status_reg.ERL ? errorepc_reg : epc_reg;
-        M_cp0_jump = 1'b1;
+        M_cp0_jump = 1'b1 && !stallM;
     end
     else if (|except) begin
-        M_cp0_jump = 1'b1;
+        M_cp0_jump = 1'b1  && !stallM;
         if (!status_reg.EXL) begin
             M_cp0_jump_pc = trap_base + (tlb_rf ? 32'h0 : (except.id_int & cause_reg.IV & !status_reg.BEV) ? 32'h200 : 32'h180);
         end
@@ -234,11 +235,11 @@ always_ff @(posedge clk) begin // note: mtc0 should be done in exec stage.
         count_reg <= count_reg + 1;
         random_reg <= (random_reg == wired_reg) ? (NR_TLB_ENTRY - 1) : (random_reg - 1);
         cause_reg.IP <= {cause_reg.IP[7] | (count_reg == compare_reg),ext_int,cause_reg.IP[1:0]};
-        if (except.id_eret) begin
+        if (except.id_eret && !stallM) begin
             if (status_reg.ERL) status_reg.ERL <= 0;
             else status_reg.EXL <= 0;
         end
-        else if ( (|except)) begin // all except rather than eret
+        else if ( (|except) && !stallM) begin // all except rather than eret
             if (!status_reg.EXL) begin
                 epc_reg <= except_bd ? except_pc - 4 : except_pc;
                 cause_reg.BD <= except_bd;

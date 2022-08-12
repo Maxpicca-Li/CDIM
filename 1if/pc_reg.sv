@@ -40,15 +40,15 @@ module pc_reg (
             // pc_next = 32'h80000000;
         // else if (pc_en) begin
             else if (M_except)
-                pc_next = M_except_addr;            
+                pc_next = M_except_addr;
+            else if (M_flush_all)
+                pc_next = M_flush_all_addr;            
             else if (E_pred_fail & E_branch_take)
                 pc_next = E_branch_target;
             else if (E_pred_fail & !E_branch_take)
                 pc_next = E_next_pc8 ? E_pc_plus8 : E_pc_plus4;
             else if (E_jump_conflict) 
                 pc_next = E_rs_value;
-            else if (M_flush_all)
-                pc_next = M_flush_all_addr;
             else if (D_branch_take)
                 pc_next = D_branch_target;
             else if (D_jump_take) 

@@ -296,24 +296,28 @@ module  decoder(
                         signsD.read_rs = 1'b1;
                         signsD.read_rt = 1'b1;
                         signsD.hilo_write = 1'b1;
+                        signsD.hilo_read = 1'b1;
                     end
                     `FUN_MADDU:begin
                         signsD.aluop = `ALUOP_MADDU;
                         signsD.read_rs = 1'b1;
                         signsD.read_rt = 1'b1;
                         signsD.hilo_write = 1'b1;
+                        signsD.hilo_read = 1'b1;
                     end
                     `FUN_MSUB:begin
                         signsD.aluop = `ALUOP_MSUB;
                         signsD.read_rs = 1'b1;
                         signsD.read_rt = 1'b1;
                         signsD.hilo_write = 1'b1;
+                        signsD.hilo_read = 1'b1;
                     end
                     `FUN_MSUBU:begin
                         signsD.aluop = `ALUOP_MSUBU;
                         signsD.read_rs = 1'b1;
                         signsD.read_rt = 1'b1;
                         signsD.hilo_write = 1'b1;
+                        signsD.hilo_read = 1'b1;
                     end
                     default: begin
                         undefined_inst = 1'b1;
@@ -527,6 +531,7 @@ module  decoder(
                         signsD.read_rt = 1'b1;
                         signsD.cp0_write = 1'b1; // TODO: delete this signal
                         signsD.tlb_fence = 1'b1;
+                        signsD.flush_all = 1'b1;
                         cop0_info_out.mtc0_en = 1'b1;
                     end
                     `RS_CO: begin
@@ -534,8 +539,6 @@ module  decoder(
                             `FUN_TLBR: begin
                                 cop0_info_out.TLBR = 1'b1;
                                 signsD.only_one_issue = 1'b1;
-                                signsD.flush_all = 1'b1;
-                                signsD.tlb_fence = 1'b1;
                             end
                             `FUN_TLBWI: begin
                                 cop0_info_out.TLBWI = 1'b1;
@@ -547,11 +550,11 @@ module  decoder(
                                 cop0_info_out.TLBWR = 1'b1;
                                 signsD.only_one_issue = 1'b1;
                                 signsD.flush_all = 1'b1;
+                                signsD.tlb_fence = 1'b1;
                             end
                             `FUN_TLBP: begin
                                 cop0_info_out.TLBP = 1'b1;
                                 signsD.only_one_issue = 1'b1;
-                                signsD.flush_all = 1'b1;
                             end
                             `FUN_ERET: begin
                                 signsD.only_one_issue = 1'b1;
