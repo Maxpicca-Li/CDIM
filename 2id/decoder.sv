@@ -531,7 +531,7 @@ module  decoder(
                         signsD.read_rt = 1'b1;
                         signsD.cp0_write = 1'b1; // TODO: delete this signal
                         signsD.tlb_fence = 1'b1;
-                        signsD.flush_all = 1'b1;
+                        // signsD.flush_all = 1'b1;
                         cop0_info_out.mtc0_en = 1'b1;
                     end
                     `RS_CO: begin
@@ -543,13 +543,13 @@ module  decoder(
                             `FUN_TLBWI: begin
                                 cop0_info_out.TLBWI = 1'b1;
                                 signsD.only_one_issue = 1'b1;
-                                signsD.flush_all = 1'b1;
+                                // signsD.flush_all = 1'b1;
                                 signsD.tlb_fence = 1'b1;
                             end
                             `FUN_TLBWR: begin
                                 cop0_info_out.TLBWR = 1'b1;
                                 signsD.only_one_issue = 1'b1;
-                                signsD.flush_all = 1'b1;
+                                // signsD.flush_all = 1'b1;
                                 signsD.tlb_fence = 1'b1;
                             end
                             `FUN_TLBP: begin
