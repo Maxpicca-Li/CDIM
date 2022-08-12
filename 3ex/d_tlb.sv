@@ -98,6 +98,8 @@ generate if (NR_DTLB_ENTRY > 1) begin
             dtlb_status <= IDLE;
             E_tlb_refill <= 0;
             E_tlb_invalid <= 0;
+            dtlb <= '{default: '0};
+            dtlb_vpn2 <= 0;
         end
         else begin
             if (fence_tlb & E_ready_go) dtlb_valid <= 0;
@@ -149,6 +151,7 @@ else begin
             dtlb_status <= IDLE;
             E_tlb_refill <= 0;
             E_tlb_invalid <= 0;
+            dtlb_vpn2 <= 0;
         end
         else begin
             if (fence_tlb & E_ready_go) dtlb_valid <= 0;
