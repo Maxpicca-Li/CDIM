@@ -174,13 +174,14 @@ generate
             assign tlb_matched[j][i] = (tlb[i].G || tlb[i].ASID == entryhi_reg.ASID) && (tlb[i].VPN2 == tlb_find_vpn2[j]);
         end
         assign tlb_matched_index[j] = 
-            tlb_matched[j][0] ? 4'd0 :
-            tlb_matched[j][1] ? 4'd1 :
-            tlb_matched[j][2] ? 4'd2 :
-            tlb_matched[j][3] ? 4'd3 :
-            tlb_matched[j][4] ? 4'd4 :
-            tlb_matched[j][5] ? 4'd5 :
-            tlb_matched[j][6] ? 4'd6 :
+            tlb_matched[j][0] ? 3'd0 :
+            tlb_matched[j][1] ? 3'd1 :
+            tlb_matched[j][2] ? 3'd2 :
+            tlb_matched[j][3] ? 3'd3 :
+            tlb_matched[j][4] ? 3'd4 :
+            tlb_matched[j][5] ? 3'd5 :
+            tlb_matched[j][6] ? 3'd6 : 3'd7;
+            /*
             tlb_matched[j][7] ? 4'd7 :
             tlb_matched[j][8] ? 4'd8 :
             tlb_matched[j][9] ? 4'd9 :
@@ -189,6 +190,7 @@ generate
             tlb_matched[j][12] ? 4'd12 :
             tlb_matched[j][13] ? 4'd13 :
             tlb_matched[j][14] ? 4'd14 : 4'd15;
+            */
     end
 endgenerate
 

@@ -568,7 +568,7 @@ typedef struct packed {
     logic [31:0]data;
 } fifo_entry;
 
-parameter NR_TLB_ENTRY = 16;
+parameter NR_TLB_ENTRY = 8;
 
 typedef struct packed {
     logic p;
