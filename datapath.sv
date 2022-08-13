@@ -31,17 +31,21 @@ module datapath (
     output wire        stallM,
     output wire        mem_read_enE,
     output wire        mem_write_enE,
-    output wire [31:0] E_mem_pa,
-    output wire        E_mem_uncached,
+    output wire [31:0] E_mem_va,
     output wire [31:0] mem_addrE, // TODO: delete
     input  wire [31:0] data_sram_rdataM,
     output wire        data_sram_enM,
     output wire [ 1:0] data_sram_rlenM,
     output wire [ 3:0] data_sram_wenM,
-    output wire [31:0] M_mem_pa,
-    output wire        M_mem_uncached,
+    output wire [31:0] M_mem_va,
     output wire [31:0] data_sram_addrM, // TODO: delete
     output wire [31:0] data_sram_wdataM,
+    input  wire [31:13]dtlb_vpn2,
+    output             dtlb_found,
+    output tlb_entry   dtlb_entry,
+    input  logic       data_tlb_refill,
+    input  logic       data_tlb_invalid,
+    input  logic       data_tlb_mod,
     //debug
     output wire [31:0] debug_wb_pc,      
     output wire [3 :0] debug_wb_rf_wen,
@@ -105,9 +109,11 @@ wire [31:0]     E_cp0_rdata;
 wire            M_cp0_jump;
 wire [31:0]     M_cp0_jump_pc;
 // dtlb
+/*
 wire [31:13]    dtlb_vpn2;
 wire            dtlb_found;
 tlb_entry       dtlb_entry;
+*/
 // hilo
 wire            hilo_wen;
 wire [63:0]     hilo,hilo_wdata;
@@ -154,10 +160,11 @@ wire [31:0]     D_master_rt_value,D_slave_rt_value;
 wire [4:0]      D_master_reg_waddr,D_slave_reg_waddr;
 except_bus      D_master_except,D_slave_except;
 // ===== E =====
+/*
 wire            E_mem_writeable;
 wire            E_tlb_refill;
 wire            E_tlb_invalid;
-wire            E_dtlb_stall;
+*/
 wire            E_master_exp_trap;
 wire [3 :0]     E_master_branch_type;
 wire [3 :0]     E_master_trap_type;
@@ -203,6 +210,7 @@ wire [31:0]     M_master_inst,M_slave_inst;
 wire [31:0]     M_master_pc,M_slave_pc;
 wire [31:0]     M_master_alu_res,M_slave_alu_res;
 wire [ 4:0]     M_master_reg_waddr,M_slave_reg_waddr;
+except_bus      M_master_except_temp,M_slave_except_temp;
 except_bus      M_master_except,M_slave_except;
 wire            M_master_is_in_delayslot, M_slave_is_in_delayslot;
 wire [31:0]     M_master_pc_plus4;
@@ -237,14 +245,13 @@ hazard u_hazard(
     .E_slave_reg_waddr          ( E_slave_reg_waddr          ),
     .i_stall                    ( i_stall                    ),
     .E_alu_stall                ( E_alu_stall                ),
-    .E_dtlb_stall               ( E_dtlb_stall               ),
     .d_stall                    ( d_stall                    ),
     .M_except                   ( M_cp0_jump                 ),
     .E_pred_fail                ( E_master_pred_fail         ),
     .E_jump_conflict            ( E_master_jump_conflict     ),
     .D_pred_take                ( D_master_pred_take         ),
     .D_jump_take                ( D_master_jump_take         ),
-    .M_flush_all                ( M_master_flush_all             ),
+    .M_flush_all                ( M_master_flush_all         ),
     .F_ena                      ( F_ena                      ),
     .D_ena                      ( D_ena                      ),
     .E_ena                      ( E_ena                      ),
@@ -269,7 +276,7 @@ assign fence_tlbE = E1cs.tlb_fence;
 // NOTE: 与i_stall有关的cache disable，一般修改stallF（即F_ena），而不是inst_sram_en，否则会loop
 assign F_pc_except = (|F_pc[1:0]); // 必须是2'b00
 // assign inst_sram_en =  !(rst | M_cp0_jump | F_pc_except | fifo_full);
-assign inst_sram_en =  !(rst | M_cp0_jump | fifo_full);
+assign inst_sram_en =  !(rst | fifo_full);
 assign stallF = ~F_ena;
 assign stallM = ~M_ena;
 assign pc_en = F_ena | M_cp0_jump; // 异常的优先级最高，必须使能
@@ -319,8 +326,8 @@ inst_fifo u_inst_fifo(
     .i_stall                      ( i_stall                ),
     .master_is_branch             ( D_master_is_bj         ), // D阶段的branch
     .delay_sel_rst                ( delay_sel_rst          ),
-    .D_delay_rst                  ( D_delay_rst            ), // D: next_master_is_in_delayslot
-    .E_delay_rst                  ( E_delay_rst            ), // D: master_is_in_delayslot
+    .D_delay_rst                  ( /*D_master_bj*/D_delay_rst            ), // D: next_master_is_in_delayslot
+    .E_delay_rst                  ( /*E_master_bj*/E_delay_rst            ), // D: master_is_in_delayslot
     
     .read_en1                     ( D_ena                  ),
     .read_en2                     ( D_slave_ena            ), // D阶段的发射结果
@@ -661,12 +668,14 @@ assign E_master_except = '{
     id_cpu      : E_master_except_temp.id_cpu,
     ex_ov       : E_master_overflow,
     ex_adel     : E_master_mem_adel,
-    ex_ades     : E_master_mem_ades,
+    ex_ades     : E_master_mem_ades
+    /*
     ex_tlbl     : (E_tlb_invalid | E_tlb_refill) & mem_read_enE & E1cs.mem_en,
     ex_tlbs     : (E_tlb_invalid | E_tlb_refill) & mem_write_enE & E1cs.mem_en,
     ex_tlbm     : !E_mem_writeable & mem_write_enE & E1cs.mem_en,
     ex_tlbrf    : E_tlb_refill & E1cs.mem_en,
     ex_trap     : E_master_exp_trap & E1cs.mem_en
+     */
 };
 assign E_slave_except = '{
     default     : '0,
@@ -681,12 +690,17 @@ assign E_slave_except = '{
     id_cpu      : E_slave_except_temp.id_cpu,
     ex_ov       : E_slave_overflow,
     ex_adel     : E_slave_mem_adel,
-    ex_ades     : E_slave_mem_ades,
+    ex_ades     : E_slave_mem_ades
+    /*
     ex_tlbl     : (E_tlb_invalid | E_tlb_refill) & mem_read_enE & E2cs.mem_en,
     ex_tlbs     : (E_tlb_invalid | E_tlb_refill) & mem_write_enE & E2cs.mem_en,
     ex_tlbm     : !E_mem_writeable & mem_write_enE & E2cs.mem_en,
     ex_tlbrf    : E_tlb_refill & E2cs.mem_en
+     */
 };
+
+assign E_mem_va = mem_addrE;
+
 assign E_cop0_info = E_master_cop0_info & {$bits(E_master_cop0_info){~(|E_master_except_temp)}};
 
 // branch and jump
@@ -856,16 +870,14 @@ ex_mem u_ex_mem(
     .E_mem_op                   ( mem_opE                     ),
     .E_mem_addr                 ( mem_addrE                   ),
     .E_mem_wdata                ( mem_wdataE                  ),
-    .E_mem_pa                   ( E_mem_pa                    ),
-    .E_mem_uncached             ( E_mem_uncached              ),
+    .E_mem_va                   ( E_mem_va                    ),
     .M_mem_en                   ( mem_enM                     ),
     .M_mem_ren                  ( mem_renM                    ),
     .M_mem_wen                  ( mem_wenM                    ),
     .M_mem_op                   ( mem_opM                     ),
     .M_mem_addr                 ( mem_addrM                   ),
     .M_mem_wdata                ( mem_wdataM                  ),
-    .M_mem_pa                   ( M_mem_pa                    ),
-    .M_mem_uncached             ( M_mem_uncached              ),
+    .M_mem_va                   ( M_mem_va                    ),
     .E_master_ctrl_sign         ( E1cs                        ),
     .E_master_except            ( E_master_except             ),
     .E_master_reg_wen           ( E_master_reg_wen            ),
@@ -885,7 +897,7 @@ ex_mem u_ex_mem(
     .E_slave_inst               ( E_slave_inst                ),
     .E_slave_alu_res            ( E_slave_alu_res             ),
     .M_master_ctrl_sign         ( M1cs                        ),
-    .M_master_except            ( M_master_except             ),
+    .M_master_except            ( M_master_except_temp        ),
     .M_master_reg_wen           ( M_master_reg_wen            ),
     .M_master_mem_sel           ( M_master_mem_sel            ),
     .M_master_is_in_delayslot   ( M_master_is_in_delayslot    ),
@@ -894,7 +906,7 @@ ex_mem u_ex_mem(
     .M_master_alu_res           ( M_master_alu_res            ),
     .M_master_pc                ( M_master_pc                 ),
     .M_slave_ctrl_sign          ( M2cs                        ),
-    .M_slave_except             ( M_slave_except              ),
+    .M_slave_except             ( M_slave_except_temp         ),
     .M_slave_reg_wen            ( M_slave_reg_wen             ),
     .M_slave_mem_sel            ( M_slave_mem_sel             ),
     .M_slave_is_in_delayslot    ( M_slave_is_in_delayslot     ),
@@ -910,8 +922,51 @@ ex_mem u_ex_mem(
     .M_master_debug_cp0_cause   ( M_master_debug_cp0_cause    )
 );
 
+assign M_master_except = '{
+    default     : '0,
+    if_adel     : M_master_except_temp.if_adel,
+    if_tlbl     : M_master_except_temp.if_tlbl,
+    if_tlbrf    : M_master_except_temp.if_tlbrf,
+    id_ri       : M_master_except_temp.id_ri,
+    id_syscall  : M_master_except_temp.id_syscall,
+    id_break    : M_master_except_temp.id_break,
+    id_eret     : M_master_except_temp.id_eret,
+    id_int      : M_master_except_temp.id_int,
+    id_cpu      : M_master_except_temp.id_cpu,
+    ex_ov       : M_master_except_temp.ex_ov,
+    ex_adel     : M_master_except_temp.ex_adel,
+    ex_ades     : M_master_except_temp.ex_ades,
+    ex_tlbl     : (data_tlb_invalid | data_tlb_refill) & data_sram_enM & M1cs.mem_en & !(|data_sram_wenM),
+    ex_tlbs     : (data_tlb_invalid | data_tlb_refill) & data_sram_enM & M1cs.mem_en & (|data_sram_wenM),
+    ex_tlbm     : data_tlb_mod & (|data_sram_wenM) & M1cs.mem_en,
+    ex_tlbrf    : data_tlb_refill & M1cs.mem_en,
+    ex_trap     : M_master_except_temp.ex_trap
+};
+
+assign M_slave_except = '{
+    default     : '0,
+    if_adel     : M_slave_except_temp.if_adel,
+    if_tlbl     : M_slave_except_temp.if_tlbl,
+    if_tlbrf    : M_slave_except_temp.if_tlbrf,
+    id_ri       : M_slave_except_temp.id_ri,
+    id_syscall  : M_slave_except_temp.id_syscall,
+    id_break    : M_slave_except_temp.id_break,
+    id_eret     : M_slave_except_temp.id_eret,
+    id_int      : M_slave_except_temp.id_int,
+    id_cpu      : M_slave_except_temp.id_cpu,
+    ex_ov       : M_slave_except_temp.ex_ov,
+    ex_adel     : M_slave_except_temp.ex_adel,
+    ex_ades     : M_slave_except_temp.ex_ades,
+    ex_tlbl     : (data_tlb_invalid | data_tlb_refill) & data_sram_enM & M2cs.mem_en & !(|data_sram_wenM),
+    ex_tlbs     : (data_tlb_invalid | data_tlb_refill) & data_sram_enM & M2cs.mem_en & (|data_sram_wenM),
+    ex_tlbm     : data_tlb_mod & (|data_sram_wenM) & M2cs.mem_en,
+    ex_tlbrf    : data_tlb_refill & M2cs.mem_en,
+    ex_trap     : M_slave_except_temp.ex_trap
+};
+
 assign M_master_pc_plus4 = M_master_pc + 32'd4;
 assign M_master_flush_all = M1cs.flush_all & M_ena;
+/*
 d_tlb dtlb_inst(
     .clk                ( clk               ),
     .rst                ( rst               ),
@@ -931,7 +986,7 @@ d_tlb dtlb_inst(
     .fence_tlb          ( fence_tlbE        ),
     .dtlb_entry         ( dtlb_entry        )
 );
-
+*/
 mem_access u_mem_access(
     //ports
     .mem_en                 ( mem_enM                   ),
@@ -948,8 +1003,8 @@ mem_access u_mem_access(
     // 异常处理及其选择
     .M_master_mem_sel       ( M_master_mem_sel          ),
     .M_slave_mem_sel        ( M_slave_mem_sel           ),
-    .M_master_except        ( M_master_except           ),
-    .M_slave_except         ( M_slave_except            )
+    .M_master_except        ( M_master_except_temp      ),
+    .M_slave_except         ( M_slave_except_temp       )
 );
 
 // new CP0
@@ -957,7 +1012,7 @@ cp0 cp0_inst(
     .clk            ( clk                       ),
     .rst            ( rst                       ),
     .stallE         ( ~E_ena                    ),
-    .stallM         ( d_stall                   ),
+    .stallM         ( ~M_ena                    ),
     .E_cop0_info    ( E_cop0_info               ),
     .E_master_pc    ( E_master_pc               ),
     .E_mfc0_rdata   ( E_cp0_rdata               ),

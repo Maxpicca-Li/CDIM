@@ -141,6 +141,15 @@ module mycpu_top (
     wire d_bvalid           ;
     wire d_bready           ;
 
+    wire [31:13]    dtlb_vpn2;
+    wire            dtlb_found;
+    tlb_entry       dtlb_entry;
+    wire            fence_tlb;
+
+    wire            data_tlb_refill;
+    wire            data_tlb_invalid;
+    wire            data_tlb_mod;
+
     wire no_cache_E         ;
     datapath u_datapath(
         //ports
@@ -172,17 +181,21 @@ module mycpu_top (
         .stallM            		( stallM            		),
         .mem_read_enE      		( mem_read_enE      		),
         .mem_write_enE     		( mem_write_enE     		),
-        .E_mem_pa               ( mem_addrE                 ),
-        .E_mem_uncached         ( no_cache_E                ),
+        .E_mem_va               ( mem_addrE                 ),
         .mem_addrE         		( mem_addrE_dp      		), // TODO: delete
         .data_sram_enM     		( data_en           		),
         .data_sram_rdataM  		( data_rdata          		),
         .data_sram_rlenM   		( data_rlen           		),
         .data_sram_wenM    		( data_wen             		),
-        .M_mem_pa               ( data_addr                 ),
-        .M_mem_uncached         ( no_cache_d                ),
+        .M_mem_va               ( data_addr                 ),
         .data_sram_addrM   		( data_addr_dp         		), // TODO: delete
         .data_sram_wdataM  		( data_wdata          		),
+        .dtlb_vpn2              ( dtlb_vpn2                 ),
+        .dtlb_found             ( dtlb_found                ),
+        .dtlb_entry             ( dtlb_entry                ),
+        .data_tlb_refill        ( data_tlb_refill           ),
+        .data_tlb_invalid       ( data_tlb_invalid          ),
+        .data_tlb_mod           ( data_tlb_mod              ),
         // debug
         .debug_wb_pc       		( debug_wb_pc       		),
         .debug_wb_rf_wen   		( debug_wb_rf_wen   		),
@@ -231,17 +244,23 @@ module mycpu_top (
         .rst                ( rst           ),
         .stallM             ( stallM        ),
         .dstall             ( d_cache_stall ),
-        .E_mem_pa           ( mem_addrE     ), // only used for match bram
-        .M_mem_pa           ( data_addr     ),
+        .E_mem_va           ( mem_addrE     ), // only used for match bram
+        .M_mem_va           ( data_addr     ),
         .M_fence_addr       ( fence_addrM   ), // used for fence
         .M_fence_d          ( fence_dM      ), // fence address reuse the M_memva. Note: we shouldn't raise M_fence_en with M_mem_en.
         .M_mem_en           ( data_en       ),
         .M_mem_write        ( |data_wen     ),
-        .M_mem_uncached     ( no_cache_d    ), // TODO: connect to no_cache_d
         .M_wmask            ( data_wen      ),
         .M_mem_size         ( data_rlen     ),
         .M_wdata            ( data_wdata    ),
         .M_rdata            ( data_rdata    ),
+        .dtlb_vpn2          ( dtlb_vpn2     ),
+        .dtlb_found         ( dtlb_found    ),
+        .dtlb_entry         ( dtlb_entry    ),
+        .fence_tlb          ( fence_tlbE    ),
+        .data_tlb_refill    ( data_tlb_refill),
+        .data_tlb_invalid   ( data_tlb_invalid),
+        .data_tlb_mod       ( data_tlb_mod  ),
         .araddr             ( d_araddr      ),
         .arlen              ( d_arlen       ),
         .arsize             ( d_arsize      ),

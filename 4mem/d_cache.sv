@@ -1,3 +1,5 @@
+`include "defines.vh"
+// VIPT D$
 module d_cache #(
     parameter LEN_LINE = 6,  // 64 Bytes
     parameter LEN_INDEX = 6, // 64 lines
@@ -9,17 +11,25 @@ module d_cache #(
     // to cpu
     input               stallM,
     output              dstall,
-    input        [31:0] E_mem_pa, // only used for match bram
-    input        [31:0] M_mem_pa,
+    input        [31:0] E_mem_va, // only used for match bram
+    input        [31:0] M_mem_va,
     input        [31:0] M_fence_addr, // used for fence
     input               M_fence_d, // fence address reuse the M_memva. Note: we shouldn't raise M_fence_en with M_mem_en.
     input               M_mem_en,
     input               M_mem_write,
-    input               M_mem_uncached,
     input        [ 3:0] M_wmask,
     input         [1:0] M_mem_size,
     input        [31:0] M_wdata,
     output       [31:0] M_rdata,
+    // to l2 tlb
+    output logic [31:13]dtlb_vpn2,
+    input               dtlb_found,
+    input  tlb_entry    dtlb_entry,
+    input               fence_tlb,
+    // M_tlb_except
+    output logic        data_tlb_refill,
+    output logic        data_tlb_invalid,
+    output logic        data_tlb_mod,
     // to axi
     output logic [31:0] araddr,
     output logic [ 7:0] arlen,
@@ -44,6 +54,27 @@ module d_cache #(
     output              bready
 );
 
+// tlb
+typedef struct packed {
+    logic [31:12] vpn;
+    logic [31:12] ppn;
+    logic uncached;
+    logic dirty;
+    logic valid;
+} l1_dtlb;
+
+l1_dtlb dtlb;
+
+// dTLB Translation
+wire direct_mapped = M_mem_va[31:30] == 2'b10; // kseg0 and kseg1
+wire M_mem_uncached = direct_mapped ? M_mem_va[29] : dtlb.uncached;
+wire [31:12] data_tag = direct_mapped ? {3'b000, M_mem_va[28:12]} : dtlb.ppn;
+wire [31:12] data_vpn = M_mem_va[31:12];
+wire [31:0 ] M_mem_pa = {data_tag, M_mem_va[11:0]};
+
+wire l1tlb_ok = (dtlb.vpn == data_vpn && dtlb.valid);
+wire translation_ok = direct_mapped | (dtlb.vpn == data_vpn && dtlb.valid && (!M_mem_write || dtlb.dirty));
+
 // defines
 
 localparam LEN_PER_WAY = LEN_LINE + LEN_INDEX;
@@ -63,7 +94,7 @@ typedef struct packed {
     // Note: If NR_WAYS > 2, we should implement pseudo-LRU or LFSR.
 } dcache_meta;
 
-enum { IDLE, UNCACHED_READ, CACHE_WRITEBACK, CACHE_REPLACE, SAVE_RESULT } dcache_status;
+enum { IDLE, TLB_FILL, UNCACHED_READ, CACHE_WRITEBACK, CACHE_REPLACE, SAVE_RESULT} dcache_status;
 
 // metadata
 dcache_meta meta [NR_LINES-1:0];
@@ -116,13 +147,13 @@ dcache_tag tag_ram_wdata;
 
 // dcache bram
 wire [31:LEN_PER_WAY] addr_tag = M_mem_pa[31:LEN_PER_WAY];
-wire bram_addr_choose = (dcache_status != IDLE) & (dcache_status != SAVE_RESULT); // 1: M_mem_pa or M_fence_addr, 0: E_mem_pa
+wire bram_addr_choose = (dcache_status != IDLE) & (dcache_status != SAVE_RESULT); // 1: M_mem_va or M_fence_addr, 0: M_mem_va
 
 // FIXME: fix M_fence_addr
-wire [LEN_PER_WAY-1:2]          bram_word_addr = bram_use_replace_addr ? bram_replace_addr : (bram_addr_choose ? M_mem_pa[LEN_PER_WAY-1:2] : E_mem_pa[LEN_PER_WAY-1:2]);
-wire [LEN_PER_WAY-1:LEN_LINE]   bram_line_addr = bram_use_replace_addr ? bram_replace_addr[LEN_PER_WAY-1:LEN_LINE] : (bram_addr_choose ? M_mem_pa[LEN_PER_WAY-1:LEN_LINE] : E_mem_pa[LEN_PER_WAY-1:LEN_LINE]);
+wire [LEN_PER_WAY-1:2]          bram_word_addr = bram_use_replace_addr ? bram_replace_addr : (bram_addr_choose ? M_mem_va[LEN_PER_WAY-1:2] : E_mem_va[LEN_PER_WAY-1:2]);
+wire [LEN_PER_WAY-1:LEN_LINE]   bram_line_addr = bram_use_replace_addr ? bram_replace_addr[LEN_PER_WAY-1:LEN_LINE] : (bram_addr_choose ? M_mem_va[LEN_PER_WAY-1:LEN_LINE] : E_mem_va[LEN_PER_WAY-1:LEN_LINE]);
 
-wire [LEN_PER_WAY-1:2] data_write_addr = bram_use_replace_addr ? bram_replace_write_addr : M_mem_pa[LEN_PER_WAY-1:2];
+wire [LEN_PER_WAY-1:2] data_write_addr = bram_use_replace_addr ? bram_replace_write_addr : M_mem_va[LEN_PER_WAY-1:2];
 
 wire data_bram_wdata_sel = dcache_status == CACHE_REPLACE; // 1: axi rdata, 0: M_wdata
 wire [31:0] data_bram_wdata = data_bram_wdata_sel ? rdata : M_wdata;
@@ -133,20 +164,18 @@ dcache_tag cache_tag[NR_WAYS-1:0];
 wire [NR_WAYS-1:0] tag_compare_valid;
 wire cache_hit = |tag_compare_valid;
 
-wire cache_hit_available = cache_hit && !M_mem_uncached;
-
 // stall control
-wire mmio_read_stall = M_mem_en && M_mem_uncached && !M_mem_write && dcache_status != SAVE_RESULT;
-wire mmio_write_stall = (M_mem_en && M_mem_uncached && M_mem_write && (dcache_status != IDLE || store_buffer_full) );
-wire cached_stall = M_mem_en & (!M_mem_uncached) & !cache_hit;
-wire fence_stall = M_fence_d && dcache_status != SAVE_RESULT;
+wire mmio_read_stall = M_mem_uncached && !M_mem_write;
+wire mmio_write_stall = M_mem_uncached && M_mem_write && store_buffer_full;
+wire cached_stall = (!M_mem_uncached) && !cache_hit;
+wire tlb_stall = !translation_ok;
 
 // Note: If NR_WAYS > 2, we should mux one hot from tag_compare_valid;
 wire d_cache_sel = tag_compare_valid[1];
 
-wire [LEN_PER_WAY-1:LEN_LINE] pa_line_addr = M_mem_pa[LEN_PER_WAY-1:LEN_LINE];
+wire [LEN_PER_WAY-1:LEN_LINE] pa_line_addr = M_mem_va[LEN_PER_WAY-1:LEN_LINE];
 
-assign dstall = dcache_status == IDLE ? ((cached_stall | mmio_read_stall | mmio_write_stall) | M_fence_d) : (dcache_status != SAVE_RESULT);
+assign dstall = dcache_status == IDLE ? (M_mem_en ? (cached_stall | mmio_read_stall | mmio_write_stall | tlb_stall) : M_fence_d) : (dcache_status != SAVE_RESULT);
 
 logic [31:0] saved_rdata;
 
@@ -187,7 +216,7 @@ generate
             .doutb  (cache_tag[i])
         );
         assign tag_compare_valid[i] = cache_tag[i].tag == addr_tag && meta[pa_line_addr].valid[i];
-        assign cache_data_forward[i] = last_line_addr == M_mem_pa[LEN_PER_WAY-1:2] ? ((last_wea[i] & last_wdata) | (cache_data[i] & (~last_wea[i]))) : cache_data[i];
+        assign cache_data_forward[i] = last_line_addr == M_mem_va[LEN_PER_WAY-1:2] ? ((last_wea[i] & last_wdata) | (cache_data[i] & (~last_wea[i]))) : cache_data[i];
         assign data_wea[i] = (tag_compare_valid[i] && M_mem_en && M_mem_write && !M_mem_uncached && dcache_status == IDLE) ? M_wmask :  bram_replace_wea[i];
         always_ff @(posedge clk) begin
             if (rst) begin
@@ -240,6 +269,14 @@ always_ff @(posedge clk) begin
         tag_wea <= '{default: '0};
         bram_replace_wea <= '{default: '0};
         tag_ram_wdata <= 0;
+        // clear tlb except output
+        data_tlb_refill <= 0;
+        data_tlb_invalid <= 0;
+        data_tlb_mod <= 0;
+        // clear dtlb
+        dtlb <= '{default: '0};
+        // clear dtlb req
+        dtlb_vpn2 <= 0;
         // clear saved rdata
         saved_rdata <= 0;
         // clear axi
@@ -258,6 +295,8 @@ always_ff @(posedge clk) begin
         wvalid <= 0;
     end
     else begin
+        // fence tlb
+        if (fence_tlb && !dstall && !stallM) dtlb.valid <= 0;
         // store buffer
         if (store_buffer_busy) begin
             if (store_buffer_ctrl.axi_busy) begin // To implement SC memory ordering, if store buffer busy, axi is unseable.
@@ -299,7 +338,17 @@ always_ff @(posedge clk) begin
         case (dcache_status)
             IDLE: begin
                 if (M_mem_en) begin
-                    if (M_mem_uncached) begin
+                    if (!translation_ok) begin
+                        if (l1tlb_ok) begin // tlbmod
+                            dcache_status <= SAVE_RESULT;
+                            data_tlb_mod <= 1'b1;
+                        end
+                        else begin
+                            dcache_status <= TLB_FILL;
+                            dtlb_vpn2 <= data_vpn[31:13];
+                        end
+                    end
+                    else if (M_mem_uncached) begin
                         if (M_mem_write) begin
                             if (!store_buffer_full && !current_mmio_write_saved) begin
                                 store_buffer[store_buffer_ctrl.ptr_end] <= '{
@@ -367,6 +416,26 @@ always_ff @(posedge clk) begin
                         if (|meta[fence_line_addr].valid) meta[fence_line_addr].valid <= 0;
                         dcache_status <= SAVE_RESULT;
                     end
+                end
+            end
+            TLB_FILL: begin
+                if (dtlb_found) begin
+                    if ( (data_vpn[12] & dtlb_entry.V1) | (!data_vpn[12] & dtlb_entry.V0)) begin
+                        dtlb.vpn <= data_vpn[31:12];
+                        dtlb.ppn <= data_vpn[12] ? dtlb_entry.PFN1 : dtlb_entry.PFN0;
+                        dtlb.uncached <= data_vpn[12] ? !dtlb_entry.C1 : !dtlb_entry.C0;
+                        dtlb.dirty <= data_vpn[12] ? dtlb_entry.D1 : dtlb_entry.D0;
+                        dtlb.valid <= 1'b1;
+                        dcache_status <= IDLE;
+                    end
+                    else begin
+                        dcache_status <= SAVE_RESULT;
+                        data_tlb_invalid <= 1'b1;
+                    end
+                end
+                else begin
+                    dcache_status <= SAVE_RESULT;
+                    data_tlb_refill <= 1'b1;
                 end
             end
             UNCACHED_READ: begin
@@ -511,6 +580,9 @@ always_ff @(posedge clk) begin
             SAVE_RESULT: begin
                 if (!dstall && !stallM) begin
                     dcache_status <= IDLE;
+                    data_tlb_invalid <= 0;
+                    data_tlb_refill <= 0;
+                    data_tlb_mod <= 0;
                 end
             end
         endcase
