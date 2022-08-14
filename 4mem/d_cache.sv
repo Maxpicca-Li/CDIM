@@ -4,7 +4,7 @@ module d_cache #(
     parameter LEN_LINE = 6,  // 64 Bytes
     parameter LEN_INDEX = 6, // 64 lines
     parameter NR_WAYS = 2,
-    parameter SIZE_STORE_BUFFER = 8
+    parameter SIZE_STORE_BUFFER = 2
 ) (
     input               clk,
     input               rst,
@@ -118,7 +118,7 @@ store_buffer_control store_buffer_ctrl;
 logic current_mmio_write_saved;
 wire store_buffer_has_next = store_buffer_ctrl.ptr_begin != store_buffer_ctrl.ptr_end;
 wire store_buffer_busy = store_buffer_has_next | store_buffer_ctrl.axi_busy;
-wire store_buffer_full = (store_buffer_ctrl.ptr_end + 3'd1) == store_buffer_ctrl.ptr_begin;
+wire store_buffer_full = (store_buffer_ctrl.ptr_end + 1'd1) == store_buffer_ctrl.ptr_begin;
 
 // replace & fence control
 wire [LEN_PER_WAY-1:LEN_LINE]   fence_line_addr = M_fence_addr[LEN_PER_WAY-1:LEN_LINE];
