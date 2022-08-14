@@ -548,6 +548,11 @@ typedef struct packed {
 } cp0_config1;
 
 typedef struct packed {
+    logic [31:0] count;
+    logic shadow;
+} cp0_count;
+
+typedef struct packed {
     logic        G;
     logic        V0;
     logic        V1;

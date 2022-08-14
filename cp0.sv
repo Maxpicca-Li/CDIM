@@ -67,7 +67,7 @@ cp0_context     context_reg;
 // only 4KB supported, pagemask read as zero and ignore on write
 logic [31:0]    wired_reg;
 logic [31:0]    badva_reg;
-logic [31:0]    count_reg;
+cp0_count       count_reg;
 cp0_entryhi     entryhi_reg;
 logic [31:0]    compare_reg;
 cp0_status      status_reg = '{default: '0, BEV: 1'b1};
@@ -104,7 +104,7 @@ always_comb begin : mfc0_read
         `CP0_REG_PAGEMASK: E_mfc0_rdata = 0;
         `CP0_REG_WIRED: E_mfc0_rdata = wired_reg;
         `CP0_REG_BADVADDR: E_mfc0_rdata = badva_reg;
-        `CP0_REG_COUNT: E_mfc0_rdata = count_reg;
+        `CP0_REG_COUNT: E_mfc0_rdata = count_reg.count;
         `CP0_REG_ENTRYHI: E_mfc0_rdata = entryhi_reg;
         `CP0_REG_COMPARE: E_mfc0_rdata = compare_reg;
         `CP0_REG_STATUS: E_mfc0_rdata = status_reg;
@@ -212,7 +212,7 @@ always_ff @(posedge clk) begin // note: mtc0 should be done in exec stage.
         context_reg <= 0;
         wired_reg <= 0;
         badva_reg <= 0;
-        count_reg <= 1;
+        count_reg <= '{default: '0, count: 1};
         entryhi_reg <= 0;
         compare_reg <= 0;
         status_reg <= '{default: '0, BEV: 1'b1};
@@ -227,7 +227,7 @@ always_ff @(posedge clk) begin // note: mtc0 should be done in exec stage.
     else begin
         count_reg <= count_reg + 1;
         random_reg <= (random_reg == wired_reg) ? (NR_TLB_ENTRY - 1) : (random_reg - 1);
-        cause_reg.IP <= {cause_reg.IP[7] | (count_reg == compare_reg),ext_int,cause_reg.IP[1:0]};
+        cause_reg.IP <= {cause_reg.IP[7] | (count_reg.count == compare_reg),ext_int,cause_reg.IP[1:0]};
         if (except.id_eret && !stallM) begin
             if (status_reg.ERL) status_reg.ERL <= 0;
             else status_reg.EXL <= 0;
@@ -318,7 +318,7 @@ always_ff @(posedge clk) begin // note: mtc0 should be done in exec stage.
                     wired_reg <= {{(32-$clog2(NR_TLB_ENTRY)){1'b0}},E_mtc0_wdata[$clog2(NR_TLB_ENTRY)-1:0]};
                     random_reg <= NR_TLB_ENTRY-1;
                 end
-                `CP0_REG_COUNT: count_reg <= E_mtc0_wdata;
+                `CP0_REG_COUNT: count_reg.count <= E_mtc0_wdata;
                 `CP0_REG_ENTRYHI: begin
                     entryhi_reg.ASID <= entryhi_wdata.ASID;
                     entryhi_reg.VPN2 <= entryhi_wdata.VPN2;
@@ -416,6 +416,6 @@ end
 // debug
 assign debug_cp0_causeE = cause_reg;
 assign debug_cp0_randomE = random_reg;
-assign debug_cp0_countE = count_reg;
+assign debug_cp0_countE = count_reg.count;
 
 endmodule
