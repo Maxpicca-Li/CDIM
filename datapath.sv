@@ -298,7 +298,7 @@ pc_reg u_pc_reg(
     .E_pc_plus8               ( E_master_pc_plus8        ),
     .E_jump_conflict          ( E_master_jump_conflict   ),
     .E_rs_value               ( E_master_rs_value        ),
-    .M_flush_all              ( M_master_flush_all           ),
+    .M_flush_all              ( M_master_flush_all       ),
     .M_flush_all_addr         ( M_master_pc_plus4        ),
     .D_branch_take            ( D_master_pred_take       ),
     .D_branch_target          ( D_master_branch_target   ),
@@ -328,8 +328,8 @@ inst_fifo u_inst_fifo(
     .i_stall                      ( i_stall                ),
     .master_is_branch             ( D_master_is_bj         ), // D阶段的branch
     .delay_sel_rst                ( delay_sel_rst          ),
-    .D_delay_rst                  ( /*D_master_bj*/D_delay_rst            ), // D: next_master_is_in_delayslot
-    .E_delay_rst                  ( /*E_master_bj*/E_delay_rst            ), // D: master_is_in_delayslot
+    .D_delay_rst                  ( D_master_bj            ), // D: next_master_is_in_delayslot
+    .E_delay_rst                  ( E_master_bj            ), // D: master_is_in_delayslot
     
     .read_en1                     ( D_ena                  ),
     .read_en2                     ( D_slave_ena            ), // D阶段的发射结果
