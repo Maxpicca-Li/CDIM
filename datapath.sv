@@ -753,7 +753,6 @@ alu_top u_alu_top(
     .y2                  ( E_slave_alu_res  ),
     .cp0_rdata           ( E_cp0_rdata      ),
     .pc_plus8            ( E_master_pc_plus8),
-    .is_link_pc8         ( E_master_is_link_pc8),
     .E_alu_stall         ( E_alu_stall      )
 );
 

@@ -27,11 +27,9 @@ module alu_top(
     // all
     input  logic [31:0] cp0_rdata,
     input  logic [31:0] pc_plus8,
-    input               is_link_pc8,
     output              E_alu_stall
 );
 
-logic [31:0] y1_tmp;
 logic [31:0] mul_a, mul_b, div_a, div_b;
 logic        mul_sign1, mul_start1, div_sign1, div_start1;
 logic        mul_sign2, mul_start2, div_sign2, div_start2;
@@ -42,8 +40,6 @@ logic [63:0] hilo, hilo_wdata, mul_result, div_result;
 logic [63:0] alu_out64_1,alu_out64_2;
 
 assign E_alu_stall = ((mul_en1 | mul_en2) & !mul_ready) | ((div_en1 | div_en2) & !div_ready);
-assign y1 = {32{ is_link_pc8}} & pc_plus8 |
-            {32{!is_link_pc8}} & y1_tmp   ;
 
 alu_master u_aluA(
     //ports
@@ -53,8 +49,9 @@ alu_master u_aluA(
     .a                     ( a1                     ),
     .b                     ( b1                     ),
     .cp0_data              ( cp0_rdata              ),
+    .pc8                   ( pc_plus8               ),
     .hilo                  ( hilo                   ),
-    .y                     ( y1_tmp                 ),
+    .y                     ( y1                     ),
     .aluout_64             ( alu_out64_1            ),
     .overflow              ( overflow1              ),
     .mul_start             ( mul_start1             ),
@@ -75,6 +72,7 @@ alu_master u_aluB(
     .a                     ( a2                     ),
     .b                     ( b2                     ),
     .cp0_data              ( 0                      ),
+    .pc8                   ( 0                      ),
     .hilo                  ( hilo                   ),
     .y                     ( y2                     ),
     .aluout_64             ( alu_out64_2            ),

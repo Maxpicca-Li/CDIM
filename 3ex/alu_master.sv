@@ -7,6 +7,7 @@ module alu_master(
     input  logic [31:0]a,
     input  logic [31:0]b,
     input  logic [31:0]cp0_data,
+    input  logic [31:0]pc8,
     input  logic [63:0]hilo, // hilo source data
 
     output logic        mul_start,
@@ -114,6 +115,7 @@ module alu_master(
             `ALUOP_MFLO: y = hilo[31:0];
             `ALUOP_MFC0: y = cp0_data;
             `ALUOP_MOV : y = a;
+            `ALUOP_LINKPC8: y = pc8; 
             // 特殊指令
             `ALUOP_SC  : y = 32'd1;
             // 前导计数指令

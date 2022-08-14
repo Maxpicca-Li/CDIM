@@ -221,6 +221,7 @@
 `define ALUOP_MADDU     8'b01000001
 `define ALUOP_MSUB      8'b01100100
 `define ALUOP_MSUBU     8'b01100101
+`define ALUOP_LINKPC8   8'b11111111
 // ## default
 `define ALUOP_NOP       8'b00000000
 
