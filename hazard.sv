@@ -16,10 +16,8 @@ module hazard (
     // flush: phase越靠后越先处理
     input wire       M_except,
     input wire       M_flush_all, // 暂时用不上这个信号
-    input wire       E_pred_fail,
-    input wire       E_jump_conflict,
-    input wire       D_pred_take,
-    input wire       D_jump_take,
+    input wire       E_bj,
+    input wire       D_bj,
     // out
     output wire F_ena, 
     output wire D_ena, 
@@ -47,8 +45,8 @@ module hazard (
     assign W_ena = ~longest_stall | M_except | M_flush_all;
 
     assign F_flush = 1'b0;
-    assign D_flush = M_except | M_flush_all | E_pred_fail | E_jump_conflict | D_pred_take | D_jump_take; // D\E branch
-    assign E_flush = M_except | M_flush_all | E_pred_fail | E_jump_conflict ;    // E branch
+    assign D_flush = M_except | M_flush_all | E_bj | D_bj; // D\E branch
+    assign E_flush = M_except | M_flush_all | E_bj ;    // E branch
     assign M_flush = M_except | M_flush_all;
     assign W_flush = 1'b0; // TODO:0xbfc7cbe8 异常绑定
     assign delay_slot_flush = M_except | M_flush_all;

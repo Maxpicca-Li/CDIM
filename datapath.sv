@@ -115,10 +115,6 @@ wire [31:13]    dtlb_vpn2;
 wire            dtlb_found;
 tlb_entry       dtlb_entry;
 */
-// hilo
-wire            hilo_wen;
-wire [63:0]     hilo,hilo_wdata;
-
 // ===== F =====
 wire            F_pc_except;
 wire            pc_en;
@@ -127,11 +123,11 @@ wire            D_cp0_useable;
 wire            D_kernel_mode;
 wire            D_interrupt;
 int_info        D_int_info;
-wire            delay_sel_rst,D_delay_rst,E_delay_rst;
+wire            delay_sel_rst;
 wire            D_master_is_bj;
 wire            D_master_bj,D_master_is_branch,D_master_is_jump;
 wire            D_master_pred_take,D_master_jump_take,D_master_jump_conflict;
-wire [31:0]     D_master_branch_target,D_master_jump_target,D_master_pc_plus4;
+wire [31:0]     D_master_branch_target,D_master_jump_target,D_master_pc_plus4,D_master_bj_target;
 wire [31:0]     D_master_pc,D_slave_pc;
 wire [31:0]     D_master_inst,D_slave_inst;
 wire            D_master_tlb_refill,D_slave_tlb_refill;
@@ -173,9 +169,9 @@ wire            E_master_is_branch;
 wire            E_master_bj;
 wire            E_next_pc8;
 wire            E_master_pred_take,E_master_actual_take,E_master_pred_fail;
-wire            E_master_jump_conflict_tmp,E_master_jump_conflict;
+wire            E_master_jump_conflict_tmp;
 wire            E_master_is_link_pc8;
-wire [31:0]     E_master_branch_target,E_master_pc_plus4, E_master_pc_plus8;
+wire [31:0]     E_master_branch_target,E_master_pc_plus4, E_master_pc_plus8, E_master_bj_target;
 wire            E_master_alu_stall, E_slave_alu_stall;
 wire [4 :0]     E_master_rs,E_slave_rs;
 wire [4 :0]     E_master_rt,E_slave_rt;
@@ -248,11 +244,9 @@ hazard u_hazard(
     .E_alu_stall                ( E_alu_stall                ),
     .d_stall                    ( d_stall                    ),
     .M_except                   ( M_cp0_jump                 ),
-    .E_pred_fail                ( E_master_pred_fail         ),
-    .E_jump_conflict            ( E_master_jump_conflict     ),
-    .D_pred_take                ( D_master_pred_take         ),
-    .D_jump_take                ( D_master_jump_take         ),
     .M_flush_all                ( M_master_flush_all         ),
+    .E_bj                       ( E_master_bj                ),
+    .D_bj                       ( D_master_bj                ),
     .F_ena                      ( F_ena                      ),
     .D_ena                      ( D_ena                      ),
     .E_ena                      ( E_ena                      ),
@@ -290,20 +284,12 @@ pc_reg u_pc_reg(
     .pc_en                    ( pc_en                    ),
     .M_except                 ( M_cp0_jump               ),
     .M_except_addr            ( M_cp0_jump_pc            ),
-    .E_pred_fail              ( E_master_pred_fail       ),
-    .E_branch_take            ( E_master_actual_take     ),
-    .E_next_pc8               ( E_next_pc8               ),
-    .E_branch_target          ( E_master_branch_target   ),
-    .E_pc_plus4               ( E_master_pc_plus4        ),
-    .E_pc_plus8               ( E_master_pc_plus8        ),
-    .E_jump_conflict          ( E_master_jump_conflict   ),
-    .E_rs_value               ( E_master_rs_value        ),
     .M_flush_all              ( M_master_flush_all       ),
     .M_flush_all_addr         ( M_master_pc_plus4        ),
-    .D_branch_take            ( D_master_pred_take       ),
-    .D_branch_target          ( D_master_branch_target   ),
-    .D_jump_take              ( D_master_jump_take       ),
-    .D_jump_target            ( D_master_jump_target     ),
+    .E_bj                     ( E_master_bj              ),
+    .E_bj_target              ( E_master_bj_target       ),
+    .D_bj                     ( D_master_bj              ),
+    .D_bj_target              ( D_master_bj_target       ),
     .D_fifo_full              ( fifo_full                ),
     .F_inst_data_ok1          ( inst_data_ok1            ),
     .F_inst_data_ok2          ( inst_data_ok2            ),
@@ -315,9 +301,6 @@ assign E_next_pc8  = E_slave_is_in_delayslot | D_master_is_in_delayslot;
 assign delay_sel_rst =  E_master_bj ? !E_next_pc8  :
                         D_master_bj ? !D_slave_ena :
                         1'b0;  // 防止两个女人一台戏！
-assign D_delay_rst = D_master_bj & !D_slave_ena;
-assign E_delay_rst = E_master_bj & !E_next_pc8;
-
 inst_fifo u_inst_fifo(
     //ports
     .clk                          ( clk                    ),
@@ -466,6 +449,8 @@ regfile u_regfile(
 assign D_master_pc_plus4 = D_master_pc + 32'd4;
 assign D_master_is_bj = D_master_is_branch | D_master_is_jump;
 assign D_master_bj = D_master_pred_take | D_master_jump_take;
+assign D_master_bj_target = {32{ D_master_pred_take}} & D_master_branch_target | 
+                            {32{!D_master_pred_take}} & D_master_jump_target   ;
 branch_predict u_branch_predict(
     //ports
     .clk                    ( clk                    ),
@@ -706,11 +691,13 @@ assign E_mem_va = mem_addrE;
 assign E_cop0_info = E_master_cop0_info & {$bits(E_master_cop0_info){~(|E_master_except_temp)}};
 
 // branch and jump
-assign E_master_bj = E_master_jump_conflict | E_master_pred_fail;
-assign E_master_jump_conflict = E_master_jump_conflict_tmp & E_ena;
+assign E_master_bj = E_ena & (E_master_jump_conflict_tmp | E_master_pred_fail);
+assign E_master_bj_target = {32{E_master_pred_fail &  E_master_actual_take}}                  & E_master_branch_target | 
+                            {32{E_master_pred_fail & !E_master_actual_take &  E_next_pc8}}    & E_master_pc_plus8 | 
+                            {32{E_master_pred_fail & !E_master_actual_take & !E_next_pc8}}    & E_master_pc_plus4 | 
+                            {32{E_master_jump_conflict_tmp}}                                  & E_master_rs_value;
 branch_judge u_branch_judge(
     //ports
-    .branch_ena                    ( E_ena                ),
     .branch_type                   ( E_master_branch_type ),
     .rs_value                      ( E_master_rs_value    ),
     .rt_value                      ( E_master_rt_value    ),
@@ -739,75 +726,35 @@ assign E_slave_reg_wen  =   E_slave_cmov_type==`C_MOVN ? (|E_slave_rt_value):   
                             E_slave_cmov_type==`C_MOVZ ? (!(|E_slave_rt_value)): // ==0
                             E2cs.reg_write;
 assign E_master_pc_plus8 = E_master_pc + 32'd8;
-assign E_alu_stall = E_master_alu_stall | E_slave_alu_stall;
-assign E_master_alu_res = {32{E_master_is_link_pc8==1'b1}} & (E_master_pc_plus8) |
-                          {32{E_master_is_link_pc8==1'b0}} & E_master_alu_res_tmp  ;
-alu_master u_aluA(
+alu_top u_alu_top(
     //ports
-    .clk                   ( clk                    ),
-    .rst                   ( rst | M_cp0_jump       ),
-    .aluop                 ( E1cs.aluop             ),
-    .a                     ( E_master_alu_srca      ),
-    .b                     ( E_master_alu_srcb      ),
-    .cp0_data              ( E_cp0_rdata            ),
-    .hilo                  ( hilo                   ),
-    .stall_alu             ( E_master_alu_stall     ),
-    .y                     ( E_master_alu_res_tmp   ),
-    .aluout_64             ( E_master_alu_out64     ),
-    .overflow              ( E_master_overflow      )
+    .clk                 ( clk              ),
+    .rst                 ( rst              ),
+    .M_ena               ( M_ena            ),
+    .M_flush             ( M_flush          ),
+    .hilo_write1         ( E1cs.hilo_write  ),
+    .mul_en1             ( E1cs.mul_en      ),
+    .div_en1             ( E1cs.div_en      ),
+    .exp1                ( |E_master_except ),
+    .aluop1              ( E1cs.aluop       ),
+    .a1                  ( E_master_alu_srca),
+    .b1                  ( E_master_alu_srcb),
+    .overflow1           ( E_master_overflow),
+    .y1                  ( E_master_alu_res ),
+    .hilo_write2         ( E2cs.hilo_write  ),
+    .mul_en2             ( E2cs.mul_en      ),
+    .div_en2             ( E2cs.div_en      ),
+    .exp2                ( |E_slave_except  ),
+    .aluop2              ( E2cs.aluop       ),
+    .a2                  ( E_slave_alu_srca ),
+    .b2                  ( E_slave_alu_srcb ),
+    .overflow2           ( E_slave_overflow ),
+    .y2                  ( E_slave_alu_res  ),
+    .cp0_rdata           ( E_cp0_rdata      ),
+    .pc_plus8            ( E_master_pc_plus8),
+    .is_link_pc8         ( E_master_is_link_pc8),
+    .E_alu_stall         ( E_alu_stall      )
 );
-
-alu_master u_aluB(
-    //ports
-    .clk                   ( clk                    ),
-    .rst                   ( rst | M_cp0_jump       ),
-    .aluop                 ( E2cs.aluop             ),
-    .a                     ( E_slave_alu_srca       ),
-    .b                     ( E_slave_alu_srcb       ),
-    .cp0_data              ( 0                      ),
-    .hilo                  ( hilo                   ),
-    .stall_alu             ( E_slave_alu_stall      ),
-    .y                     ( E_slave_alu_res        ),
-    .aluout_64             ( E_slave_alu_out64      ),
-    .overflow              ( E_slave_overflow       )
-);
-
-// TODO: 很多写，都有这种操作，regfile, except, hilo_reg，可以聚集一起吗？
-assign hilo_wen = ((E2cs.hilo_write & ~(|E_master_except) & ~(|E_slave_except)) | (E1cs.hilo_write & ~(|E_master_except))) & M_ena & ~M_flush;
-assign hilo_wdata = {64{E2cs.hilo_write==1'b1}} & E_slave_alu_out64 |
-                    {64{E2cs.hilo_write==1'b0}} & E_master_alu_out64 ;
-// E阶段写，M阶段出结果
-hilo_reg u_hilo_reg(
-    //ports
-    .clk                ( clk                ),
-    .rst                ( rst                ),
-    .wen                ( hilo_wen           ),
-    .hilo_i             ( hilo_wdata         ),  
-    .hilo_o             ( hilo               )
-);
-
-/*alu_res_select u_alu_res_select_master(
-    //ports
-    .aluop               ( E_master_aluop       ),
-    .is_link_pc8         ( E_master_is_link_pc8 ),
-    .cp0_data            ( cp0_data             ),
-    .pc8                 ( E_master_pc + 32'd8  ),
-    .alu_res_tmp         ( E_master_alu_res_tmp ),
-    .hilo                ( hilo                 ),
-    .alu_res             ( E_master_alu_res     )
-);
-
-// E阶段写，M阶段出结果
-hilo_reg u_hilo_reg(
-    //ports
-    .clk            ( clk               ),
-    .rst            ( rst               ),
-    .wen            ( E_master_hilowrite & M_ena & ~M_flush), // 保证E_master_hilowrite能成功送到M
-    .aluop          ( E_master_aluop    ),
-    .rs_value       ( E_master_rs_value ),
-    .hilo_i         ( E_master_alu_out64),
-    .hilo_o         ( hilo              )
-);*/
 
 // 提前访存
 // mem_addr: base(rs value) + offset(immediate value)

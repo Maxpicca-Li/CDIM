@@ -5,20 +5,12 @@ module pc_reg (
         input               pc_en,
         input               M_except,
         input       [31:0]  M_except_addr,
-        input               E_pred_fail,
-        input               E_branch_take,
-        input               E_next_pc8,
-        input       [31:0]  E_branch_target,
-        input       [31:0]  E_pc_plus4,
-        input       [31:0]  E_pc_plus8,
-        input               E_jump_conflict,
-        input       [31:0]  E_rs_value,
         input               M_flush_all,
         input       [31:0]  M_flush_all_addr,
-        input               D_branch_take,
-        input       [31:0]  D_branch_target,
-        input               D_jump_take,
-        input       [31:0]  D_jump_target,
+        input               E_bj,
+        input       [31:0]  E_bj_target,
+        input               D_bj,
+        input       [31:0]  D_bj_target,
         input               D_fifo_full,
         input               F_inst_data_ok1,
         input               F_inst_data_ok2,
@@ -43,16 +35,10 @@ module pc_reg (
                 pc_next = M_except_addr;
             else if (M_flush_all)
                 pc_next = M_flush_all_addr;            
-            else if (E_pred_fail & E_branch_take)
-                pc_next = E_branch_target;
-            else if (E_pred_fail & !E_branch_take)
-                pc_next = E_next_pc8 ? E_pc_plus8 : E_pc_plus4;
-            else if (E_jump_conflict) 
-                pc_next = E_rs_value;
-            else if (D_branch_take)
-                pc_next = D_branch_target;
-            else if (D_jump_take) 
-                pc_next = D_jump_target;
+            else if (E_bj)
+                pc_next = E_bj_target;
+            else if (D_bj)
+                pc_next = D_bj_target;
             else if (D_fifo_full)
                 pc_next = pc_curr;
             else if (F_inst_data_ok1 && F_inst_data_ok2)

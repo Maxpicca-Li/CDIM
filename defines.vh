@@ -425,6 +425,8 @@ typedef struct packed{
     logic icache_fence;
     logic dcache_fence;
     logic tlb_fence;
+    logic mul_en;
+    logic div_en;
 } ctrl_sign;
 
 typedef struct packed {

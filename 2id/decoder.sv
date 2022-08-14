@@ -154,24 +154,28 @@ module  decoder(
                         signsD.read_rs = 1'b1;
                         signsD.read_rt = 1'b1;
                         signsD.hilo_write = 1'b1;
+                        signsD.mul_en = 1'b1;
                     end
                     `FUN_MULTU : begin
                         signsD.aluop = `ALUOP_MULTU;
                         signsD.read_rs = 1'b1;
                         signsD.read_rt = 1'b1;
                         signsD.hilo_write = 1'b1;
+                        signsD.mul_en = 1'b1;
                     end
                     `FUN_DIV   : begin
                         signsD.aluop = `ALUOP_DIV;
                         signsD.read_rs = 1'b1;
                         signsD.read_rt = 1'b1;
                         signsD.hilo_write = 1'b1;
+                        signsD.div_en = 1'b1;
                     end
                     `FUN_DIVU  : begin
                         signsD.aluop = `ALUOP_DIVU;
                         signsD.read_rs = 1'b1;
                         signsD.read_rt = 1'b1;
                         signsD.hilo_write = 1'b1;
+                        signsD.div_en = 1'b1;
                     end
                     // move ==> hilo access
                     `FUN_MFHI  : begin
@@ -280,6 +284,7 @@ module  decoder(
                         signsD.read_rs = 1'b1;
                         signsD.read_rt = 1'b1;
                         signsD.reg_write = 1'b1;
+                        signsD.mul_en = 1'b1;
                     end
                     `FUN_CLO: begin
                         signsD.read_rs = 1'b1;
@@ -297,6 +302,7 @@ module  decoder(
                         signsD.read_rt = 1'b1;
                         signsD.hilo_write = 1'b1;
                         signsD.hilo_read = 1'b1;
+                        signsD.mul_en = 1'b1;
                     end
                     `FUN_MADDU:begin
                         signsD.aluop = `ALUOP_MADDU;
@@ -304,6 +310,7 @@ module  decoder(
                         signsD.read_rt = 1'b1;
                         signsD.hilo_write = 1'b1;
                         signsD.hilo_read = 1'b1;
+                        signsD.mul_en = 1'b1;
                     end
                     `FUN_MSUB:begin
                         signsD.aluop = `ALUOP_MSUB;
@@ -311,6 +318,7 @@ module  decoder(
                         signsD.read_rt = 1'b1;
                         signsD.hilo_write = 1'b1;
                         signsD.hilo_read = 1'b1;
+                        signsD.mul_en = 1'b1;
                     end
                     `FUN_MSUBU:begin
                         signsD.aluop = `ALUOP_MSUBU;
@@ -318,6 +326,7 @@ module  decoder(
                         signsD.read_rt = 1'b1;
                         signsD.hilo_write = 1'b1;
                         signsD.hilo_read = 1'b1;
+                        signsD.mul_en = 1'b1;
                     end
                     default: begin
                         undefined_inst = 1'b1;
