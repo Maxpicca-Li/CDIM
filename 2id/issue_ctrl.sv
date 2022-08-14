@@ -4,8 +4,9 @@
 module issue_ctrl (
     input           D_master_ena,
     // mem
-    input           D_master_mem_en,
-    input           D_slave_mem_en,
+    input           D_mem_conflict,
+    input           D_mul_conflict,
+    input           D_div_conflict,
     input           E_master_memtoReg,
     input [4:0]     E_master_reg_waddr,
     input           E_slave_memtoReg,
@@ -18,6 +19,7 @@ module issue_ctrl (
     input  [4:0]    D_slave_rs,
     input  [4:0]    D_slave_rt,
     input           D_master_hilowrite,
+    input           D_slave_hilowrite,
     input           D_slave_hiloread,
     input           D_master_cp0write,
     input           D_slave_cp0read,
@@ -37,11 +39,11 @@ module issue_ctrl (
     assign D_slave_is_in_delayslot = D_master_is_branch & D_slave_ena;
     // 控制信号
     logic load_stall, fifo_disable, struct_conflict, war_reg, war_hilo, war_cp0, data_conflict;
-    assign fifo_disable = fifo_empty || fifo_almost_empty; // fifo 限制
-    assign struct_conflict = (D_master_mem_en & D_slave_mem_en);
-    assign load_stall = (E_master_memtoReg & (|E_master_reg_waddr) & ((D_slave_read_rs & D_slave_rs == E_master_reg_waddr) | (D_slave_read_rt & D_slave_rt == E_master_reg_waddr))) |
-                        (E_slave_memtoReg  & (|E_slave_reg_waddr)  & ((D_slave_read_rs & D_slave_rs == E_slave_reg_waddr)  | (D_slave_read_rt & D_slave_rt == E_slave_reg_waddr)));
-    assign war_reg    = (D_master_reg_wen & (|D_master_reg_waddr)) & ((D_slave_read_rs & D_slave_rs == D_master_reg_waddr) | (D_slave_read_rt & D_slave_rt == D_master_reg_waddr));
+    assign fifo_disable = fifo_empty | fifo_almost_empty; // fifo 限制
+    assign struct_conflict = D_mem_conflict | D_mul_conflict | D_div_conflict;
+    assign load_stall = (E_master_memtoReg & ((D_slave_read_rs & D_slave_rs == E_master_reg_waddr) | (D_slave_read_rt & D_slave_rt == E_master_reg_waddr))) |
+                        (E_slave_memtoReg  & ((D_slave_read_rs & D_slave_rs == E_slave_reg_waddr)  | (D_slave_read_rt & D_slave_rt == E_slave_reg_waddr)));
+    assign war_reg    = D_master_reg_wen & ((D_slave_read_rs & D_slave_rs == D_master_reg_waddr) | (D_slave_read_rt & D_slave_rt == D_master_reg_waddr));
     assign war_hilo   = D_master_hilowrite & D_slave_hiloread;
     assign war_cp0    = D_master_cp0write & D_slave_cp0read; 
     assign data_conflict = war_reg | war_hilo | war_cp0 | load_stall;

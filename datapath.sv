@@ -491,8 +491,9 @@ assign D_slave_reg_wen  = D2cs.reg_write;
 issue_ctrl u_issue_ctrl(
     //ports
     .D_master_ena               ( D_ena                     ),
-    .D_master_mem_en            ( D1cs.mem_en               ),
-    .D_slave_mem_en             ( D2cs.mem_en               ),
+    .D_mem_conflict             ( D1cs.mem_en & D2cs.mem_en ),
+    .D_mul_conflict             ( D1cs.mul_en & D2cs.mul_en ),
+    .D_div_conflict             ( D1cs.div_en & D2cs.div_en ),
     .E_master_memtoReg          ( E1cs.mem_write_reg        ),
     .E_master_reg_waddr         ( E_master_reg_waddr        ),
     .E_slave_memtoReg           ( E2cs.mem_write_reg        ),
