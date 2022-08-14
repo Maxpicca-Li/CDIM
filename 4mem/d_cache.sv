@@ -326,18 +326,7 @@ always_ff @(posedge clk) begin
                     wlast <= 0;
                 end
                 if (bvalid & bready) begin
-                    if (store_buffer_has_next) begin
-                        awaddr <= store_buffer[store_buffer_ctrl.ptr_begin].waddr;
-                        awlen <= 0;
-                        awsize <= {1'd0,store_buffer[store_buffer_ctrl.ptr_begin].wsize};
-                        awvalid <= 1'b1;
-                        wdata <= store_buffer[store_buffer_ctrl.ptr_begin].wdata;
-                        wstrb <= store_buffer[store_buffer_ctrl.ptr_begin].wstrb;
-                        wlast <= 1'b1;
-                        wvalid <= 1'b1;
-                        store_buffer_ctrl.ptr_begin <= store_buffer_ctrl.ptr_begin + 1;
-                    end
-                    else store_buffer_ctrl.axi_busy <= 1'b0;
+                    store_buffer_ctrl.axi_busy <= 1'b0;
                 end
             end
             else begin
