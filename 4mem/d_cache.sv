@@ -215,7 +215,7 @@ generate
             .addrb  (bram_line_addr),
             .doutb  (cache_tag[i])
         );
-        assign tag_compare_valid[i] = cache_tag[i].tag == addr_tag && meta[pa_line_addr].valid[i];
+        assign tag_compare_valid[i] = cache_tag[i].tag == addr_tag && meta[pa_line_addr].valid[i] && translation_ok;
         assign cache_data_forward[i] = last_line_addr == M_mem_va[LEN_PER_WAY-1:2] ? ((last_wea[i] & last_wdata) | (cache_data[i] & (~last_wea[i]))) : cache_data[i];
         assign data_wea[i] = (tag_compare_valid[i] && M_mem_en && M_mem_write && !M_mem_uncached && dcache_status == IDLE) ? M_wmask :  bram_replace_wea[i];
         always_ff @(posedge clk) begin
@@ -245,6 +245,26 @@ assign bready = 1'b1;
 
 
 always_ff @(posedge clk) begin
+    /*
+    if (M_mem_pa == 32'haef134 && M_mem_write && !dstall) begin
+        $display("RTL wdata = %x, bram_write_addr = %x\n", M_wdata, data_write_addr);
+    end
+    */
+    /*
+    if (M_mem_va == 32'h5b7134 && M_mem_write && !dstall) begin
+        $display("RTL wdata = %x, bram_write_addr = %x\n", M_wdata, data_write_addr);
+    end
+    */
+    /*
+    if ({M_mem_pa[31:2],2'b0} == 32'haed134) begin
+        $display("RTL wdata = %x, bram_write_addr = %x\n", M_wdata, data_write_addr);
+    end
+     */
+    /*
+    if (data_write_addr == 10'h04d && M_wdata == 32'h1000) begin
+        $display("M_va = %x, M_pa = %x\n",M_mem_va,M_mem_pa);
+    end
+    */
     if (rst) begin
         // clear meta
         meta <= '{default: '0};
@@ -295,8 +315,6 @@ always_ff @(posedge clk) begin
         wvalid <= 0;
     end
     else begin
-        // fence tlb
-        if (fence_tlb && !dstall && !stallM) dtlb.valid <= 0;
         // store buffer
         if (store_buffer_busy) begin
             if (store_buffer_ctrl.axi_busy) begin // To implement SC memory ordering, if store buffer busy, axi is unseable.
@@ -587,6 +605,8 @@ always_ff @(posedge clk) begin
             end
         endcase
     end
+    // fence tlb
+    if (fence_tlb) dtlb.valid <= 0;
 end
 
 endmodule

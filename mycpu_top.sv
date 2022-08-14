@@ -144,7 +144,7 @@ module mycpu_top (
     wire [31:13]    dtlb_vpn2;
     wire            dtlb_found;
     tlb_entry       dtlb_entry;
-    wire            fence_tlb;
+    wire            fence_tlbM;
 
     wire            data_tlb_refill;
     wire            data_tlb_invalid;
@@ -193,6 +193,7 @@ module mycpu_top (
         .dtlb_vpn2              ( dtlb_vpn2                 ),
         .dtlb_found             ( dtlb_found                ),
         .dtlb_entry             ( dtlb_entry                ),
+        .fence_tlbM             ( fence_tlbM                ),
         .data_tlb_refill        ( data_tlb_refill           ),
         .data_tlb_invalid       ( data_tlb_invalid          ),
         .data_tlb_mod           ( data_tlb_mod              ),
@@ -257,7 +258,7 @@ module mycpu_top (
         .dtlb_vpn2          ( dtlb_vpn2     ),
         .dtlb_found         ( dtlb_found    ),
         .dtlb_entry         ( dtlb_entry    ),
-        .fence_tlb          ( fence_tlbE    ),
+        .fence_tlb          ( fence_tlbM    ),
         .data_tlb_refill    ( data_tlb_refill),
         .data_tlb_invalid   ( data_tlb_invalid),
         .data_tlb_mod       ( data_tlb_mod  ),

@@ -531,7 +531,7 @@ module  decoder(
                         signsD.read_rt = 1'b1;
                         signsD.cp0_write = 1'b1; // TODO: delete this signal
                         signsD.tlb_fence = 1'b1;
-                        signsD.flush_all = 1'b1;
+                        // signsD.flush_all = 1'b1;
                         cop0_info_out.mtc0_en = 1'b1;
                     end
                     `RS_CO: begin

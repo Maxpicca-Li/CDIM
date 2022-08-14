@@ -43,6 +43,7 @@ module datapath (
     input  wire [31:13]dtlb_vpn2,
     output             dtlb_found,
     output tlb_entry   dtlb_entry,
+    output             fence_tlbM,
     input  logic       data_tlb_refill,
     input  logic       data_tlb_invalid,
     input  logic       data_tlb_mod,
@@ -271,6 +272,7 @@ assign fence_addrE = E_master_alu_res;
 assign fence_dM = M1cs.dcache_fence;
 assign fence_addrM = M_master_alu_res;
 assign fence_tlbE = E1cs.tlb_fence;
+assign fence_tlbM = M1cs.tlb_fence;
 
 // ====================================== Fetch ======================================
 // NOTE: 与i_stall有关的cache disable，一般修改stallF（即F_ena），而不是inst_sram_en，否则会loop
