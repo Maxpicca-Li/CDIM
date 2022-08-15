@@ -1,0 +1,9 @@
+.vscode
+*.cls
+*.aux
+*.bcf
+*.log
+*.out
+*.gz
+*.xml
+ref*
