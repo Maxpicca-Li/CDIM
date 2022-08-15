@@ -4,7 +4,7 @@ module d_cache #(
     parameter LEN_LINE = 6,  // 64 Bytes
     parameter LEN_INDEX = 6, // 64 lines
     parameter NR_WAYS = 2,
-    parameter SIZE_STORE_BUFFER = 2
+    parameter SIZE_STORE_BUFFER = 4
 ) (
     input               clk,
     input               rst,
