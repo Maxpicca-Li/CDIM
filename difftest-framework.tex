@@ -6,4 +6,14 @@
 
 \section{SoC-Simualtor}
 
-SoC-Simulator是一个
+SoC-Simulator是我们开发的一个基于Verilator的SoC仿真框架。它使用C++语言编写，通过软件实现了AXI Slave设备功能。其内置了MMIO Crossbar、UARTLite、UART8250、NSCSCC confreg等设备，能够满足运行龙芯杯功能测试、性能测试、系统测试，启动uCore和Linux的需求。
+
+此外，SoC-Simulator还能够支持AXI延迟的自定义，在我们开发处理器期间经过了多次测试，在AXI延迟设置为23周期的情况下，SoC-Simulator仿真的性能得分与上板真实成绩误差在1分以内。
+
+同时得益于Verilator的仿真效率，使用\cpuname 在当前主流的台式机（AMD Ryzen 7 5800X）上实现了高速测试，2秒完成功能测试（含trace比对），7秒钟完成性能测试并输出CP0 count寄存器的结果。同时，在SoC-Simulator上运行uCore可以10秒内进入shell，运行Linux v5.19配合我们基于defconfig修改的配置大约4分钟开始执行init进程，这大大方便了我们修改RTL后及时得到IPC反馈与问题定位与调试工作。
+
+\section{CEMU}
+
+CEMU(CQU Emulator)是我们开发的一个CPU模拟器，目前支持了RV64IMA与MIPS Release 1指令集，LoongArch32的支持正在实现中，我们使用它与\cpuname 进行差分测试，
+
+由于CEMU与SoC-Simulator都是我们自行开发的，因而采用了完全相同的外设接口（C++的抽象类），从而CEMU与SoC-Simulator能够运行在完全相同的SoC环境中，并通过处理器RTL输出的CP0 Count、CP0 Cause、CP0 Random、是否中断等信号对CEMU的各寄存器状态进行同步，这帮助我们在调通uCore后仅2天时间就完成了Linux的调试。

@@ -1,0 +1,8 @@
+\chapter{操作系统支持}
+
+\section{Linux}
+
+我们的处理器符合MIPS Release 1规范，实现了除Branch-Likely指令外的所有指令，并实现了CP0中所有MIPS规范在实现了TLB和Cache的情况下所要求的寄存器，这让我们运行Linux成为可能。
+
+最终经过调试，在SoC-Simulator与MegaSoC上都成功运行起了最新Linux内核主线（v5.19），且不需要除关闭Branch-Likely指令外的特殊移植。
+
