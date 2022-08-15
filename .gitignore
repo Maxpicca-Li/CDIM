@@ -6,4 +6,5 @@
 *.out
 *.gz
 *.xml
+*.toc
 ref*

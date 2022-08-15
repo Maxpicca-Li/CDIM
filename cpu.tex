@@ -1,0 +1,24 @@
+\chapter{CPU设计方案}
+
+CDIM采用对称双发射顺序执行，共有5级流水。CDIM的数据通路示意图如下，其中红线部分为master path，蓝线部分为slave path。在对称双发射中，master和slave的主要区别在于前者PC小于后者，在处理异常、提交等事宜时会被优先处理。当然，上述的“对称”双发射，只是相对于只支持ALU指令双发的非对称逻辑而言，是对称的，因为slave path支持的指令更多。但严格来讲，并不是绝对对称，在处理跳转指令、例外指令、写TLB指令等会刷新流水线的指令时，需要优先在master处理，这在后续的双发策略中会详细说明。
+
+\section{双发策略}
+
+
+\section{数据通路设计}
+\subsection{取值阶段}
+\subsection{译码阶段}
+\subsection{执行阶段}
+\subsection{访存阶段}
+\subsection{写回阶段}
+
+\section{冲突处理}
+\subsection{数据冲突}
+\subsection{结构冲突}
+\subsection{控制冲突}
+
+\section{CP0寄存器设计}
+
+\section{中断和异常}
+
+\input{cache}

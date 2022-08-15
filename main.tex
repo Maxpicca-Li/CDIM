@@ -14,15 +14,14 @@
 \usepackage{longtable}
 \usepackage{graphicx}
 \usepackage{float} 
-\usepackage{cite}
-\renewcommand\maketitlehooka{\null\mbox{}\vfill}
-\renewcommand\maketitlehookd{\vfill\null}
 
 \newcommand{\artdate}{2022年8月}
 \newcommand{\artauthor}{陈泱宇，李燕琴}
 \newcommand{\arttitle}{CDIM 决赛设计报告}
 \newcommand{\todo}{\textbf{\textcolor{red}{此部分尚需完善。}}}
 \newcommand{\hlrule}{\rule{\linewidth}{0.5mm}}
+\renewcommand{\maketitlehooka}{\null\mbox{}\vfill}
+\renewcommand{\maketitlehookd}{\vfill\null}
 
 \pagestyle{fancy}
 \fancyhf{}
@@ -31,18 +30,6 @@
 \cfoot{\thepage}
 
 \begin{document}
-
-% \begin{titlepage}
-%     \vspace*{\fill}
-%     \begin{center}
-%         \rule{\linewidth}{0.2 mm} \\[0.4 cm]
-%         { \huge \bfseries \thetitle}\\
-%         \rule{\linewidth}{0.2 mm} \\[1.5 cm]
-%         \vspace*{2cm}
-%         \includegraphics[scale = 0.618]{logo.jpg}\\[1.0 cm]
-%     \end{center}
-%     \vspace*{\fill}
-% \end{titlepage}
 
 \begin{titlepage}
     % \rule{\linewidth}{0.5mm}
@@ -61,7 +48,6 @@
       \centering
       \includegraphics[width=0.5\linewidth]{img/logo.png}
     \end{figure}
-   
    \vspace{0.5 cm}
   
     \vspace{.5 cm}
@@ -89,6 +75,12 @@
 
 % 可以使用input（但是无法显示outline），或直接在正文写
 \input{introduction}
+\input{cpu}
+
+\chapter{仿真验证框架}
+\chapter{操作系统支持}
+\chapter{Soc设计}
+% 做了就可以说
 
 
 
@@ -96,6 +88,7 @@
 \renewcommand{\bibname}{参考文献}
 \begin{thebibliography}{99}
 	\bibitem[1]{MIPS} MIPS® Architecture For Programmers I, II, III. Imagination Technologies LTD.  
+  \bibitem[2]{HSport} 计算机组成与设计: 硬件/软件接口. David A.Patterson
 \end{thebibliography}
 
 
