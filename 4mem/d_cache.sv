@@ -313,6 +313,7 @@ always_ff @(posedge clk) begin
         wstrb <= 0;
         wlast <= 0;
         wvalid <= 0;
+        dcache_status <= IDLE;
     end
     else begin
         // store buffer
