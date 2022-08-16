@@ -1,6 +1,6 @@
 \chapter{操作系统支持}
 
-\section{虚拟内存支持}
+\section{虚拟内存支持}\label{section:TLB}
 
 \cpuname 支持了MIPS规范中基于TLB的虚拟地址转换功能。
 由于MIPS指令集架构中，TLB采用全相连的结构，匹配需要大量的电路延迟，为了保证运行操作系统时的频率，我们将TLB拆为两级。
@@ -57,7 +57,7 @@
 
 \section{Linux}
 
-我们的处理器能够在编译器关闭branch-likely指令的情况下运行Linux v5.19，并自己编译了MIPS Release 1关闭浮点支持的Busybox，在Busybox中能够正常使用Shell。
+我们的处理器能够在编译器关闭Branch-Likely指令的情况下运行Linux v5.19，并自己编译了MIPS Release 1关闭浮点支持的Busybox，在Busybox中能够正常使用Shell。
 
 在仿真SoC-Simulator与上板MegaSoC SoC上均测试成功，且能够使用SoC上的AXI Ethernet Lite IP核连接网络，能够使用wget访问www.nscscc.com网站并提取部分文字。
 
