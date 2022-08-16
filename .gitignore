@@ -1,5 +1,4 @@
-/1_IF/inst_fifo_srcsave.v
-/temp.v
+temp.v
 *drop.v
 *drop.sv
 *save.v

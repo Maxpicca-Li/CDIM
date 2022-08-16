@@ -1,0 +1,37 @@
+\chapter{概述}
+
+\section{项目背景}
+本项目依托于龙芯杯提供的FPGA实验平台、Soc工程环境以及基准测试程序，设计并实现了一个部分兼容 MIPS32 体系结构的小端序 CPU，名为\cpuname（\textbf{C}QU \textbf{D}ual \textbf{I}ssue \textbf{M}achine），其能成功通过龙芯杯提供的功能测试、性能测试、系统测试，具有较完善的运算处理、AXI访问、异常处理、中断响应等功能，并能够运行PMON、U-Boot引导程序、uCore操作系统和Linux操作系统等。
+
+\section{名词解释}
+本项目中可能用到的一些名词缩写及其解释如表\ref{table:abbreviation_definition}所示。
+
+\begin{table}[!htbp]
+    \centering
+    \caption{名词缩写和解释}
+    \label{table:abbreviation_definition}
+    
+    \begin{tabular}{cll}
+    \toprule
+    \multicolumn{1}{c}{\textbf{名词缩写}} & \multicolumn{1}{c}{\textbf{全称}}                   & \multicolumn{1}{c}{\textbf{解释}} \\ 
+    \midrule
+    MIPS                               & Microprocessor without Interlocked Pipeline Stages & 无内部互锁流水级的微处理器 \\
+    SOC                                & System On a Chip                                   & 片上系统 \\
+    CPU                                & Central Processing Unit                            & 中央处理器 \\
+    ALU                                & Arithmetic Logic Unit                              & 算数逻辑单元 \\
+    GPR                                & General Purpose Register                           & 通用寄存器 \\
+    CP0                                & Co-Processor 0                                     & 协处理器0 \\
+    BRAM                               & Block Random Access Memory                         & 块随机访问存储器 \\
+    FIFO                               & First In First Out                                 & 先进先出 \\
+    RAW                                & Read After Write                                   & 写后读 \\
+    WAW                                & Write After Write                                  & 写后写 \\
+    WAR                                & Write After Read                                   & 读后写 \\
+    ASID                               & Address Space Identification                       & 地址空间标识 \\
+    \bottomrule
+    \end{tabular}
+\end{table}
+
+\section{项目概述}
+本项目，首先设计了一款双发射五级顺序流水线CPU，\cpuname（\textbf{C}QU \textbf{D}ual \textbf{I}ssue \textbf{M}achine），其支持指令FIFO、分支预测、指令缓存和数据缓存、Store Buffer等特殊单元，以提升系统性能，最高CPU主频可达100Mhz，IPC比值达36.227。其中，五级顺序流水线由取指（Instruction Fetch）、译码（Instruction Decode）、执行（Excute）、访存（Memory access），写回（Write Back）五个阶段组成；双发射采用对称双发逻辑以充分保证双发率；指令FIFO可以隔离取指阶段和后续阶段，以实现高效取指的作用；分支预测采用静态分支预测单元以减少跳转带来流水线刷新数，利用PC低位记录跳转数据，利用传统2bit策略更新跳转数据的记录；指令缓存和数据缓存均采用二路组相联和突发传输的设计，单路均为4KB以满足伪VIPT对虚拟内存最小页面的要求，其中指令缓存的数据行为64bit以适应双发取指要求，数据缓存的数据行为32bit；Store Buffer可缓存Uncached的写AXI请求，以降低写AXI带来的流水线阻塞数。\cpuname 还支持U-Boot引导程序，并基于该引导程序，成功运行uCore和Linux操作系统。
+
+此外，为了方便仿真调试，本项目还基于Verilator和GTKWave，开发了支持功能测试、性能测试、系统测试、运行操作系统等系列测试的差分测试工具链，在逐步提交比对时生成对应的波形图。该工具链同时支持指定记录Trace的开始时间，以避免生成的Trace过大；亦支持双发率、Cache命中率、分支预测成功率的统计，以进行针对性的优化。相较于之前Vivado仿真调试或FPGA上板调试，我们开发的工具链可极大缩短调试时间。

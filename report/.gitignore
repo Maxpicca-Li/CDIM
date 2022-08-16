@@ -1,0 +1,11 @@
+.vscode
+*.aux
+*.bcf
+*.log
+*.out
+*.gz
+*.xml
+*.toc
+!img/*
+*(busy)
+ref*
