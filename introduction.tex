@@ -26,11 +26,12 @@
     RAW                                & Read After Write                                   & 写后读 \\
     WAW                                & Write After Write                                  & 写后写 \\
     WAR                                & Write After Read                                   & 读后写 \\
+    ASID                               & Address Space Identification                       & 地址空间标识 \\
     \bottomrule
     \end{tabular}
 \end{table}
 
 \section{项目概述}
-本项目，首先设计了一款双发射五级顺序流水线CPU，\cpuname（\textbf{C}QU \textbf{D}ual \textbf{I}ssue \textbf{M}achine），其支持指令FIFO、分支预测、指令缓存和数据缓存等特殊单元，以提升系统性能，最高CPU主频可达100Mhz，IPC比值达36。其中双发射，采用对称双发逻辑以充分保证双发率；五级顺序流水线由取指（Instruction Fetch）、译码（Instruction Decode）、执行（Excute）、访存（Memory access），写回（Write Back）五个阶段组成；指令FIFO可以隔离取指阶段和后续阶段，以实现高效取指的作用；指令缓存和数据缓存均采用二路组相联和突发传输的设计，单路均为4KB以匹配TLB页面要求，其中指令缓存的数据行为64bit以适应双发取指要求，数据缓存的数据行为32bit。\cpuname 还支持U-Boot引导程序，并基于该引导程序，成功运行uCore和Linux操作系统。
+本项目，首先设计了一款双发射五级顺序流水线CPU，\cpuname（\textbf{C}QU \textbf{D}ual \textbf{I}ssue \textbf{M}achine），其支持指令FIFO、分支预测、指令缓存和数据缓存等特殊单元，以提升系统性能，最高CPU主频可达100Mhz，IPC比值达36.227。其中，双发射采用对称双发逻辑以充分保证双发率；五级顺序流水线由取指（Instruction Fetch）、译码（Instruction Decode）、执行（Excute）、访存（Memory access），写回（Write Back）五个阶段组成；指令FIFO可以隔离取指阶段和后续阶段，以实现高效取指的作用；指令缓存和数据缓存均采用二路组相联和突发传输的设计，单路均为4KB以满足伪VIPT对虚拟内存最小页面的要求，其中指令缓存的数据行为64bit以适应双发取指要求，数据缓存的数据行为32bit。\cpuname 还支持U-Boot引导程序，并基于该引导程序，成功运行uCore和Linux操作系统。
 
-此外，为了方便仿真调试，本项目还基于Verilator、Cemu和gtkWave，开发了支持功能测试、性能测试、系统测试、运行操作系统等系列测试的差分测试工具链，在逐步提交比对时生成对应的波形图。该工具链同时支持指定记录trace的开始时间，以避免生成的trace过大；亦支持双发率、Cache命中率、分支预测成功率的统计，以进行针对性的优化。相较于之前Vivado仿真调试或FPGA上板调试，我们开发的工具链可极大缩短调试时间。
+此外，为了方便仿真调试，本项目还基于Verilator和gtkWave，开发了支持功能测试、性能测试、系统测试、运行操作系统等系列测试的差分测试工具链，在逐步提交比对时生成对应的波形图。该工具链同时支持指定记录trace的开始时间，以避免生成的trace过大；亦支持双发率、Cache命中率、分支预测成功率的统计，以进行针对性的优化。相较于之前Vivado仿真调试或FPGA上板调试，我们开发的工具链可极大缩短调试时间。
