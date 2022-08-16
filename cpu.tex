@@ -21,7 +21,7 @@
     \item \textbf{数据冲突}
     \begin{enumerate}
         \item \textbf{RAW冲突}：检查master和slave之间是否存在HiLo、CP0、GPR等寄存器的RAW情况，若存在，则slave不发射。
-        \item \textbf{load to use冲突}：检查slave读到的寄存器是否是当前在E阶段执行的读存指令的结果，若是，则slave不发射。
+        \item \textbf{Load To Use 冲突}：检查slave读到的寄存器是否是当前在E阶段执行的读存指令的结果，若是，则slave不发射。
     \end{enumerate}
     \item \textbf{结构冲突}：由于设计的乘除单元、访存单元只有一个，故二者会产生结构冲突。若master和slave同时需要占用这类单元，则slave不发射。
     \item \textbf{数据有效性}：slave发射的前提是master必须要发射或当前第二条指令有效。若遇到master暂停发射或指令FIFO为空的情况下，slave不发射。
@@ -49,7 +49,7 @@ Excute阶段中，主要完成以下操作：
     \item \textbf{跳转处理}：在译码阶段中，Branch指令需要在执行阶段中判断跳转是否成功，并将判断结果送回分支预测单元进行数据更新，更新此时取值阶段的PC并刷新流水线。同理，如果是译码阶段遇到数据冲突的JR类指令，其在本阶段获取到准确的目标地址后，更新此时取值阶段的PC并刷新流水线。
     \item \textbf{ALU计算}：可以处理单周期运算指令和多周期运算指令。其中，多周期运算指令包括乘除法指令。\cpuname 中乘法指令需要2周期、除法指令需要35周期，且在运算完成前会产生stall信号，阻塞D、E、M、W四个阶段。其中，为减少资源占用，流水线中只提供一个乘法器和除法器，故master和slave在使用时需要进行仲裁。同时获取到乘除结果后，即在执行阶段写HiLo寄存器，以期在访存阶段即可获取新的HiLo数据值，避免了HiLo数据的前推。
     \item \textbf{访存仲裁及其地址计算}：由于data cache是BRAM结构，需要一个周期取出数据，我们需要在E阶段将访存信号传递给Data Cache。因为master和slave都支持访存（但不会同时访存），故在传递访存前，需要用StructConflict模块进行仲裁；并保证访存阶段的刷新信号置0且使能信号置为1，以使访存信号能由E阶段正常传到M阶段，保证访存阶段数据的正常传回。同时，为了减少访存地址计算经过的路径，我们分离了执行阶段中的ALU路径和MEM路径（如图 \ref{img:datapath} 所示），单独利用base(rs value) + offset(immediate value)计算访存地址。同时根据访存地址及其比特要求对传给Data Cache的地址进行地址错例外判断（AdEl和AdEs判断。
-    \item \textbf{TLB地址转换}：\todo TLB地址处理上，在上一点获取到地址后，在E阶段访问TLB获取。
+    \item \textbf{TLB地址转换}：在上一个小点中，能够获取到访存虚拟地址，此时将访问 L1 TLB 进行初步的映射地址翻译，以便于提前访存。
     \item \textbf{异常汇总}：由上述可以看出，在执行阶段，可以获取从任何指令涉及到的所有异常信号，故我们在执行阶段汇总异常信号，并更新CP0寄存器，以期在访存阶段即可获取新的CP0数据值，避免了CP0数据的前推。
 \end{itemize}
 
@@ -59,7 +59,6 @@ Memory Access阶段，主要完成以下操作：
 \begin{itemize}
     \item \textbf{访存控制}：虽然在E阶段传递给了Data Cache基本的访存信号，告知Data Cache需要准备对应地址的数据；但是并没有告知需要取出的数据的比特数。E阶段汇总时若发现异常，则传到M阶段后，会将Data Cache的握手信号data\_sram\_enM将会置为0，阻止Data Cache将错误的地址传到AXI总线上。反之，则正常发送data\_sram\_enM信号，并得到传回的数据，再通过StructConflict模块，将数据交付到对应path（master或slave）上。
     \item \textbf{写回数据选择}：master和slave两条路径上的计算结果（alu）和访存结果（mem）的选择。
-    \item \textbf{一级TLB未命中的处理}：\todo
 \end{itemize}
 
 \subsection{写回阶段}
@@ -79,19 +78,67 @@ Write Back阶段，主要执行写回GPR请求。若此时读取GPR的地址，�
 \subsection{控制冲突}
 当遇到跳转指令时，会产生控制冲突。MIPS指令系统中，跳转指令包含延迟槽。本设计中，若产生跳转（译码阶段或执行阶段），则根据发射情况判断当前fifo中的第一条读数据是否是延迟槽数据。如果是，则需要判断当时是否有阻塞信号，若没有则直接执行该第一条读数据，若有则需要保留该数据到指定delayslot\_data寄存器，以备阻塞取消后使用；此外跳转会引起流水线的刷新，但需要保证延迟槽数据能够不被刷新并正常流入下一阶段执行。如果不是，则正常刷新流水线即可。
 
-\section{CP0寄存器设计}
-\todo 
+\section{CP0寄存器}
+在自定义CPU中扮演着小型操作系统角色的CP0，具有异常处理、内存管理、系统控制等功能。
+为了支持MIPS指令系统的正常功能运行，我们设计的CP0处理器包含的基本寄存器如表\ref{table:base_cp0}所示。
+
+\begin{table}[!htbp]
+    \centering
+    \caption{基本的CP0寄存器}
+    \label{table:base_cp0}
+    \begin{tabular}{ccll}
+        \toprule
+        \multicolumn{1}{c}{\textbf{编号}} & \multicolumn{1}{c}{\textbf{选择}} & \multicolumn{1}{c}{\textbf{名称}} & \multicolumn{1}{c}{\textbf{功能定义}} \\ 
+    \midrule
+    8   & 0 & BadVAddr  & 记录最新地址相关例外的出错地址 \\
+    9   & 0 & Count     & 处理器内部计数器 \\
+    11  & 0 & Compare   & 计时中断控制器 \\
+    12  & 0 & Status    & 处理器状态与控制寄存器 \\
+    13  & 0 & Cause     & 存放上一次例外原因 \\
+    14  & 0 & EPC       & 存放上一次发生例外指令的 PC \\
+    15  & 0 & PRId      & 处理器版本和标识符 \\
+    15  & 1 & EBase     & 中断向量基地址寄存器 （MIPS Release2必需） \\
+    16  & 0 & Config0   & 处理器配置 \\
+    30  & 0 & ErrorEPC  & 上一次发生例外的计数器数值 \\
+    \bottomrule
+    \end{tabular}
+\end{table}
+
+在添加TLB时，需要涉及内存管理相关的CP0寄存器，如表\ref{table:mmu_cp0}所示。
+
+\begin{table}[!htbp]
+    \centering
+    \caption{MMU相关的CP0寄存器}
+    \label{table:mmu_cp0}
+    \begin{tabular}{ccll}
+    \toprule
+    \multicolumn{1}{c}{\textbf{编号}} & \multicolumn{1}{c}{\textbf{选择}} & \multicolumn{1}{c}{\textbf{名称}} & \multicolumn{1}{c}{\textbf{功能定义}} \\ 
+    \midrule
+    0   & 0 & Index     & TLB 数组的索引 \\
+    1   & 0 & Random    & 随机数 \\
+    2   & 0 & EntryLo0  & TLB 项的低位 \\
+    3   & 0 & EntryLo1  & TLB 项的低位 \\
+    4   & 0 & Context   & 指向内存中页表入口的指针 \\
+    5   & 0 & PageMask  & 控制 TLB 的虚拟页大小 \\
+    6   & 0 & Wired     & 控制 TLB 中固定的页数 \\
+    10  & 0 & EntryHi   & TLB 项的高位 \\
+    28  & even  & TagLo & 缓存标签 Tag 的低位 \\
+    29  & even  & TagHi & 缓存标签 Tag 的高位 \\
+    \bottomrule
+    \end{tabular}
+\end{table}
 
 \section{中断和异常}
 为使处理器的功能完整，\cpuname 支持异常处理。根据MIPS规范要求，\cpuname 支持精确异常，即出现异常后，准确记录发生异常的指令地址，并存放在EPC寄存器中以待异常返回时使用；且保证发生异常前的所有指令正常提交；发生异常的指令及其之后的指令不提交，并跳转至异常处理程序入口进行异常处理。\cpuname 中支持的指令优先级顺序如下：
 
-\todo TLB异常陈述
 \begin{enumerate}
     \item \textbf{中断例外}：包括硬件中断、软件中断和计时器中断。
+    \item \textbf{地址转换异常}：访问TLB时，TLB表中没有有效的转换对应项可用时，会发生地址转换异常，包括TLB重填异常、TLB无效异常（有load页无效、store页无效、modify页无效等）等。
     \item \textbf{地址错例外（取指）}：PC地址未对齐四字节。
     \item \textbf{保留指令例外}：当执行一条未实现的指令时，触发保留指令例外。
     \item \textbf{自陷例外、系统调用例外}：执行到Syscall、Break等自陷指令时。
     \item \textbf{整型溢出例外}：执行ADD，SUB，ADDI，SUBI等指令发生溢出时。
     \item \textbf{地址错例外（数据访问）}：访问数据的地址未对齐，包括AdEl、AdEs两类错误。
-    \item \textbf{地址转换异常}：访问TLB时，TLB表中没有有效的转换对应项可用时，会发生地址转换异常，包括TLB重填异常、TLB无效异常（有load页无效、store页无效、modify页无效等）等。
 \end{enumerate}
+
+其中中断例外为异步例外，其他异常例外为同步例外。\cpuname 的设计中，某时刻发生的中断，将被绑定在D阶段执行的指令及其pc上。
