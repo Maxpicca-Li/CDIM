@@ -1,5 +1,4 @@
 .vscode
-*.cls
 *.aux
 *.bcf
 *.log
