@@ -7,5 +7,6 @@
 *.xml
 *.toc
 *.pdf
+!img/*
 *(busy)
 ref*
