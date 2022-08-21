@@ -6,6 +6,8 @@
 
 @[NSCSCC2022](http://www.nscscc.com/)
 
+![](report/img/summary.png)
+
 ## Info
 
 CDIM，CQU Dual Issue Machine，为双发射五级顺序流水线CPU，支持指令FIFO、分支预测、指令缓存和数据缓存、Store Buffer、两级TLB等特殊单元，以提升系统性能；CDIM还支持U-Boot引导程序，并基于该引导程序，成功运行uCore和Linux操作系统。
@@ -17,8 +19,6 @@ CDIM，CQU Dual Issue Machine，为双发射五级顺序流水线CPU，支持指
 - 指令缓存和数据缓存均采用二路组相联和突发传输的设计，单路均为4KB以满足伪VIPT对虚拟内存最小页面的要求，其中指令缓存的数据行为64bit以适应双发取指要求，数据缓存的数据行为32bit。
 - Store Buffer可缓存Uncached的写AXI请求，以降低写AXI带来的流水线阻塞数。
 - 两级TLB可以减少映射地址翻译模式的时延和缺失率。
-
-
 
 ## Branch
 
@@ -33,8 +33,6 @@ CDIM，CQU Dual Issue Machine，为双发射五级顺序流水线CPU，支持指
 - `dev_bp`：基于`dev_lw`，添加局部分支预测。
 - to be continued...
 
-
-
 ## Todo
 
 - [x] 双发连接axi总线
@@ -43,8 +41,6 @@ CDIM，CQU Dual Issue Machine，为双发射五级顺序流水线CPU，支持指
   - [x] TLB
   - [x] Cache对应的优化
 - [ ] to be continued...
-
-
 
 ## Reference
 
@@ -60,4 +56,10 @@ CDIM，CQU Dual Issue Machine，为双发射五级顺序流水线CPU，支持指
 
 - 超标量处理器设计. 姚永斌
 
-  
+## Link
+
+1. [展示视频](https://www.bilibili.com/video/BV1gB4y1V7wT)
+
+2. [答辩slides](report/slides.pdf)
+
+3. [设计文档](report/CDIM-2022FinalReport.pdf)
