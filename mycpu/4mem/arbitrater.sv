@@ -87,8 +87,28 @@ module arbitrater (
     wire ar_sel;     //0 :i_cache, 1 : d_cache
     // reg [1:0] r_sel;      //2'b00-> no, 2'b01-> i_cache, 2'b10-> d_cache
 
+    reg ar_sel_lock;
+    reg ar_sel_lock_val;
+
+    always_ff @(posedge clk) begin // Lock ar_sel to avoid signal change during ar handshake
+        if (rst) begin
+            ar_sel_lock <= 1'b0;
+            ar_sel_lock_val <= 1'b0;
+        end
+        else begin
+            if (arvalid) begin
+                if (arready) begin
+                    ar_sel_lock <= 1'b0;
+                end
+                else begin
+                    ar_sel_lock <= 1'b1;
+                    ar_sel_lock_val <= ar_sel;
+                end
+            end
+        end
+    end
     //ar
-    assign ar_sel = ~i_arvalid & d_arvalid ? 1'b1 : 1'b0;   //����i_cache
+    assign ar_sel = ar_sel_lock ? ar_sel_lock_val : (~i_arvalid & d_arvalid ? 1'b1 : 1'b0);   //����i_cache
     wire r_sel;     //0-> i_cache, 1-> d_cache
     assign r_sel = rid[0];
 
