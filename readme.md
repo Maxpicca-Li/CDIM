@@ -63,3 +63,5 @@ CDIM，CQU Dual Issue Machine，为双发射五级顺序流水线CPU，支持指
 2. [答辩slides](report/slides.pdf)
 
 3. [设计文档](report/CDIM-2022FinalReport.pdf)
+
+4. [CDIM-SoC](https://github.com/cyyself/CDIM-SoC)
