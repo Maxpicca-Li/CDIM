@@ -154,7 +154,7 @@ always_comb begin // except_target
     else if (|except) begin
         M_cp0_jump = 1'b1  && !stallM;
         if (!status_reg.EXL) begin
-            M_cp0_jump_pc = trap_base + (tlb_rf ? 32'h0 : (except.id_int & cause_reg.IV & !status_reg.BEV) ? 32'h200 : 32'h180);
+            M_cp0_jump_pc = trap_base + ( (except.id_int & cause_reg.IV & !status_reg.BEV) ? 32'h200 : ( (tlb_rf & !except.id_int) ? 32'h0 : 32'h180) );
         end
         else M_cp0_jump_pc = trap_base + 32'h180;
     end
@@ -239,7 +239,8 @@ always_ff @(posedge clk) begin // note: mtc0 should be done in exec stage.
             end
             status_reg.EXL <= 1'b1;
             // exccode
-            if (except.if_adel | except.ex_adel) begin
+            if (except.id_int) cause_reg.exccode <= `EXC_INT;
+            else if (except.if_adel | except.ex_adel) begin
                 cause_reg.exccode <= `EXC_ADEL;
                 // $display("adel at pc %x",except_pc);
             end
@@ -247,7 +248,6 @@ always_ff @(posedge clk) begin // note: mtc0 should be done in exec stage.
                 cause_reg.exccode <= `EXC_ADES;
                 // $display("ades at pc %x",except_pc);
             end
-            else if (except.id_int) cause_reg.exccode <= `EXC_INT;
             else if (except.ex_tlbl | except.if_tlbl) begin
                 cause_reg.exccode <= `EXC_TLBL;
                 // $display("tlbl at pc %x, badva = %x",except_pc,badva_in);
@@ -284,10 +284,10 @@ always_ff @(posedge clk) begin // note: mtc0 should be done in exec stage.
                 cause_reg.exccode <= `EXC_TR;
                 // $display("trap at pc %x",except_pc);
             end
-            if (except.if_adel | except.if_tlbl | except.ex_adel | except.ex_ades | except.ex_tlbl | except.ex_tlbs | except.ex_tlbm) begin
+            if ( (except.if_adel | except.if_tlbl | except.ex_adel | except.ex_ades | except.ex_tlbl | except.ex_tlbs | except.ex_tlbm) && (!except.id_int)) begin
                 badva_reg <= badva_in;
             end
-            if (except.if_tlbl | except.ex_tlbl | except.ex_tlbs | except.ex_tlbm) begin
+            if ( (except.if_tlbl | except.ex_tlbl | except.ex_tlbs | except.ex_tlbm) && (!except.id_int)) begin
                 context_reg.badvpn2 <= badva_in[31:13];
                 entryhi_reg.VPN2 <= badva_in[31:13];
             end
