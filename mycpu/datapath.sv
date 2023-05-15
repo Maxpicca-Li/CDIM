@@ -506,6 +506,7 @@ issue_ctrl u_issue_ctrl(
     .D_slave_rt                 ( D_slave_rt                ),
     .D_master_hilowrite         ( D1cs.hilo_write           ),
     .D_slave_hiloread           ( D2cs.hilo_read            ),
+    .D_slave_hilowrite          ( D2cs.hilo_write           ),
     .D_master_cp0write          ( D1cs.cp0_write            ),
     .D_slave_cp0read            ( D2cs.cp0_read             ),
     .D_master_is_branch         ( D_master_is_bj            ),

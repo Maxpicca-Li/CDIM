@@ -44,7 +44,7 @@ module issue_ctrl (
     assign load_stall = (E_master_memtoReg & ((D_slave_read_rs & D_slave_rs == E_master_reg_waddr) | (D_slave_read_rt & D_slave_rt == E_master_reg_waddr))) |
                         (E_slave_memtoReg  & ((D_slave_read_rs & D_slave_rs == E_slave_reg_waddr)  | (D_slave_read_rt & D_slave_rt == E_slave_reg_waddr)));
     assign war_reg    = D_master_reg_wen & ((D_slave_read_rs & D_slave_rs == D_master_reg_waddr) | (D_slave_read_rt & D_slave_rt == D_master_reg_waddr));
-    assign war_hilo   = D_master_hilowrite & D_slave_hiloread;
+    assign war_hilo   = (D_master_hilowrite & D_slave_hiloread) | (D_master_hilowrite & D_slave_hilowrite);
     assign war_cp0    = D_master_cp0write & D_slave_cp0read; 
     assign data_conflict = war_reg | war_hilo | war_cp0 | load_stall;
     // 汇总
