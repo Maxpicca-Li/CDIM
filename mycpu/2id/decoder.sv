@@ -155,7 +155,6 @@ module  decoder(
                         signsD.read_rt = 1'b1;
                         signsD.hilo_write = 1'b1;
                         signsD.mul_en = 1'b1;
-                        signsD.only_one_issue = 1'b1;
                     end
                     `FUN_MULTU : begin
                         signsD.aluop = `ALUOP_MULTU;
@@ -163,7 +162,6 @@ module  decoder(
                         signsD.read_rt = 1'b1;
                         signsD.hilo_write = 1'b1;
                         signsD.mul_en = 1'b1;
-                        signsD.only_one_issue = 1'b1;
                     end
                     `FUN_DIV   : begin
                         signsD.aluop = `ALUOP_DIV;
@@ -171,7 +169,6 @@ module  decoder(
                         signsD.read_rt = 1'b1;
                         signsD.hilo_write = 1'b1;
                         signsD.div_en = 1'b1;
-                        signsD.only_one_issue = 1'b1;
                     end
                     `FUN_DIVU  : begin
                         signsD.aluop = `ALUOP_DIVU;
@@ -179,32 +176,27 @@ module  decoder(
                         signsD.read_rt = 1'b1;
                         signsD.hilo_write = 1'b1;
                         signsD.div_en = 1'b1;
-                        signsD.only_one_issue = 1'b1;
                     end
                     // move ==> hilo access
                     `FUN_MFHI  : begin
                         signsD.aluop = `ALUOP_MFHI;
                         signsD.hilo_read = 1'b1;
                         signsD.reg_write = 1'b1;
-                        signsD.only_one_issue = 1'b1;
                     end
                     `FUN_MFLO  : begin
                         signsD.aluop = `ALUOP_MFLO;
                         signsD.hilo_read = 1'b1;
                         signsD.reg_write = 1'b1;
-                        signsD.only_one_issue = 1'b1;
                     end
                     `FUN_MTHI  : begin
                         signsD.aluop = `ALUOP_MTHI;
                         signsD.read_rs = 1'b1;
                         signsD.hilo_write = 1'b1;
-                        signsD.only_one_issue = 1'b1;
                     end
                     `FUN_MTLO  : begin
                         signsD.aluop = `ALUOP_MTLO;
                         signsD.read_rs = 1'b1;
                         signsD.hilo_write = 1'b1;
-                        signsD.only_one_issue = 1'b1;
                     end
                     // jump R
                     `FUN_JR    : begin
@@ -293,7 +285,6 @@ module  decoder(
                         signsD.read_rt = 1'b1;
                         signsD.reg_write = 1'b1;
                         signsD.mul_en = 1'b1;
-                        signsD.only_one_issue = 1'b1;
                     end
                     `FUN_CLO: begin
                         signsD.read_rs = 1'b1;
@@ -312,7 +303,6 @@ module  decoder(
                         signsD.hilo_write = 1'b1;
                         signsD.hilo_read = 1'b1;
                         signsD.mul_en = 1'b1;
-                        signsD.only_one_issue = 1'b1;
                     end
                     `FUN_MADDU:begin
                         signsD.aluop = `ALUOP_MADDU;
@@ -321,7 +311,6 @@ module  decoder(
                         signsD.hilo_write = 1'b1;
                         signsD.hilo_read = 1'b1;
                         signsD.mul_en = 1'b1;
-                        signsD.only_one_issue = 1'b1;
                     end
                     `FUN_MSUB:begin
                         signsD.aluop = `ALUOP_MSUB;
@@ -330,7 +319,6 @@ module  decoder(
                         signsD.hilo_write = 1'b1;
                         signsD.hilo_read = 1'b1;
                         signsD.mul_en = 1'b1;
-                        signsD.only_one_issue = 1'b1;
                     end
                     `FUN_MSUBU:begin
                         signsD.aluop = `ALUOP_MSUBU;
@@ -339,7 +327,6 @@ module  decoder(
                         signsD.hilo_write = 1'b1;
                         signsD.hilo_read = 1'b1;
                         signsD.mul_en = 1'b1;
-                        signsD.only_one_issue = 1'b1;
                     end
                     default: begin
                         undefined_inst = 1'b1;
